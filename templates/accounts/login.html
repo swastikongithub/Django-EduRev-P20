@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block body_class %}auth{% endblock %}
+{% block shell %}
+<div class="auth-wrap">
+  <section class="auth-hero" aria-hidden="true">
+    <div class="auth-hero__brand"><span class="brandmark">{% include "components/brandmark.html" %}</span><span>LPU Reserve</span></div>
+    <div class="auth-hero__board">
+      <div class="hb-row"><span class="hb-label">Room 34-301</span><span class="hb-track"><i class="hb hb--class" style="--l:4%;--w:18%"></i><i class="hb hb--booked" style="--l:30%;--w:12%"></i><i class="hb hb--class" style="--l:52%;--w:16%"></i></span></div>
+      <div class="hb-row"><span class="hb-label">GPU Lab 38-204</span><span class="hb-track"><i class="hb hb--booked" style="--l:10%;--w:22%"></i><i class="hb hb--mine" style="--l:40%;--w:14%"></i><i class="hb hb--booked" style="--l:62%;--w:20%"></i></span></div>
+      <div class="hb-row"><span class="hb-label">Seminar Hall 32</span><span class="hb-track"><i class="hb hb--maint" style="--l:0%;--w:26%"></i><i class="hb hb--pending" style="--l:48%;--w:24%"></i></span></div>
+      <div class="hb-row"><span class="hb-label">Basketball Court 2</span><span class="hb-track"><i class="hb hb--booked" style="--l:6%;--w:10%"></i><i class="hb hb--booked" style="--l:70%;--w:12%"></i><i class="hb hb--booked" style="--l:84%;--w:12%"></i></span></div>
+      <div class="hb-row"><span class="hb-label">Sony A7 IV kit</span><span class="hb-track"><i class="hb hb--booked" style="--l:20%;--w:30%"></i></span></div>
+    </div>
+    <div class="auth-hero__copy">
+      <h1>Every room, lab, court and camera on campus. One place to book it.</h1>
+      <p>See what's free right now, why a slot is taken, and walk in with a QR pass. Classes on the timetable are never double-booked.</p>
+    </div>
+  </section>
+
+  <section class="auth-panel">
+    <div class="auth-card">
+      <div class="auth-card__head">
+        <h2>Sign in</h2>
+        <p class="muted">Use your UMS VID or username.</p>
+      </div>
+      {% if error %}<div class="notice notice--danger" role="alert">{% icon "circle-alert" %}<div>{{ error }}</div></div>{% endif %}
+      <form method="post" class="stack" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+        <div class="field">
+          <label for="id_username">VID or username</label>
+          <input class="input input--lg" id="id_username" name="username" value="{{ username }}" autocomplete="username" inputmode="text" required autofocus>
+        </div>
+        <div class="field">
+          <label for="id_password">Password</label>
+          <input class="input input--lg" id="id_password" type="password" name="password" autocomplete="current-password" required>
+        </div>
+        <button class="btn btn--primary btn--lg btn--block" type="submit">Sign in</button>
+        <p class="xsmall faint">Five wrong attempts lock the account for 15 minutes.</p>
+      </form>
+
+      {% if personas %}
+      <div class="demo">
+        <div class="demo__head"><span class="badge badge--pending">{% icon "sparkles" %}Demo mode</span><span class="small muted">Explore as any role — no password needed.</span></div>
+        <div class="demo__grid">
+          {% for u, label, blurb in personas %}
+          <form method="post" action="{% url 'accounts:demo_login' %}">
+            {% csrf_token %}
+            <input type="hidden" name="username" value="{{ u.username }}">
+            <input type="hidden" name="next" value="{{ next }}">
+            <button type="submit" class="persona">
+              {% initials_avatar u %}
+              <span class="persona__text"><strong>{{ label }}</strong><span>{{ u.display_name }}</span><em>{{ blurb }}</em></span>
+            </button>
+          </form>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    <p class="auth-foot xsmall faint">Lovely Professional University, Phagwara</p>
+  </section>
+</div>
+{% endblock %}

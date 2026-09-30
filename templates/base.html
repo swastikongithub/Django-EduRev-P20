@@ -1,0 +1,83 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Home{% endblock %} · LPU Reserve</title>
+  <meta name="description" content="Book classrooms, labs, seminar halls, sports facilities and equipment across LPU.">
+  <meta name="theme-color" content="#f68121">
+  <meta name="htmx-config" content='{"allowEval": false, "includeIndicatorStyles": false, "historyCacheSize": 0}'>
+  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="stylesheet" href="{% static 'css/pages.css' %}">
+  <script src="{% static 'js/theme.js' %}"></script>
+  <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
+  <script src="{% static 'js/app.js' %}" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}" data-sprite="{% static 'img/icons.svg' %}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+<div class="loading-bar" aria-hidden="true"></div>
+<a class="skip-link" href="#main">Skip to content</a>
+{% block shell %}
+<div class="app">
+  <aside class="rail" aria-label="Primary">
+    <a class="rail__brand" href="{% url 'core:home' %}" aria-label="LPU Reserve home"><span class="brandmark">{% include "components/brandmark.html" %}</span></a>
+    <nav class="rail__group" aria-label="Booking">
+      {% for item in nav_book %}<a class="rail__item" href="{{ item.url }}"{% active_any item.match %}>{% icon item.icon %}<span>{{ item.label }}</span></a>{% endfor %}
+    </nav>
+    {% if nav_manage %}
+    <div class="rail__sep" role="presentation"></div>
+    <nav class="rail__group" aria-label="Manage">
+      {% for item in nav_manage %}<a class="rail__item" href="{{ item.url }}"{% active_any item.match %}>{% icon item.icon %}<span>{{ item.label }}</span>{% if item.count %}<span class="rail__count">{{ item.count }}<span class="sr-only"> waiting</span></span>{% endif %}</a>{% endfor %}
+    </nav>
+    {% endif %}
+    <div class="rail__group rail__foot">
+      <button type="button" class="rail__item" data-theme-toggle>{% icon "moon" cls="when-light" %}{% icon "sun" cls="when-dark" %}<span>Theme</span></button>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <header class="topbar">
+      <a class="topbar__brand" href="{% url 'core:home' %}" aria-label="LPU Reserve home"><span class="brandmark brandmark--sm">{% include "components/brandmark.html" %}</span></a>
+      <div class="topbar__title">{% block topbar_title %}LPU Reserve<small>Campus resource booking</small>{% endblock %}</div>
+      <form class="topbar__search" action="{% url 'catalogue:find' %}" method="get" role="search">
+        <label class="cmd">{% icon "search" %}<span class="sr-only">Search resources</span>
+          <input type="search" name="q" placeholder="Try &ldquo;lab for 40 tomorrow&rdquo; or &ldquo;projector block 34&rdquo;" value="{{ request.GET.q|default:'' }}" data-cmdk autocomplete="off">
+          <span class="kbd" aria-hidden="true">/</span>
+        </label>
+      </form>
+      <div class="topbar__actions">
+        <a class="iconbtn only-mobile" href="{% url 'catalogue:find' %}" aria-label="Search">{% icon "search" %}</a>
+        <a class="iconbtn" href="{% url 'notifications:inbox' %}" aria-label="Notifications{% if counts.unread %}, {{ counts.unread }} unread{% endif %}">{% icon "bell" %}{% if counts.unread %}<span class="dotcount" aria-hidden="true">{{ counts.unread }}</span>{% endif %}</a>
+        <a class="profile" href="{% url 'accounts:me' %}" aria-label="Your profile">
+          {% initials_avatar request.user %}
+          <span class="profile__text"><span class="profile__name">{{ request.user.display_name }}</span><span class="profile__meta">{% if request.user.vid %}VID {{ request.user.vid }}{% else %}{{ request.user.get_role_display }}{% endif %}</span></span>
+        </a>
+      </div>
+    </header>
+
+    <main id="main" class="page {% block page_class %}{% endblock %}" tabindex="-1">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<nav class="tabbar" aria-label="Primary">
+  <a href="{% url 'core:home' %}"{% active "/home" %}>{% icon "house" %}<span>Home</span></a>
+  <a href="{% url 'catalogue:find' %}"{% active "/find" "/r/" %}>{% icon "search" %}<span>Find</span></a>
+  <a class="tabbar__scan" href="{% url 'checkins:scan' %}"{% active "/scan" %} aria-label="Scan QR to check in"><span class="scanfab">{% icon "scan-line" %}</span><span>Scan</span></a>
+  <a href="{% url 'bookings:mine' %}"{% active "/bookings" "/b/" %}>{% icon "calendar-check" %}<span>Bookings</span></a>
+  {% if nav_manage %}<a href="{% url 'manage:home' %}"{% active "/manage" "/insights" %}>{% icon "layout-dashboard" %}<span>Manage</span></a>{% else %}<a href="{% url 'accounts:me' %}"{% active "/me" %}>{% icon "user" %}<span>Me</span></a>{% endif %}
+</nav>
+{% endblock %}
+
+<div class="toasts" aria-live="polite" id="toasts">
+  {% for message in messages %}<div class="toast toast--{{ message.level_tag|default:'info' }}" role="status">{% if message.level_tag == "success" %}{% icon "circle-check" %}{% elif message.level_tag == "error" %}{% icon "circle-x" %}{% elif message.level_tag == "warning" %}{% icon "triangle-alert" %}{% else %}{% icon "info" %}{% endif %}<div>{{ message }}</div><button type="button" data-dismiss aria-label="Dismiss">{% icon "x" %}</button></div>{% endfor %}
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

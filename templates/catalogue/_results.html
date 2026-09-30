@@ -1,0 +1,77 @@
+<section id="results" class="results" aria-live="polite" aria-busy="false">
+  <div class="results__head">
+    <div>
+      <h1 class="results__count"><span class="tnum">{{ total }}</span> {% if window %}free {{ window.0|dayname|lower }} {{ window.0|hm }}–{{ window.1|hm }}{% else %}resource{{ total|pluralize }}{% endif %}</h1>
+      {% if intent.understood %}
+      <div class="understood" aria-label="How we read your search">
+        <span class="xsmall faint">Understood as</span>
+        {% for key, label in intent.understood %}<span class="badge badge--plain">{{ label }}</span>{% endfor %}
+        {% if intent.text %}<span class="badge badge--plain">&ldquo;{{ intent.text }}&rdquo;</span>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="legend" aria-label="Day strip legend">
+      <span class="legend__item"><span class="swatch swatch--class"></span>Class</span>
+      <span class="legend__item"><span class="swatch swatch--booked"></span>Booked</span>
+      <span class="legend__item"><span class="swatch swatch--mine"></span>Yours</span>
+      <span class="legend__item"><span class="swatch swatch--maintenance"></span>Upkeep</span>
+    </div>
+  </div>
+
+  {% if rows %}
+  <div class="rgrid">
+    {% for r, sched in rows %}
+    <a class="rcard" href="{{ r.get_absolute_url }}?date={{ show_day|date:'Y-m-d' }}">
+      <div class="rcard__media">
+        {% resource_photo r "sm" %}
+        <span class="rcard__type">{% icon r.type.icon %}{{ r.type.name }}</span>
+        <span class="rcard__now">
+          {% if r.status != "active" %}<span class="badge badge--danger">{% icon "wrench" %}Out of service</span>
+          {% elif window %}<span class="badge badge--success">{% icon "circle-check" %}Free {{ window.0|hm }}–{{ window.1|hm }}</span>
+          {% elif r.pk in saved %}<span class="badge badge--pending">{% icon "star" %}Starred</span>{% endif %}
+        </span>
+      </div>
+      <div class="rcard__body">
+        <div>
+          <h2 class="rcard__title">{{ r.name }}</h2>
+          <div class="rcard__meta">
+            {% if r.building %}<span>{% icon "map-pin" %}{{ r.building.name }}{% if r.room %}, {{ r.room }}{% endif %}</span>{% endif %}
+            <span>{% icon "users" %}{{ r.capacity }}{% if r.type.category == "equipment" %} unit{{ r.capacity|pluralize }}{% else %} seats{% endif %}</span>
+          </div>
+        </div>
+        {% with feats=r.features.all %}{% if feats %}<div class="rcard__feats">{% for f in feats|slice:":3" %}<span class="feat">{% icon f.icon %}{{ f.name }}</span>{% endfor %}{% if feats|length > 3 %}<span class="feat">+{{ feats|length|add:"-3" }}</span>{% endif %}</div>{% endif %}{% endwith %}
+        <div>
+          {% daystrip sched %}
+        </div>
+        {% if not r.type.allowed_roles or request.user.role in r.type.allowed_roles %}
+          {% if sched.first_free %}<span class="rcard__next">{% icon "circle-check" %}Next free {{ show_day|dayname|lower }} {{ sched.first_free.start|hm }}</span>
+          {% elif sched.is_open %}<span class="rcard__next is-busy">{% icon "clock" %}Fully taken {{ show_day|dayname|lower }}</span>
+          {% else %}<span class="rcard__next is-busy">{% icon "clock" %}Closed {{ show_day|dayname|lower }}</span>{% endif %}
+        {% else %}
+          <span class="rcard__next is-busy">{% icon "lock" %}Booked by faculty for groups</span>
+        {% endif %}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% if page.has_other_pages %}
+  <nav class="pager" aria-label="Pages">
+    {% if page.has_previous %}<button class="btn btn--sm" type="submit" name="page" value="{{ page.previous_page_number }}">{% icon "chevron-left" %}Previous</button>{% endif %}
+    <span class="small muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<button class="btn btn--sm" type="submit" name="page" value="{{ page.next_page_number }}">Next{% icon "chevron-right" %}</button>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+  <div class="panel empty">
+    <div class="empty__icon">{% icon "search" %}</div>
+    {% if window %}
+      <h3>Nothing matching is free {{ window.0|dayname|lower }} {{ window.0|hm }}–{{ window.1|hm }}</h3>
+      <p>{% if unavailable_reasons.busy %}{{ unavailable_reasons.busy }} match{{ unavailable_reasons.busy|pluralize:"es" }} are booked or timetabled then. {% endif %}Try a shorter window, another block, or fewer people.</p>
+    {% else %}
+      <h3>No resources match that</h3>
+      <p>Check the spelling or remove a filter. Searching by block (&ldquo;block 34&rdquo;) or kind (&ldquo;lab&rdquo;, &ldquo;court&rdquo;) works well.</p>
+    {% endif %}
+    <a class="btn" href="{% url 'catalogue:find' %}">Clear search</a>
+  </div>
+  {% endif %}
+</section>

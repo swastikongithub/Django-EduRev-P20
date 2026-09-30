@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<div class="home-head">
+  <div>
+    <h1>{{ greeting }}, {{ request.user.first_name|default:request.user.username }}</h1>
+    <p class="muted">{% now "l, j F" %}{% if request.user.section %} &nbsp;|&nbsp; Section {{ request.user.section }}{% endif %}{% if request.user.department %} &nbsp;|&nbsp; {{ request.user.department.name }}{% endif %}</p>
+  </div>
+</div>
+
+{% if restriction %}
+<div class="notice notice--danger home-notice" role="status">{% icon "ban" %}<div><strong>Booking is paused until {{ restriction.ends_at|date:"j M, H:i" }}</strong>{{ restriction.reason }}. You can still check in to bookings you already have. <a href="{% url 'accounts:me' %}">See your standing</a></div></div>
+{% endif %}
+
+<div class="home-grid">
+  <section class="panel composer" aria-labelledby="composer-h">
+    <h2 id="composer-h" class="composer__title">What do you need, and when?</h2>
+    <form class="composer__form" action="{% url 'catalogue:find' %}" method="get">
+      <fieldset class="composer__types">
+        <legend class="sr-only">Kind of resource</legend>
+        {% for t in types %}
+        <label class="typecard">
+          <input type="radio" name="type" value="{{ t.code }}"{% if forloop.first %} checked{% endif %}>
+          <span class="typecard__icon">{% icon t.icon %}</span>
+          <span class="typecard__name">{{ t.plural|default:t.name }}</span>
+        </label>
+        {% endfor %}
+      </fieldset>
+      <div class="composer__when">
+        <div class="field">
+          <label for="c-date">Day</label>
+          <div class="seg seg--fill" role="group" aria-label="Quick day">
+            <label><input type="radio" name="date" value="{{ today|date:'Y-m-d' }}" checked>Today</label>
+            <label><input type="radio" name="date" value="{{ tomorrow|date:'Y-m-d' }}">Tomorrow</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="c-from">From</label>
+          <select class="select" id="c-from" name="from">{% for t in times %}<option{% if t == default_from %} selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+        </div>
+        <div class="field">
+          <label for="c-to">Until</label>
+          <select class="select" id="c-to" name="to">{% for t in times %}<option{% if t == default_to %} selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+        </div>
+        <div class="field">
+          <label for="c-people">People</label>
+          <input class="input" id="c-people" name="people" type="number" min="1" max="1000" inputmode="numeric" placeholder="1">
+        </div>
+        <button class="btn btn--primary btn--lg composer__go" type="submit">{% icon "search" %}Show what's free</button>
+      </div>
+      <p class="composer__hint xsmall faint">Only resources that are genuinely free for the whole time are shown. Classes on the timetable, maintenance and blackouts are already taken out.</p>
+    </form>
+  </section>
+
+  <section class="panel panel--flagged nextpass" aria-labelledby="next-h">
+    <span class="flag">{% icon "qr-code" %}<span id="next-h">Your next booking</span></span>
+    {% if next_booking %}
+      {% with b=next_booking s=next_state %}
+      <a class="nextpass__main" href="{{ b.get_absolute_url }}">
+        <div class="nextpass__when">
+          <span class="nextpass__day">{{ b.start|dayname }}</span>
+          <span class="nextpass__time tnum">{{ b.start|hm }}<span>–{{ b.end|hm }}</span></span>
+        </div>
+        <div class="nextpass__what">
+          <strong>{{ b.resource.name }}</strong>
+          <span class="small muted">{{ b.resource.location_label }}</span>
+        </div>
+      </a>
+      <div class="nextpass__state">
+        {% if s.state == "open" %}
+          <div class="checkin-live"><span class="live-dot" aria-hidden="true"></span>Check-in open &middot; <time data-countdown="{{ s.closes|date:'c' }}" data-expired="closing">{{ s.closes|hm }}</time> left</div>
+          <a class="btn btn--primary btn--block" href="{{ b.get_absolute_url }}#checkin">{% icon "scan-line" %}Check in now</a>
+        {% elif s.state == "in_use" %}
+          <div class="row">{% status_badge b %}<span class="small muted">until {{ b.end|hm }}</span></div>
+          <a class="btn btn--block" href="{{ b.get_absolute_url }}">Open pass</a>
+        {% elif b.status == "pending" %}
+          <div class="row">{% status_badge b %}<span class="small muted">The slot is held for you while it's reviewed.</span></div>
+        {% elif s.state == "not_yet" %}
+          <div class="row">{% status_badge b %}<span class="small muted">Check-in opens {{ s.opens|hm }}</span></div>
+          <a class="btn btn--block" href="{{ b.get_absolute_url }}">{% icon "qr-code" %}Show QR pass</a>
+        {% else %}
+          <div class="row">{% status_badge b %}</div>
+        {% endif %}
+      </div>
+      {% if more_upcoming %}
+      <ul class="list nextpass__more">
+        {% for m in more_upcoming %}
+        <li><a class="minirow" href="{{ m.get_absolute_url }}"><span class="minirow__when tnum">{{ m.start|dayname }}, {{ m.start|hm }}</span><span class="truncate">{{ m.resource.name }}</span>{% if m.status == "pending" %}<span class="badge badge--pending">Pending</span>{% endif %}</a></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% endwith %}
+    {% else %}
+      <div class="empty empty--compact">
+        <div class="empty__icon">{% icon "calendar-plus" %}</div>
+        <h3>Nothing booked yet</h3>
+        <p class="small">Pick what you need on the left. Your QR pass will live here.</p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+{% if is_staff_side and desk %}
+<section class="desk" aria-label="Needs your attention">
+  {% if desk.approvals is not None %}<a class="desk__item" href="{% url 'manage:approvals' %}"><span class="desk__n tnum">{{ desk.approvals }}</span><span>requests waiting for you</span>{% icon "chevron-right" %}</a>{% endif %}
+  <a class="desk__item" href="{% url 'manage:board' %}"><span class="desk__n tnum">{{ desk.in_use }}</span><span>in use right now</span>{% icon "chevron-right" %}</a>
+  {% if desk.breakdowns is not None %}<a class="desk__item{% if desk.breakdowns %} is-alert{% endif %}" href="{% url 'manage:maintenance' %}"><span class="desk__n tnum">{{ desk.breakdowns }}</span><span>open breakdown reports</span>{% icon "chevron-right" %}</a>{% endif %}
+  {% if desk.no_shows_today is not None %}<a class="desk__item" href="{% url 'manage:no_shows' %}"><span class="desk__n tnum">{{ desk.no_shows_today }}</span><span>no-shows released today</span>{% icon "chevron-right" %}</a>{% endif %}
+</section>
+{% endif %}
+
+<section class="home-section" aria-labelledby="free-h">
+  <div class="section-head">
+    <h2 id="free-h">Free from {{ free_from|hm }} for the next hour</h2>
+    <a class="small" href="{% url 'catalogue:find' %}?date={{ today|date:'Y-m-d' }}&amp;from={{ free_from|hm }}">See everything free</a>
+  </div>
+  {% if free_rows %}
+  <div class="freelist">
+    {% for r, sched in free_rows %}
+    <a class="freerow" href="{{ r.get_absolute_url }}?date={{ today|date:'Y-m-d' }}">
+      <span class="freerow__media">{% resource_photo r "sm" %}</span>
+      <span class="freerow__text"><strong class="truncate">{{ r.name }}</strong><span class="small muted truncate">{{ r.building.name|default:"" }}{% if r.capacity > 1 %} &middot; {{ r.capacity }} seats{% endif %}</span></span>
+      <span class="freerow__strip">{% daystrip sched %}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="panel empty empty--compact"><div class="empty__icon">{% icon "clock" %}</div><h3>Everything nearby is taken this hour</h3><p class="small">Try a later time or another block.</p><a class="btn" href="{% url 'catalogue:find' %}">Browse all resources</a></div>
+  {% endif %}
+</section>
+
+{% if usual_rows %}
+<section class="home-section" aria-labelledby="usual-h">
+  <div class="section-head"><h2 id="usual-h">Your usual spots today</h2></div>
+  <div class="usual">
+    {% for r, sched in usual_rows %}
+    <a class="panel usual__card" href="{{ r.get_absolute_url }}">
+      <div class="row row--between"><strong class="truncate">{{ r.name }}</strong>{% if r.pk in saved_ids %}<span class="ember" title="Starred">{% icon "star" 16 %}</span>{% endif %}</div>
+      <span class="small muted">{{ r.location_label }}</span>
+      {% daystrip sched %}
+      <span class="small">{% if sched.first_free %}Next free {{ sched.first_free.start|hm }}{% else %}Fully taken today{% endif %}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

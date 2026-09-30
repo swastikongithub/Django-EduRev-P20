@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Find a resource{% endblock %}
+{% block topbar_title %}Find<small>Rooms, labs, courts, equipment</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+<form id="finder" class="finder" action="{% url 'catalogue:find' %}" method="get" data-autosubmit
+      hx-get="{% url 'catalogue:find' %}" hx-target="#results" hx-select="#results" hx-swap="outerHTML" hx-push-url="true" hx-trigger="submit, input changed delay:350ms from:#q">
+  <div class="finder__search">
+    <label class="inputgroup finder__q">{% icon "search" 20 %}<span class="sr-only">Search</span>
+      <input class="input input--lg" id="q" type="search" name="q" value="{{ q }}" placeholder="Lab for 40 tomorrow after 3 pm, projector in block 34, basketball court now&hellip;" autocomplete="off" autofocus>
+    </label>
+    <label class="chip{% if free_now %} is-on{% endif %}"><input type="checkbox" name="now" value="1"{% if free_now %} checked{% endif %}><span class="live-dot" aria-hidden="true"></span>Free right now</label>
+  </div>
+
+  <div class="split split--left finder__body">
+    <aside class="finder__filters" aria-label="Filters">
+      <details class="filters" open>
+        <summary class="filters__toggle">{% icon "sliders-horizontal" %}Filters</summary>
+        <div class="filters__inner stack">
+          <fieldset class="fgroup">
+            <legend>When</legend>
+            <div class="field"><label for="f-date" class="sr-only">Day</label><input class="input" id="f-date" type="date" name="date" value="{{ day|date:'Y-m-d' }}" min="{{ today|date:'Y-m-d' }}"></div>
+            <div class="row"><select class="select" name="from" aria-label="From"><option value="">From</option>{% for t in times %}<option{% if t == t_from %} selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+            <select class="select" name="to" aria-label="Until"><option value="">Until</option>{% for t in times %}<option{% if t == t_to %} selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+            <p class="xsmall faint">With a time set, only resources free for the whole window are listed.</p>
+          </fieldset>
+          <fieldset class="fgroup">
+            <legend>What</legend>
+            <div class="chips">{% for t in types %}<label class="chip"><input type="checkbox" name="type" value="{{ t.code }}"{% if t.code in selected_types %} checked{% endif %}>{% icon t.icon %}{{ t.plural|default:t.name }}</label>{% endfor %}</div>
+          </fieldset>
+          <fieldset class="fgroup">
+            <legend>People</legend>
+            <input class="input" type="number" name="people" min="1" max="2000" value="{{ people }}" placeholder="Any" inputmode="numeric" aria-label="Minimum capacity">
+          </fieldset>
+          <fieldset class="fgroup">
+            <legend>Block</legend>
+            <select class="select" name="building" aria-label="Block"><option value="">Anywhere on campus</option>{% for b in buildings %}<option value="{{ b.code }}"{% if b.code == building_code %} selected{% endif %}>{{ b.name }} ({{ b.n }})</option>{% endfor %}</select>
+          </fieldset>
+          <fieldset class="fgroup">
+            <legend>Facilities</legend>
+            <div class="chips chips--sm">{% for f in features %}<label class="chip"><input type="checkbox" name="feature" value="{{ f.pk }}"{% if f.pk in feature_ids %} checked{% endif %}>{{ f.name }}</label>{% endfor %}</div>
+          </fieldset>
+          <a class="btn btn--ghost btn--sm" href="{% url 'catalogue:find' %}">{% icon "rotate-ccw" %}Clear all</a>
+        </div>
+      </details>
+    </aside>
+    {% include "catalogue/_results.html" %}
+  </div>
+</form>
+{% endblock %}

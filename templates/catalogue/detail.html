@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ r.name }}{% endblock %}
+{% block topbar_title %}{{ r.type.name }}<small>{{ r.code }}</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{% url 'catalogue:find' %}">Find</a>{% icon "chevron-right" %}<a href="{% url 'catalogue:find' %}?type={{ r.type.code }}">{{ r.type.plural|default:r.type.name }}</a>{% icon "chevron-right" %}<span>{{ r.name }}</span></nav>
+
+<section class="rhero">
+  <div class="rhero__media">{% resource_photo r "lg" %}</div>
+  <div class="rhero__info">
+    <div class="row row--between row--top">
+      <span class="badge badge--plain">{% icon r.type.icon %}{{ r.type.name }}</span>
+      <div class="row" style="--gap:6px">
+        {% include "catalogue/_save_button.html" %}
+        {% if is_manager %}<a class="btn btn--sm" href="{% url 'manage:resource_edit' r.pk %}">{% icon "pencil" %}Edit</a>{% endif %}
+      </div>
+    </div>
+    <h1 class="rhero__title">{{ r.name }}</h1>
+    {% if r.tagline %}<p class="rhero__tagline">{{ r.tagline }}</p>{% endif %}
+    {% if r.status != "active" %}
+      <div class="notice notice--danger">{% icon "wrench" %}<div><strong>Out of service</strong>{{ r.status_note|default:"Temporarily unavailable." }}</div></div>
+    {% endif %}
+    <dl class="facts">
+      <div><dt>{% icon "map-pin" %}Where</dt><dd>{{ r.building.name|default:"Campus" }}{% if r.floor %}, floor {{ r.floor }}{% endif %}{% if r.room %}, room {{ r.room }}{% endif %}</dd></div>
+      <div><dt>{% icon "users" %}Capacity</dt><dd>{{ r.capacity }}{% if r.type.category == "equipment" %} unit{{ r.capacity|pluralize }}{% else %} people{% endif %}</dd></div>
+      <div><dt>{% icon "timer" %}Per booking</dt><dd>{{ policy.min_duration_minutes|duration }} to {{ policy.max_duration_minutes|duration }}</dd></div>
+      <div><dt>{% icon "calendar-days" %}Bookable</dt><dd>{% if policy.lead_time_minutes %}{{ policy.lead_time_minutes|duration }} ahead, {% endif %}up to {{ policy.max_advance_days }} days out</dd></div>
+    </dl>
+    {% with feats=r.features.all %}{% if feats %}<div class="rcard__feats">{% for f in feats %}<span class="feat">{% icon f.icon %}{{ f.name }}</span>{% endfor %}</div>{% endif %}{% endwith %}
+    <div class="rhero__today">
+      <div class="row row--between"><span class="small strong">Today</span><span class="xsmall faint">{% if today_schedule.first_free %}Next free {{ today_schedule.first_free.start|hm }}{% elif today_schedule.is_open %}Fully taken{% else %}Closed today{% endif %}</span></div>
+      {% daystrip today_schedule compact=False %}
+    </div>
+  </div>
+</section>
+
+<div class="split split--wide-side detail-body">
+  <div class="stack" style="--gap: var(--s6)">
+    <section class="panel panel--flagged calpanel" aria-labelledby="cal-h">
+      <span class="flag flag--ink">{% icon "calendar-days" %}<span id="cal-h">Availability</span></span>
+      <div id="calendar" hx-target="this" hx-swap="outerHTML">
+        {% include "catalogue/_calendar.html" %}
+      </div>
+    </section>
+
+    <section class="grid grid-2">
+      {% if r.description or r.attributes.all %}
+      <div class="panel">
+        <h2 class="h-sm">About</h2>
+        {% if r.description %}<p class="muted small prose">{{ r.description }}</p>{% endif %}
+        {% if r.attributes.all %}<dl class="kv attrs">{% for a in r.attributes.all %}<dt>{{ a.key }}</dt><dd>{{ a.value }}</dd>{% endfor %}</dl>{% endif %}
+      </div>
+      {% endif %}
+      <div class="panel">
+        <h2 class="h-sm">Opening hours</h2>
+        <dl class="kv hours">{% for wd, spans in hours %}<dt{% if wd == today.weekday %} class="strong"{% endif %}>{{ weekday_names|slice:wd|last|default:"" }}</dt><dd>{% for o, c in spans %}{{ o|time:"H:i" }}–{{ c|time:"H:i" }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="faint">Closed</span>{% endfor %}</dd>{% endfor %}</dl>
+        <hr class="divider">
+        <h2 class="h-sm">Looked after by</h2>
+        <ul class="list">{% for c in r.custodians.all %}<li class="row">{% initials_avatar c.user "sm" %}<div><strong class="small">{{ c.user.display_name }}</strong><div class="xsmall faint">{{ c.user.designation|default:c.user.get_role_display }}</div></div></li>{% empty %}<li class="small faint">Facilities office</li>{% endfor %}</ul>
+      </div>
+    </section>
+
+    {% if maintenance %}
+    <section class="panel">
+      <h2 class="h-sm">Planned upkeep</h2>
+      <ul class="list">{% for m in maintenance %}<li class="row"><span class="swatch swatch--maintenance"></span><div><strong class="small">{{ m.title }}</strong><div class="xsmall faint">{{ m.start|dayname }} {{ m.start|hm }} – {{ m.end|dayname }} {{ m.end|hm }}</div></div></li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+
+    <section class="report-link">
+      <button type="button" class="linkbtn small" data-open="report-dialog">{% icon "triangle-alert" 15 %} Something broken here? Report it</button>
+    </section>
+  </div>
+
+  <aside class="sticky-side">
+    {% include "bookings/_book_panel.html" %}
+  </aside>
+</div>
+
+<dialog id="report-dialog" class="sheet" aria-labelledby="report-h">
+  <div class="sheet__head"><h2 id="report-h" class="h-sm">Report a problem with {{ r.name }}</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <form class="sheet__body stack" method="post" action="{% url 'maintenance:report' r.slug %}">
+    {% csrf_token %}
+    <div class="field"><label for="rp-sum">What's wrong?</label><input class="input" id="rp-sum" name="summary" maxlength="160" required placeholder="e.g. Projector doesn't turn on" autofocus></div>
+    <div class="field"><label for="rp-sev">How bad is it?</label>
+      <select class="select" id="rp-sev" name="severity"><option value="low">Minor, still usable</option><option value="high" selected>Major, partly unusable</option><option value="critical">Critical, can't be used at all</option></select>
+      <span class="hint">Critical reports take {{ r.name }} offline until the custodian checks it.</span></div>
+    <div class="field"><label for="rp-det">Details <span class="faint">(optional)</span></label><textarea class="textarea" id="rp-det" name="details" maxlength="2000"></textarea></div>
+    <div class="row"><button class="btn btn--primary" type="submit">Send report</button><button class="btn btn--ghost" type="button" data-close>Cancel</button></div>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/calendar.js' %}" defer></script>{% endblock %}
