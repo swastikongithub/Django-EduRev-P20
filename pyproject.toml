@@ -1,0 +1,28 @@
+[project]
+name = "lpu-reserve"
+version = "0.1.0"
+description = "LPU Reserve — Campus Resource, Laboratory & Facility Booking Platform (EduRev P20)"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["**/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "DJ", "S"]
+ignore = ["S101", "S311", "B904", "DJ001", "DJ008", "S308", "E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "B"]
+"config/settings.py" = ["S105"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+addopts = "-ra --reuse-db"
+markers = ["concurrency: multi-connection race tests (slow)"]
