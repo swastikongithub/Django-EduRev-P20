@@ -33,4 +33,10 @@ class UtilisationSnapshot(models.Model):
 
     @property
     def utilisation(self):
-        return (self.booked_minutes / self.open_minutes) if self.open_minutes else 0.0
+        """(class + booked) / (open + class), 0..1 — see apps.analytics.services for why."""
+        supply = self.open_minutes + self.class_minutes
+        return min(1.0, (self.class_minutes + self.booked_minutes) / supply) if supply else 0.0
+
+    @property
+    def idle_minutes(self):
+        return max(0, self.open_minutes - self.booked_minutes)
