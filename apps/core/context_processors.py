@@ -1,0 +1,2 @@
+def shell(request):
+    return {}

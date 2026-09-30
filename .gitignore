@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Environments & secrets
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Local development data (dev PostgreSQL cluster, uploads, collected static)
+.devdb/
+.media/
+staticfiles/
+*.log
+
+# Tooling / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+node_modules/
+playwright-report/
+test-results/
