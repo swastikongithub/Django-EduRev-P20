@@ -18,7 +18,7 @@ env = environ.Env(
     CSRF_TRUSTED_ORIGINS=(list, []),
     CELERY_TASK_ALWAYS_EAGER=(bool, False),
     SECURE_SSL_REDIRECT=(bool, False),
-    DEMO_MODE=(bool, True),
+    DEMO_MODE=(bool, False),
     LOG_JSON=(bool, False),
 )
 environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
@@ -203,6 +203,15 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": "/api/v1",
+    "ENUM_NAME_OVERRIDES": {
+        "BookingStatusEnum": "apps.bookings.models.BookingStatus",
+        "ResourceStatusEnum": "apps.catalogue.models.ResourceStatus",
+        "MaintenanceWindowStatusEnum": "apps.maintenance.models.WindowStatus",
+        "BreakdownReportStatusEnum": "apps.maintenance.models.ReportStatus",
+        "PublicationStatusEnum": "apps.timetable.models.PublicationStatus",
+        "MaintenanceKindEnum": "apps.maintenance.models.MaintenanceKind",
+        "NotificationKindEnum": "apps.notifications.models.Kind",
+    },
 }
 
 # ── Security ────────────────────────────────────────────────────────────────

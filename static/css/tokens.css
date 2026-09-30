@@ -1,0 +1,224 @@
+/*
+ * LPU Reserve — design tokens.
+ *
+ * Palette: LPU Saffron (the UMS brand orange) on a cool campus canvas with UMS navy ink.
+ * Saffron is a fill colour; orange *text* always uses --ember for AA contrast.
+ * Booking states each own a hue AND a pattern, so they stay distinguishable without colour.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Brand */
+  --saffron-50: #fff5ec;
+  --saffron-100: #ffe6cf;
+  --saffron-200: #ffcc9c;
+  --saffron-300: #ffae63;
+  --saffron-500: #f68121;
+  --saffron-600: #e56d0f;
+  --ember: #b8520b;            /* orange text on light surfaces (5.1:1 on white) */
+  --ember-strong: #9a430a;
+
+  /* Ink (UMS navy) */
+  --ink-900: #13233a;
+  --ink-800: #1d3150;
+  --ink-700: #2f4567;
+  --ink-600: #4a5f80;
+  --ink-500: #66799a;
+  --ink-400: #8f9fb8;
+  --ink-300: #bfcad9;
+  --ink-200: #dce3ec;
+  --ink-150: #e7ecf3;
+  --ink-100: #eef2f7;
+  --ink-50: #f6f8fb;
+
+  /* Supporting hues */
+  --blue-700: #0a5d95;
+  --blue-600: #0b6fb0;
+  --blue-50: #e9f3fb;
+  --green-700: #17774b;
+  --green-600: #1f9d63;
+  --green-50: #e8f6ee;
+  --red-700: #b02a21;
+  --red-600: #d2352b;
+  --red-50: #fdeeec;
+  --amber-700: #8f5b06;
+  --amber-400: #f3b43b;
+  --amber-200: #fbdd9e;
+  --amber-50: #fef7e6;
+  --indigo-700: #3f3bb3;
+  --indigo-500: #6461e0;
+  --indigo-200: #cfcdf7;
+  --indigo-100: #e8e7fc;
+
+  /* Semantic surfaces */
+  --canvas: #f1f4f8;
+  --surface: #ffffff;
+  --surface-2: var(--ink-50);
+  --surface-sunk: var(--ink-100);
+  --line: var(--ink-200);
+  --line-strong: var(--ink-300);
+  --text: var(--ink-900);
+  --text-2: var(--ink-600);
+  --text-3: var(--ink-500);
+  --link: var(--blue-700);
+  --focus: #1b6fd1;
+  --rail: var(--saffron-500);
+  --rail-ink: #ffffff;
+
+  /* Booking states */
+  --st-free: var(--surface);
+  --st-free-line: var(--ink-200);
+  --st-mine: var(--saffron-500);
+  --st-selected: var(--ink-900);
+  --st-booked: var(--ink-300);
+  --st-booked-ink: var(--ink-800);
+  --st-pending: var(--saffron-100);
+  --st-class: var(--indigo-200);
+  --st-class-2: var(--indigo-100);
+  --st-class-ink: var(--indigo-700);
+  --st-maint: var(--amber-200);
+  --st-maint-2: var(--amber-50);
+  --st-maint-ink: var(--amber-700);
+  --st-blackout: var(--ink-700);
+  --st-closed: var(--ink-100);
+
+  --pat-class: repeating-linear-gradient(135deg, var(--st-class) 0 5px, var(--st-class-2) 5px 10px);
+  --pat-maint: repeating-linear-gradient(45deg, var(--st-maint) 0 5px, var(--st-maint-2) 5px 10px);
+  --pat-blackout: repeating-linear-gradient(45deg, rgb(47 69 103 / .55) 0 1.5px, transparent 1.5px 6px),
+    repeating-linear-gradient(-45deg, rgb(47 69 103 / .55) 0 1.5px, var(--ink-150) 1.5px 6px);
+  --pat-pending: repeating-linear-gradient(135deg, var(--saffron-100) 0 6px, var(--saffron-50) 6px 12px);
+
+  /* Type */
+  --font: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fs-xs: 0.78rem;
+  --fs-sm: 0.86rem;
+  --fs-md: 0.94rem;
+  --fs-lg: 1.06rem;
+  --fs-xl: 1.28rem;
+  --fs-2xl: 1.6rem;
+  --fs-3xl: 2.05rem;
+  --fs-4xl: 2.6rem;
+  --lh: 1.5;
+  --tracking-tight: -0.022em;
+
+  /* Space (4 px grid) */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px; --s10: 40px; --s12: 48px; --s16: 64px;
+
+  /* Radii — they grow with the size of the thing, not one radius for everything */
+  --r-xs: 6px;
+  --r-sm: 9px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 26px;
+  --r-pill: 999px;
+
+  /* Elevation — cards sit flat on the canvas; only things that float get a shadow */
+  --shadow-float: 0 12px 32px -12px rgb(19 35 58 / .28), 0 2px 6px rgb(19 35 58 / .08);
+  --shadow-press: inset 0 1px 0 rgb(255 255 255 / .25), 0 1px 2px rgb(19 35 58 / .18);
+
+  --rail-w: 88px;
+  --topbar-h: 64px;
+  --content-max: 1280px;
+
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
+  --t-fast: 120ms;
+  --t-med: 220ms;
+}
+
+/* Dark theme — deep UMS navy, echoing the new UMS dark mode. Follows the OS unless the
+   person picked a theme (data-theme on <html>, remembered in localStorage). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --canvas: #0c1524;
+    --surface: #132036;
+    --surface-2: #172742;
+    --surface-sunk: #0f1a2d;
+    --line: #22344f;
+    --line-strong: #2f4566;
+    --text: #e8eef7;
+    --text-2: #a9b8cf;
+    --text-3: #8497b4;
+    --link: #7cc0f0;
+    --ember: #ffa45c;
+    --ember-strong: #ffb97f;
+    --focus: #6fb3ff;
+    --rail: #1a2a45;
+    --rail-ink: #ffd8b5;
+    --st-free: #132036;
+    --st-free-line: #22344f;
+    --st-booked: #3a4f72;
+    --st-booked-ink: #dfe7f3;
+    --st-pending: #4b3217;
+    --st-class: #3b3a7c;
+    --st-class-2: #2a2a5c;
+    --st-class-ink: #c9c7ff;
+    --st-maint: #6b4a0e;
+    --st-maint-2: #3f2d0a;
+    --st-maint-ink: #ffd98a;
+    --st-closed: #0f1a2d;
+    --saffron-50: #2a1c0e;
+    --saffron-100: #4b3217;
+    --green-50: #0f2d20;
+    --red-50: #3a1714;
+    --blue-50: #0f2740;
+    --amber-50: #33260b;
+    --indigo-100: #25245a;
+    --ink-50: #172742;
+    --ink-100: #1a2b47;
+    --ink-150: #1f3150;
+    --ink-200: #22344f;
+    --pat-blackout: repeating-linear-gradient(45deg, rgb(160 180 210 / .35) 0 1.5px, transparent 1.5px 6px),
+      repeating-linear-gradient(-45deg, rgb(160 180 210 / .35) 0 1.5px, #1a2b47 1.5px 6px);
+    --pat-pending: repeating-linear-gradient(135deg, #4b3217 0 6px, #2a1c0e 6px 12px);
+    --shadow-float: 0 16px 40px -12px rgb(0 0 0 / .6), 0 2px 6px rgb(0 0 0 / .4);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #0c1524;
+  --surface: #132036;
+  --surface-2: #172742;
+  --surface-sunk: #0f1a2d;
+  --line: #22344f;
+  --line-strong: #2f4566;
+  --text: #e8eef7;
+  --text-2: #a9b8cf;
+  --text-3: #8497b4;
+  --link: #7cc0f0;
+  --ember: #ffa45c;
+  --ember-strong: #ffb97f;
+  --focus: #6fb3ff;
+  --rail: #1a2a45;
+  --rail-ink: #ffd8b5;
+  --st-free: #132036;
+  --st-free-line: #22344f;
+  --st-booked: #3a4f72;
+  --st-booked-ink: #dfe7f3;
+  --st-pending: #4b3217;
+  --st-class: #3b3a7c;
+  --st-class-2: #2a2a5c;
+  --st-class-ink: #c9c7ff;
+  --st-maint: #6b4a0e;
+  --st-maint-2: #3f2d0a;
+  --st-maint-ink: #ffd98a;
+  --st-closed: #0f1a2d;
+  --saffron-50: #2a1c0e;
+  --saffron-100: #4b3217;
+  --green-50: #0f2d20;
+  --red-50: #3a1714;
+  --blue-50: #0f2740;
+  --amber-50: #33260b;
+  --indigo-100: #25245a;
+  --ink-50: #172742;
+  --ink-100: #1a2b47;
+  --ink-150: #1f3150;
+  --ink-200: #22344f;
+  --pat-blackout: repeating-linear-gradient(45deg, rgb(160 180 210 / .35) 0 1.5px, transparent 1.5px 6px),
+    repeating-linear-gradient(-45deg, rgb(160 180 210 / .35) 0 1.5px, #1a2b47 1.5px 6px);
+  --pat-pending: repeating-linear-gradient(135deg, #4b3217 0 6px, #2a1c0e 6px 12px);
+  --shadow-float: 0 16px 40px -12px rgb(0 0 0 / .6), 0 2px 6px rgb(0 0 0 / .4);
+}
