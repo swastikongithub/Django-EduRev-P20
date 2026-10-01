@@ -43,6 +43,7 @@ class User(TenantModel, AbstractUser):
     calendar_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     mfa_secret = models.TextField(blank=True, help_text="TOTP secret, encrypted at rest (apps.accounts.mfa)")
     mfa_enabled = models.BooleanField(default=False)
+    mfa_last_step = models.BigIntegerField(null=True, blank=True, help_text="Last TOTP time step accepted (no replay)")
     failed_logins = models.PositiveSmallIntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)
 

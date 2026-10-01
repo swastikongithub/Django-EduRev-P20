@@ -44,46 +44,80 @@ class EffectivePolicy:
 _POLICY_FIELDS = [f.name for f in fields(EffectivePolicy) if f.name != "source"]
 
 
+def _scope_q(resources):
+    resources = list(resources)
+    return (
+        Q(scope=Scope.RESOURCE, resource_id__in=[r.pk for r in resources])
+        | Q(scope=Scope.TYPE, resource_type_id__in={r.type_id for r in resources})
+        | Q(scope=Scope.CAMPUS)
+    )
+
+
+def policies_for(resources) -> dict[int, EffectivePolicy]:
+    """Effective policy per resource, in one query: resource > type > campus > built-in default."""
+    resources = list(resources)
+    if not resources:
+        return {}
+    by_resource, by_type, by_campus = {}, {}, {}
+    rows = (
+        BookingPolicy.objects.filter(institution_id__in={r.institution_id for r in resources})
+        .filter(_scope_q(resources))
+        .select_related("resource", "resource_type")
+    )
+    for p in rows:
+        if p.scope == Scope.RESOURCE:
+            by_resource[p.resource_id] = p
+        elif p.scope == Scope.TYPE:
+            by_type[(p.institution_id, p.resource_type_id)] = p
+        else:
+            by_campus[p.institution_id] = p
+    out = {}
+    for r in resources:
+        p = by_resource.get(r.pk) or by_type.get((r.institution_id, r.type_id)) or by_campus.get(r.institution_id)
+        out[r.pk] = (
+            EffectivePolicy(**{f: getattr(p, f) for f in _POLICY_FIELDS}, source=p.scope_label)
+            if p
+            else EffectivePolicy()
+        )
+    return out
+
+
 def policy_for(resource) -> EffectivePolicy:
     """Most specific policy wins: resource > type > campus > built-in default."""
-    candidates = list(
-        BookingPolicy.objects.filter(institution_id=resource.institution_id).filter(
-            Q(scope=Scope.RESOURCE, resource_id=resource.pk)
-            | Q(scope=Scope.TYPE, resource_type_id=resource.type_id)
-            | Q(scope=Scope.CAMPUS)
-        )
+    return policies_for([resource])[resource.pk]
+
+
+def weekly_hours_for(resources) -> dict[int, dict[int, list[tuple[time, time]]]]:
+    """Opening hours per resource, in one query. The most specific scope that has *any* rule wins."""
+    resources = list(resources)
+    if not resources:
+        return {}
+    by_resource, by_type, by_campus = {}, {}, {}
+    rows = AvailabilityRule.objects.filter(institution_id__in={r.institution_id for r in resources}).filter(
+        _scope_q(resources)
     )
-    rank = {Scope.RESOURCE: 0, Scope.TYPE: 1, Scope.CAMPUS: 2}
-    candidates.sort(key=lambda p: rank[p.scope])
-    if not candidates:
-        return EffectivePolicy()
-    p = candidates[0]
-    return EffectivePolicy(**{f: getattr(p, f) for f in _POLICY_FIELDS}, source=p.scope_label)
-
-
-def _hours_rules(resource):
-    qs = AvailabilityRule.objects.filter(institution_id=resource.institution_id)
-    for scope_q in (
-        Q(scope=Scope.RESOURCE, resource_id=resource.pk),
-        Q(scope=Scope.TYPE, resource_type_id=resource.type_id),
-        Q(scope=Scope.CAMPUS),
-    ):
-        rules = list(qs.filter(scope_q))
-        if rules:
-            return rules
-    return None
+    for rule in rows:
+        if rule.scope == Scope.RESOURCE:
+            bucket = by_resource.setdefault(rule.resource_id, {})
+        elif rule.scope == Scope.TYPE:
+            bucket = by_type.setdefault((rule.institution_id, rule.resource_type_id), {})
+        else:
+            bucket = by_campus.setdefault(rule.institution_id, {})
+        bucket.setdefault(rule.weekday, []).append((rule.opens, rule.closes))
+    for bucket in [*by_resource.values(), *by_type.values(), *by_campus.values()]:
+        for spans in bucket.values():
+            spans.sort()
+    return {
+        r.pk: by_resource.get(r.pk)
+        or by_type.get((r.institution_id, r.type_id))
+        or by_campus.get(r.institution_id)
+        or DEFAULT_HOURS
+        for r in resources
+    }
 
 
 def weekly_hours(resource) -> dict[int, list[tuple[time, time]]]:
-    rules = _hours_rules(resource)
-    if rules is None:
-        return DEFAULT_HOURS
-    out: dict[int, list[tuple[time, time]]] = {}
-    for r in rules:
-        out.setdefault(r.weekday, []).append((r.opens, r.closes))
-    for v in out.values():
-        v.sort()
-    return out
+    return weekly_hours_for([resource])[resource.pk]
 
 
 def opening_intervals(resource, day: date, hours=None) -> list[tuple[datetime, datetime]]:

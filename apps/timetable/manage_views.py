@@ -13,6 +13,7 @@ from django.views.decorators.http import require_http_methods
 from apps.audit.services import record
 from apps.catalogue.manage_forms import read_csv_upload
 from apps.core.errors import DomainError
+from apps.core.http import MAX_PK, date_param, int_param, pk_param
 from apps.core.manage_views import staff_required
 
 from .models import AcademicTerm, PublicationStatus, TimetablePublication
@@ -112,7 +113,7 @@ def _read_source(request) -> str:
 
 def _term(request):
     return AcademicTerm.objects.filter(
-        institution_id=request.user.institution_id, pk=request.POST.get("term") or 0
+        institution_id=request.user.institution_id, pk=int_param(request.POST.get("term"), 0, lo=0, hi=MAX_PK)
     ).first()
 
 
@@ -174,7 +175,7 @@ def _publish(request):
     pub = get_object_or_404(
         TimetablePublication.objects.select_related("term"),
         institution_id=request.user.institution_id,
-        pk=request.POST.get("pub"),
+        pk=pk_param(request.POST.get("pub")),
     )
     try:
         result = publish(pub, request.user, request=request)
@@ -195,7 +196,7 @@ def _discard(request):
     pub = get_object_or_404(
         TimetablePublication,
         institution_id=request.user.institution_id,
-        pk=request.POST.get("pub"),
+        pk=pk_param(request.POST.get("pub")),
         status=PublicationStatus.DRAFT,
     )
     record(
@@ -214,9 +215,8 @@ def _discard(request):
 def _add_term(request):
     p = request.POST
     code, name = p.get("code", "").strip(), p.get("name", "").strip()
-    try:
-        starts, ends = date.fromisoformat(p.get("starts", "")), date.fromisoformat(p.get("ends", ""))
-    except ValueError:
+    starts, ends = date_param(p.get("starts")), date_param(p.get("ends"))
+    if starts is None or ends is None:
         return {"term_error": "Enter both dates."}
     if not code or not name:
         return {"term_error": "Give the term a code (as in UMS, e.g. 26271) and a name."}

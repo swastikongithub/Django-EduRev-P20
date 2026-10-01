@@ -7,6 +7,7 @@ from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
 from apps.checkins.qr import door_url, svg
@@ -178,6 +179,7 @@ def _hours_summary(hours):
     return out
 
 
+@never_cache
 @staff_required(*RESOURCE_CAPS)
 def door_qr(request, pk):
     resource = get_object_or_404(manageable_resources(request.user).select_related("type", "building"), pk=pk)

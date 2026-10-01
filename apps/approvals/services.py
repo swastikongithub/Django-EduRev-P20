@@ -128,6 +128,10 @@ def _ask(approval: Approval):
 def can_decide(user, approval: Approval) -> bool:
     if approval.decision != Decision.PENDING or not has_cap(user, "approve_bookings"):
         return False
+    # Separation of duties (SEC-04): nobody approves a request they made or that is for them.
+    booking = approval.booking
+    if user.pk in (booking.requester_id, booking.booked_for_id):
+        return False
     if is_campus_wide(user):
         return True
     return approvers_for(approval).filter(pk=user.pk).exists()
@@ -227,6 +231,7 @@ def queue_for(user):
     ).select_related("booking__resource__type", "booking__resource__building", "booking__booked_for", "workflow")
     if not has_cap(user, "approve_bookings"):
         return qs.none()
+    qs = qs.exclude(booking__requester=user).exclude(booking__booked_for=user)
     if is_campus_wide(user):
         return qs.order_by("booking__period")
     q = Q(approver_role=ApproverRole.USER, approver_user=user)

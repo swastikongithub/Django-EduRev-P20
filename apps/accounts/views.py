@@ -10,6 +10,7 @@ from django.http import Http404
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 from django_ratelimit.decorators import ratelimit
 
@@ -29,6 +30,9 @@ DEMO_PERSONAS = [
 ]
 
 
+BAD_CREDENTIALS = "That VID / username and password don't match."
+
+
 def _safe_next(request, fallback="core:home"):
     nxt = request.POST.get("next") or request.GET.get("next")
     if nxt and url_has_allowed_host_and_scheme(
@@ -38,6 +42,7 @@ def _safe_next(request, fallback="core:home"):
     return fallback
 
 
+@never_cache
 @ratelimit(key="ip", rate="20/m", method="POST", block=False)
 def login_view(request):
     if request.user.is_authenticated:
@@ -54,18 +59,23 @@ def login_view(request):
                 User.objects.filter(username__iexact=username).first() or User.objects.filter(vid=username).first()
             )
             if account and account.is_locked:
-                mins = int((account.locked_until - timezone.now()).total_seconds() // 60) + 1
-                error = f"This account is locked after repeated failed attempts. Try again in {mins} min."
+                # Same answer, at about the same cost, as a wrong password: a lockout must not
+                # confirm that the account exists (SEC-10). The hint under the form explains
+                # lockouts to everyone alike.
+                User().set_password(password)
+                error = BAD_CREDENTIALS
             else:
                 user = authenticate(request, username=account.username if account else username, password=password)
                 if user is not None:
-                    User.objects.filter(pk=user.pk).update(failed_logins=0, locked_until=None)
-                    if user.mfa_enabled or mfa.required_for(user):
+                    if mfa.needs_mfa(user):
                         # Password is right, but privileged roles need a second factor before
                         # a session exists. Keep only the pending user id in the anonymous session.
+                        # The failure count is left alone until the code is right too, so wrong
+                        # codes add up across password re-entries (SEC-03).
                         request.session["mfa_pending"] = user.pk
                         request.session["mfa_next"] = _safe_next(request, fallback="/home/")
                         return redirect("accounts:mfa")
+                    User.objects.filter(pk=user.pk).update(failed_logins=0, locked_until=None)
                     login(request, user)
                     record(user, "auth.login", user, request=request)
                     return redirect(_safe_next(request))
@@ -78,7 +88,7 @@ def login_view(request):
                         fields.append("locked_until")
                         record(None, "auth.lockout", account, request=request)
                     account.save(update_fields=fields)
-                error = "That VID / username and password don't match."
+                error = BAD_CREDENTIALS
     personas = []
     if settings.DEMO_MODE:
         found = {u.username: u for u in User.objects.filter(username__in=[p[0] for p in DEMO_PERSONAS], is_active=True)}
@@ -88,6 +98,25 @@ def login_view(request):
         "accounts/login.html",
         {"error": error, "username": username, "personas": personas, "next": request.GET.get("next", "")},
     )
+
+
+def admin_login(request, extra_context=None):
+    """
+    Replaces Django admin's own login view (`admin.site.login`).
+
+    The stock admin form calls `login()` after a password check alone, which would skip the
+    lockout, the rate limit and TOTP MFA. Routing it through `login_view` gives /django-admin/
+    exactly the same sign-in as the rest of the product.
+    """
+    from django.contrib import admin
+    from django.core.exceptions import PermissionDenied
+
+    if request.user.is_authenticated:
+        if admin.site.has_permission(request):
+            return redirect(_safe_next(request, fallback="admin:index"))
+        # Signed in but not admin staff: say no rather than bounce between the two login views.
+        raise PermissionDenied
+    return login_view(request)
 
 
 @require_POST
@@ -104,6 +133,7 @@ def demo_login(request):
         messages.error(request, "Demo data isn't loaded. Run: python manage.py seed_demo")
         return redirect("accounts:login")
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    mfa.mark_verified(request, user, demo=True)  # demo personas skip MFA, and only while DEMO_MODE=1
     record(user, "auth.demo_login", user, request=request)
     return redirect(_safe_next(request))
 
@@ -114,6 +144,7 @@ def logout_view(request):
     return redirect("accounts:login")
 
 
+@never_cache
 @login_required
 def me(request):
     from apps.bookings.models import Booking, BookingStatus
@@ -151,6 +182,7 @@ def me(request):
     )
 
 
+@never_cache
 @login_required
 def export_my_data(request):
     """DPDP Act 2023 data-subject access: everything we hold about the signed-in person, as JSON."""
@@ -221,6 +253,7 @@ def export_my_data(request):
     return resp
 
 
+@never_cache
 @ratelimit(key="ip", rate="20/m", method="POST", block=False)
 def mfa_view(request):
     """Second step for privileged roles: verify a TOTP code, or enrol on first sign-in."""
@@ -242,19 +275,23 @@ def mfa_view(request):
             error = "Too many attempts. Wait a minute and try again."
         elif user.is_locked:
             error = "This account is locked after repeated failed attempts."
-        elif mfa.verify(secret, request.POST.get("code", "")):
-            if enrolling:
-                user.mfa_secret = mfa.encrypt(secret)
-                user.mfa_enabled = True
-                user.save(update_fields=["mfa_secret", "mfa_enabled"])
-                record(user, "auth.mfa_enrolled", user, request=request)
-            nxt = request.session.get("mfa_next") or "/home/"
-            for k in ("mfa_pending", "mfa_new_secret", "mfa_next"):
-                request.session.pop(k, None)
-            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-            record(user, "auth.login", user, after={"mfa": True}, request=request)
-            return redirect(nxt)
         else:
+            step = mfa.matched_step(secret, request.POST.get("code", ""))
+            if step is not None and mfa.consume_step(user, step):
+                if enrolling:
+                    user.mfa_secret = mfa.encrypt(secret)
+                    user.mfa_enabled = True
+                    user.save(update_fields=["mfa_secret", "mfa_enabled"])
+                    record(user, "auth.mfa_enrolled", user, request=request)
+                nxt = request.session.get("mfa_next") or "/home/"
+                for k in ("mfa_pending", "mfa_new_secret", "mfa_next"):
+                    request.session.pop(k, None)
+                User.objects.filter(pk=user.pk).update(failed_logins=0, locked_until=None)
+                login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+                mfa.mark_verified(request, user)
+                record(user, "auth.login", user, after={"mfa": True}, request=request)
+                return redirect(nxt)
+            # A wrong code and a replayed one (SEC-11) both count towards the lockout.
             user.failed_logins += 1
             fields = ["failed_logins"]
             if user.failed_logins >= settings.LOGIN_LOCKOUT_THRESHOLD:
@@ -264,7 +301,10 @@ def mfa_view(request):
                 for k in ("mfa_pending", "mfa_new_secret"):
                     request.session.pop(k, None)
             user.save(update_fields=fields)
-            error = "That code didn't match. Codes change every 30 seconds; use the current one."
+            if step is not None:
+                error = "That code has already been used. Wait for the next one, then enter it."
+            else:
+                error = "That code didn't match. Codes change every 30 seconds; use the current one."
     ctx = {"error": error, "enrolling": enrolling, "user_name": user.display_name}
     if enrolling:
         from apps.checkins.qr import svg

@@ -583,14 +583,25 @@ def test_anyone_can_report_a_breakdown(student, room):
     )
     assert resp.status_code == 201
     room.refresh_from_db()
-    assert room.status == "out_of_service"
-    assert MaintenanceWindow.objects.filter(pk=resp.json()["window"]).exists()
+    assert room.status == "active" and resp.json()["window"] is None  # awaits a custodian (SEC-02)
 
     assert_error(c.post(f"{API}/resources/{room.pk}/report-breakdown/", {}, format="json"), 400, "invalid")
     assert_error(
         c.post(f"{API}/resources/{room.pk}/report-breakdown/", {"summary": "x", "severity": "meh"}, format="json"), 400
     )
     assert_error(c.post(f"{API}/resources/99999/report-breakdown/", {"summary": "x"}, format="json"), 404)
+
+
+def test_custodian_critical_report_takes_resource_offline(custodian, room):
+    resp = client_for(custodian).post(
+        f"{API}/resources/{room.pk}/report-breakdown/",
+        {"summary": "Ceiling leak", "severity": "critical"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    room.refresh_from_db()
+    assert room.status == "out_of_service"
+    assert MaintenanceWindow.objects.filter(pk=resp.json()["window"]).exists()
 
 
 # ── Timetable ───────────────────────────────────────────────────────────────

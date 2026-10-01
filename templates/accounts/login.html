@@ -21,22 +21,22 @@
   <section class="auth-panel">
     <div class="auth-card">
       <div class="auth-card__head">
-        <h2>Sign in</h2>
-        <p class="muted">Use your UMS VID or username.</p>
+        <h2>{% translate "Sign in" %}</h2>
+        <p class="muted">{% translate "Use your UMS VID or username." %}</p>
       </div>
       {% if error %}<div class="notice notice--danger" role="alert">{% icon "circle-alert" %}<div>{{ error }}</div></div>{% endif %}
       <form method="post" class="stack" novalidate>
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
         <div class="field">
-          <label for="id_username">VID or username</label>
+          <label for="id_username">{% translate "VID or username" %}</label>
           <input class="input input--lg" id="id_username" name="username" value="{{ username }}" autocomplete="username" inputmode="text" required autofocus>
         </div>
         <div class="field">
-          <label for="id_password">Password</label>
+          <label for="id_password">{% translate "Password" %}</label>
           <input class="input input--lg" id="id_password" type="password" name="password" autocomplete="current-password" required>
         </div>
-        <button class="btn btn--primary btn--lg btn--block" type="submit">Sign in</button>
+        <button class="btn btn--primary btn--lg btn--block" type="submit">{% translate "Sign in" %}</button>
         <p class="xsmall faint">Five wrong attempts lock the account for 15 minutes.</p>
       </form>
 

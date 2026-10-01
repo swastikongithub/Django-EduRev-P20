@@ -1,0 +1,133 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: LPU Reserve\n"
+"Language: pa\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Home"
+msgstr "ਹੋਮ"
+
+msgid "Find"
+msgstr "ਲੱਭੋ"
+
+msgid "Calendar"
+msgstr "ਕੈਲੰਡਰ"
+
+msgid "Bookings"
+msgstr "ਬੁਕਿੰਗ"
+
+msgid "Scan"
+msgstr "ਸਕੈਨ"
+
+msgid "Approvals"
+msgstr "ਮਨਜ਼ੂਰੀਆਂ"
+
+msgid "Board"
+msgstr "ਬੋਰਡ"
+
+msgid "Resources"
+msgstr "ਸਰੋਤ"
+
+msgid "Upkeep"
+msgstr "ਰੱਖ-ਰਖਾਅ"
+
+msgid "Stock"
+msgstr "ਸਟਾਕ"
+
+msgid "Insights"
+msgstr "ਵਿਸ਼ਲੇਸ਼ਣ"
+
+msgid "Setup"
+msgstr "ਸੈੱਟਅੱਪ"
+
+msgid "Manage"
+msgstr "ਪ੍ਰਬੰਧ"
+
+msgid "Me"
+msgstr "ਪ੍ਰੋਫਾਈਲ"
+
+msgid "Theme"
+msgstr "ਥੀਮ"
+
+msgid "Skip to content"
+msgstr "ਮੁੱਖ ਸਮੱਗਰੀ ਤੇ ਜਾਓ"
+
+msgid "Campus resource booking"
+msgstr "ਕੈਂਪਸ ਸਰੋਤ ਬੁਕਿੰਗ"
+
+msgid "Search resources"
+msgstr "ਸਰੋਤ ਲੱਭੋ"
+
+msgid "Try “lab for 40 tomorrow” or “projector block 34”"
+msgstr "“lab for 40 tomorrow” ਜਾਂ “projector block 34” ਅਜ਼ਮਾਓ"
+
+msgid "Good morning"
+msgstr "ਸ਼ੁਭ ਸਵੇਰ"
+
+msgid "Good afternoon"
+msgstr "ਸਤ ਸ੍ਰੀ ਅਕਾਲ"
+
+msgid "Good evening"
+msgstr "ਸ਼ੁਭ ਸ਼ਾਮ"
+
+msgid "What do you need, and when?"
+msgstr "ਤੁਹਾਨੂੰ ਕੀ ਚਾਹੀਦਾ ਹੈ, ਅਤੇ ਕਦੋਂ?"
+
+msgid "Day"
+msgstr "ਦਿਨ"
+
+msgid "Today"
+msgstr "ਅੱਜ"
+
+msgid "Tomorrow"
+msgstr "ਕੱਲ੍ਹ"
+
+msgid "From"
+msgstr "ਤੋਂ"
+
+msgid "Until"
+msgstr "ਤੱਕ"
+
+msgid "People"
+msgstr "ਲੋਕ"
+
+msgid "Show what's free"
+msgstr "ਖਾਲੀ ਕੀ ਹੈ, ਦਿਖਾਓ"
+
+msgid "Your next booking"
+msgstr "ਤੁਹਾਡੀ ਅਗਲੀ ਬੁਕਿੰਗ"
+
+msgid "Nothing booked yet"
+msgstr "ਹਾਲੇ ਕੁਝ ਬੁੱਕ ਨਹੀਂ ਹੈ"
+
+msgid "Your usual spots today"
+msgstr "ਅੱਜ ਤੁਹਾਡੀਆਂ ਪਸੰਦੀਦਾ ਥਾਵਾਂ"
+
+msgid "Sign in"
+msgstr "ਸਾਈਨ ਇਨ ਕਰੋ"
+
+msgid "Use your UMS VID or username."
+msgstr "ਆਪਣੀ UMS VID ਜਾਂ ਯੂਜ਼ਰਨੇਮ ਪਾਓ।"
+
+msgid "VID or username"
+msgstr "VID ਜਾਂ ਯੂਜ਼ਰਨੇਮ"
+
+msgid "Password"
+msgstr "ਪਾਸਵਰਡ"
+
+msgid "Language"
+msgstr "ਭਾਸ਼ਾ"
+
+msgid "Save language"
+msgstr "ਭਾਸ਼ਾ ਸੰਭਾਲੋ"
+
+msgid ""
+"Choose the language for menus and the home screen. More screens follow as "
+"translations are reviewed."
+msgstr ""
+"ਮੇਨੂ ਅਤੇ ਹੋਮ ਸਕ੍ਰੀਨ ਦੀ ਭਾਸ਼ਾ ਚੁਣੋ। ਅਨੁਵਾਦ ਦੀ ਸਮੀਖਿਆ ਨਾਲ ਹੋਰ ਸਕ੍ਰੀਨਾਂ "
+"ਜੁੜਨਗੀਆਂ।"

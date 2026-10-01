@@ -112,3 +112,23 @@ def can_manage_resource(user, resource) -> bool:
     if user.role == Role.DEPT_HEAD:
         return resource.department_id is not None and resource.department_id == user.department_id
     return False
+
+
+def managed_resource_ids(user, resource_ids) -> set[int]:
+    """Bulk form of can_manage_resource for a page of resources (one query at most)."""
+    resource_ids = list(resource_ids)
+    if not resource_ids or not (has_cap(user, "manage_resources") or has_cap(user, "approve_bookings")):
+        return set()
+    if is_campus_wide(user):
+        return set(resource_ids)
+    from apps.catalogue.models import Custodian, Resource
+
+    if user.role == Role.CUSTODIAN:
+        return set(
+            Custodian.objects.filter(user=user, resource_id__in=resource_ids).values_list("resource_id", flat=True)
+        )
+    if user.role == Role.DEPT_HEAD and user.department_id:
+        return set(
+            Resource.objects.filter(pk__in=resource_ids, department_id=user.department_id).values_list("pk", flat=True)
+        )
+    return set()

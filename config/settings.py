@@ -23,11 +23,30 @@ env = environ.Env(
 )
 environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
 
-SECRET_KEY = env("DJANGO_SECRET_KEY", default="dev-only-insecure-key-change-me")
 DEBUG = env("DEBUG")
+# The dev fallback exists only so `DEBUG=1` works out of the box. With DEBUG off the key signs
+# sessions, CSRF and password-reset tokens and derives the MFA encryption key, so a missing,
+# placeholder or short key is a start-up error, never a silent fallback (SEC-05).
+# The public `dev-only-*` keys (this file, docker-compose.yml) are tolerated with DEBUG off only on
+# a DEMO_MODE stack, which offers one-click sign-in and is never a real deployment.
+DEMO_MODE = env("DEMO_MODE")
+_DEV_SECRET_KEY = "dev-only-insecure-key-change-me"
+_PLACEHOLDER_SECRET_KEYS = {_DEV_SECRET_KEY, "replace-me-with-a-long-random-string", "changeme", "secret"}
+SECRET_KEY = env("DJANGO_SECRET_KEY", default=_DEV_SECRET_KEY if DEBUG else "")
+if not DEBUG and (
+    SECRET_KEY in _PLACEHOLDER_SECRET_KEYS
+    or len(SECRET_KEY) < 32
+    or SECRET_KEY.startswith("django-insecure-")
+    or (SECRET_KEY.startswith("dev-only-") and not DEMO_MODE)
+):
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY must be set to a private random value of at least 32 characters when DEBUG is off. "
+        'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(50))"'
+    )
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
-DEMO_MODE = env("DEMO_MODE")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -63,9 +82,11 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.accounts.middleware.MFASessionMiddleware",  # MFA-verified sessions only for those who need MFA
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.InstitutionMiddleware",
@@ -86,7 +107,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "apps.core.context_processors.shell",
             ],
-            "builtins": ["apps.core.templatetags.ui"],
+            "builtins": ["apps.core.templatetags.ui", "django.templatetags.i18n"],
         },
     },
 ]
@@ -110,8 +131,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = "en-in"
-LANGUAGES = [("en", "English"), ("hi", "Hindi"), ("pa", "Punjabi")]
+LANGUAGE_CODE = "en"
+# English at launch; Hindi and Punjabi externalised (CES §1.3). Names are shown in their own script.
+LANGUAGES = [("en", "English"), ("hi", "हिन्दी"), ("pa", "ਪੰਜਾਬੀ")]
 LOCALE_PATHS = [BASE_DIR / "locale"]
 TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
@@ -202,6 +224,9 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Campus Resource, Laboratory & Facility Booking Platform (EduRev P20).",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # The live schema and Swagger UI are for signed-in users (SEC-14). Integrators who are not
+    # users (the P13 timetable feed) use the published docs/openapi.yaml.
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
     "SCHEMA_PATH_PREFIX": "/api/v1",
     "ENUM_NAME_OVERRIDES": {
         "BookingStatusEnum": "apps.bookings.models.BookingStatus",
@@ -230,6 +255,10 @@ if not DEBUG:  # pragma: no cover - production hardening
     SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 RATELIMIT_USE_CACHE = "default"
+# Reverse proxies in front of the app that append to X-Forwarded-For (Render, Railway, a load
+# balancer: 1). 0 means clients connect directly and the header is ignored (SEC-07).
+TRUSTED_PROXY_HOPS = env.int("TRUSTED_PROXY_HOPS", default=0)
+RATELIMIT_IP_META_KEY = "apps.core.http.client_ip"
 LOGIN_LOCKOUT_THRESHOLD = 5
 # CES §1.1: TOTP MFA for admin roles. Demo persona sign-in (DEMO_MODE only) skips it.
 MFA_REQUIRED_ROLES = env.list("MFA_REQUIRED_ROLES", default=["admin", "facility_manager"])

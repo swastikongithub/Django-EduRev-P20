@@ -24,6 +24,7 @@
           <div class="reportrow__main">
             <div class="row row--wrap" style="--gap: 6px">
               {% if rp.severity == "critical" %}<span class="badge badge--danger">{% icon "flame" %}Critical</span>{% elif rp.severity == "high" %}<span class="badge badge--warn">{% icon "triangle-alert" %}Major</span>{% else %}<span class="badge badge--plain">{% icon "info" %}Minor</span>{% endif %}
+              {% if rp.awaiting_confirmation %}<span class="badge badge--warn">{% icon "triangle-alert" %}Unconfirmed, still in service</span>{% endif %}
               {% if rp.status == "acknowledged" %}<span class="badge badge--info">{% icon "eye" %}Acknowledged</span>{% else %}<span class="badge badge--pending">{% icon "circle-dot" %}New</span>{% endif %}
             </div>
             <strong class="reportrow__title">{{ rp.summary }}</strong>
@@ -33,6 +34,10 @@
             {% if rp.window and rp.window.status in "scheduled in_progress" %}<span class="xsmall reportrow__window">{% icon "wrench" 13 %}Blocked for repair until {{ rp.window.end|dayname }} {{ rp.window.end|hm }}</span>{% endif %}
           </div>
           <div class="reportrow__act">
+            {% if rp.awaiting_confirmation %}
+            <form method="post" action="{% url 'manage:maintenance_report' rp.pk 'confirm' %}">{% csrf_token %}
+              <button class="btn btn--sm btn--danger" type="submit">{% icon "flame" %}Take out of service</button></form>
+            {% endif %}
             {% if rp.status == "open" %}
             <form method="post" action="{% url 'manage:maintenance_report' rp.pk 'acknowledge' %}">{% csrf_token %}
               <button class="btn btn--sm" type="submit">{% icon "eye" %}Acknowledge</button></form>
@@ -46,7 +51,7 @@
             <div class="sheet__head"><h2 id="resolve-{{ rp.pk }}-h" class="h-sm">Resolve &ldquo;{{ rp.summary|truncatechars:60 }}&rdquo;</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
             <form class="sheet__body stack" method="post" action="{% url 'manage:maintenance_report' rp.pk 'resolve' %}">
               {% csrf_token %}
-              <p class="small muted">{{ rp.resource.name }}.{% if rp.window and rp.window.status in "scheduled in_progress" %} The repair block on its calendar ends now and the rest of the time becomes bookable.{% endif %}{% if rp.severity == "critical" %} It goes back into service unless another critical report is open.{% endif %}</p>
+              <p class="small muted">{{ rp.resource.name }}.{% if rp.window and rp.window.status in "scheduled in_progress" %} The repair block on its calendar ends now and the rest of the time becomes bookable.{% endif %}{% if rp.severity == "critical" and rp.confirmed_at %} It goes back into service unless another confirmed critical report is open.{% endif %}</p>
               <div class="field">
                 <label for="resolve-{{ rp.pk }}-t">What was done?</label>
                 <input class="input" id="resolve-{{ rp.pk }}-t" name="resolution" required maxlength="240" autofocus placeholder="e.g. Replaced the HDMI cable and tested the projector">

@@ -2,13 +2,15 @@
 
 import csv
 import json
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 
 from django.core.paginator import Paginator
 from django.http import StreamingHttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
+from apps.core.exports import spreadsheet_safe
+from apps.core.http import date_param
 from apps.core.manage_views import staff_required
 
 from .models import AuditLog
@@ -17,10 +19,7 @@ MAX_EXPORT = 50_000
 
 
 def _parse_date(v):
-    try:
-        return date.fromisoformat(v)
-    except (TypeError, ValueError):
-        return None
+    return date_param(v)
 
 
 def filtered(request):
@@ -83,19 +82,18 @@ def _export(qs):
             ["time", "actor", "action", "target_type", "target_id", "target", "ip", "before", "after"]
         )
         for e in qs[:MAX_EXPORT].iterator(chunk_size=2000):
-            yield writer.writerow(
-                [
-                    timezone.localtime(e.created_at).isoformat(timespec="seconds"),
-                    e.actor_label,
-                    e.action,
-                    e.target_type,
-                    e.target_id,
-                    e.target_label,
-                    e.ip or "",
-                    _fmt(e.before),
-                    _fmt(e.after),
-                ]
-            )
+            row = [
+                timezone.localtime(e.created_at).isoformat(timespec="seconds"),
+                e.actor_label,
+                e.action,
+                e.target_type,
+                e.target_id,
+                e.target_label,
+                e.ip or "",
+                _fmt(e.before),
+                _fmt(e.after),
+            ]
+            yield writer.writerow([spreadsheet_safe(v) for v in row])
 
     resp = StreamingHttpResponse(rows(), content_type="text/csv; charset=utf-8")
     resp["Content-Disposition"] = f'attachment; filename="audit-log-{timezone.localdate():%Y%m%d}.csv"'

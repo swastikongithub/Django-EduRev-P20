@@ -29,3 +29,13 @@ Pexels License and Unsplash License permit free commercial use without required 
 | gpu-server | Sergei Starostin | https://www.pexels.com/photo/network-servers-on-an-enclosure-6466141/ | Pexels License |
 | microscope | Ayaz khan | https://www.pexels.com/photo/microscope-on-table-9641992/ | Pexels License |
 | tennis-court | Tima Miroshnichenko | https://www.pexels.com/photo/empty-tennis-courts-6010279/ | Pexels License |
+| computer-lab-2 | Ivan Chumak | https://www.pexels.com/photo/empty-computer-lab-with-multiple-workstations-39178037/ | Pexels License |
+| computer-lab-3 | Josh Sorenson | https://www.pexels.com/photo/modern-office-with-desktop-computers-and-keyboards-990423/ | Pexels License |
+| classroom-2 | Yaowaluck Promdee | https://www.pexels.com/photo/an-empty-tables-and-chairs-inside-the-classroom-3864594/ | Pexels License |
+| classroom-3 | mitbg000 | https://www.pexels.com/photo/rows-of-desks-and-chairs-in-a-classroom-19199263/ | Pexels License |
+| seminar-hall-2 | Skills Media | https://www.pexels.com/photo/empty-conference-room-16859956/ | Pexels License |
+| lecture-theatre-2 | Pixabay | https://www.pexels.com/photo/room-chair-lot-356065/ | Pexels License |
+| meeting-room-2 | Aheed Baithul Nafia | https://www.pexels.com/photo/conference-room-with-chairs-and-table-17739893/ | Pexels License |
+| electronics-lab-2 | ThisIsEngineering | https://www.pexels.com/photo/computer-components-on-table-19895784/ | Pexels License |
+| basketball-court-2 | Diana | https://www.pexels.com/photo/indoor-basketball-court-with-hoops-in-sports-club-5407033/ | Pexels License |
+| dslr-camera-2 | Vladimir Srajber | https://www.pexels.com/photo/nikon-z-7-professional-digital-camera-with-nikkor-lens-lying-on-a-wooden-table-17345669/ | Pexels License |

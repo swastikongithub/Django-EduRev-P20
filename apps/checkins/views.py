@@ -17,6 +17,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
 from apps.accounts.permissions import can_manage_resource
@@ -35,6 +36,7 @@ def scan(request):
     return render(request, "checkins/scan.html")
 
 
+@never_cache
 @login_required
 def pass_landing(request, token):
     b = Booking.objects.select_related("resource__building", "booked_for").filter(qr_token=token).first()
