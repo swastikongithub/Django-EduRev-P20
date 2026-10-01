@@ -1353,7 +1353,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status878Enum'
+          - $ref: '#/components/schemas/BookingStatusEnum'
           readOnly: true
         status_display:
           type: string
@@ -1479,7 +1479,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status878Enum'
+          - $ref: '#/components/schemas/BookingStatusEnum'
           readOnly: true
         status_display:
           type: string
@@ -1631,6 +1631,28 @@ components:
       - title
       - until_date
       - weekdays
+    BookingStatusEnum:
+      enum:
+      - draft
+      - pending
+      - approved
+      - checked_in
+      - completed
+      - cancelled
+      - rejected
+      - expired
+      - no_show
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `pending` - Pending approval
+        * `approved` - Confirmed
+        * `checked_in` - In use
+        * `completed` - Completed
+        * `cancelled` - Cancelled
+        * `rejected` - Rejected
+        * `expired` - Expired
+        * `no_show` - Released · no-show
     BreakdownCreate:
       type: object
       properties:
@@ -1881,20 +1903,6 @@ components:
       description: |-
         * `daily` - Daily
         * `weekly` - Weekly
-    Kind0b3Enum:
-      enum:
-      - preventive
-      - repair
-      - calibration
-      - upgrade
-      - cleaning
-      type: string
-      description: |-
-        * `preventive` - Preventive maintenance
-        * `repair` - Repair
-        * `calibration` - Calibration
-        * `upgrade` - Upgrade
-        * `cleaning` - Deep cleaning
     MaintenanceCreate:
       type: object
       properties:
@@ -1911,7 +1919,7 @@ components:
           maxLength: 140
         kind:
           allOf:
-          - $ref: '#/components/schemas/Kind0b3Enum'
+          - $ref: '#/components/schemas/MaintenanceKindEnum'
           default: preventive
         notes:
           type: string
@@ -1926,6 +1934,20 @@ components:
       - resource
       - start
       - title
+    MaintenanceKindEnum:
+      enum:
+      - preventive
+      - repair
+      - calibration
+      - upgrade
+      - cleaning
+      type: string
+      description: |-
+        * `preventive` - Preventive maintenance
+        * `repair` - Repair
+        * `calibration` - Calibration
+        * `upgrade` - Upgrade
+        * `cleaning` - Deep cleaning
     MaintenanceWindow:
       type: object
       properties:
@@ -1941,7 +1963,7 @@ components:
           readOnly: true
         kind:
           allOf:
-          - $ref: '#/components/schemas/Kind0b3Enum'
+          - $ref: '#/components/schemas/MaintenanceKindEnum'
           readOnly: true
         start:
           type: string
@@ -2616,7 +2638,7 @@ components:
             $ref: '#/components/schemas/Feature'
           readOnly: true
         status:
-          $ref: '#/components/schemas/Status800Enum'
+          $ref: '#/components/schemas/ResourceStatusEnum'
         status_note:
           type: string
           maxLength: 200
@@ -2686,7 +2708,7 @@ components:
             $ref: '#/components/schemas/Feature'
           readOnly: true
         status:
-          $ref: '#/components/schemas/Status800Enum'
+          $ref: '#/components/schemas/ResourceStatusEnum'
         status_note:
           type: string
           maxLength: 200
@@ -2737,6 +2759,16 @@ components:
       - id
       - name
       - slug
+    ResourceStatusEnum:
+      enum:
+      - active
+      - out_of_service
+      - retired
+      type: string
+      description: |-
+        * `active` - Active
+        * `out_of_service` - Out of service
+        * `retired` - Retired
     ResourceType:
       type: object
       properties:
@@ -2932,38 +2964,6 @@ components:
       - end
       - reason
       - start
-    Status800Enum:
-      enum:
-      - active
-      - out_of_service
-      - retired
-      type: string
-      description: |-
-        * `active` - Active
-        * `out_of_service` - Out of service
-        * `retired` - Retired
-    Status878Enum:
-      enum:
-      - draft
-      - pending
-      - approved
-      - checked_in
-      - completed
-      - cancelled
-      - rejected
-      - expired
-      - no_show
-      type: string
-      description: |-
-        * `draft` - Draft
-        * `pending` - Pending approval
-        * `approved` - Confirmed
-        * `checked_in` - In use
-        * `completed` - Completed
-        * `cancelled` - Cancelled
-        * `rejected` - Rejected
-        * `expired` - Expired
-        * `no_show` - Released · no-show
     TimetableRow:
       type: object
       description: One class row, as pushed by P13. Values are parsed (and row errors
