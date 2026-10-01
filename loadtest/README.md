@@ -7,31 +7,52 @@ running app (gunicorn, sessions, CSRF, the real API), complementing the in-proce
 
 ## Prepare
 
-1. Start the stack (`docker compose up --build`, or `runserver` against `scripts/devdb.sh`).
+1. Start a production-like stack. The simplest is the one CI uses, with one trusted proxy hop
+   (as behind a platform load balancer):
+
+   ```bash
+   docker build -t lpu-reserve:local .
+   IMAGE=lpu-reserve:local EXTRA_WEB_ENV="TRUSTED_PROXY_HOPS=1" scripts/ci/stack.sh up
+   ```
+
 2. Seed demo data **with a password** so the load users can sign in through the real login
    form (the seeder never stores a password unless you provide one):
 
    ```bash
-   DEMO_PASSWORD='choose-a-local-password' python manage.py seed_demo
+   DEMO_PASSWORD='choose-a-local-password' scripts/ci/stack.sh seed
    ```
 
-3. Pick the resource to fight over and note its id (any bookable room the students may book):
+3. Pick a bookable room and an hour that is free (no class, maintenance or booking), at least
+   two days ahead, and note the resource id.
 
-   ```bash
-   python manage.py shell -c "from apps.catalogue.models import Resource as R; print(R.objects.filter(type__code='classroom').values_list('id','code')[:3])"
-   ```
+## Why each virtual user has its own address
+
+Sign-in is rate-limited to 20 attempts per minute **per client address** (and per account
+lockout). One load generator is one address, so 500 users from it would be stopped by the rate
+limit, not by anything the scenario is meant to test. By default (`LOCUST_DISTINCT_CLIENTS=1`)
+each virtual user sends its own `X-Forwarded-For` address, as 500 students on their own devices
+reach the app through the platform proxy. The target must trust one proxy hop
+(`TRUSTED_PROXY_HOPS=1`); never set that on a server that clients reach directly.
 
 ## Run
 
 ```bash
 pip install -r requirements-dev.txt
 LOCUST_PASSWORD='choose-a-local-password' \
-LOCUST_RESOURCE_ID=12 \
+LOCUST_RESOURCE_ID=7 \
+LOCUST_SLOT_START=2026-10-03T18:00:00+05:30 LOCUST_SLOT_END=2026-10-03T19:00:00+05:30 \
 LOCUST_USERNAME_TEMPLATE='s{n:03d}' LOCUST_USERNAME_START=1 LOCUST_USERNAME_COUNT=120 \
-locust -f loadtest/locustfile.py --headless -u 500 -r 100 --host http://localhost:8000
+LOCUST_FORWARDED_PROTO=https LOCUST_BARRIER_TIMEOUT=240 \
+locust -f loadtest/locustfile.py --headless -u 500 -r 100 --host http://127.0.0.1:8000
 ```
 
-Users log in first; a barrier then releases every booking POST together.
+`LOCUST_FORWARDED_PROTO=https` makes the client act as the TLS proxy, because the stack runs
+with `SECURE_SSL_REDIRECT=1`. Users sign in first; a barrier then releases every booking POST
+together. Sign-in is deliberately expensive (password hashing, about 0.5 s each), so allow a
+generous barrier timeout on small machines.
+
+The latest measured run and its interpretation are in
+[docs/load-test-report.md](../docs/load-test-report.md).
 
 ## Reading the result
 
@@ -46,7 +67,7 @@ Afterwards, confirm in the database that one row holds the slot:
 
 ```sql
 SELECT count(*) FROM bookings_booking
-WHERE resource_id = 12 AND status IN ('pending','approved','checked_in');
+WHERE resource_id = 7 AND status IN ('pending','approved','checked_in');
 ```
 
 If you reuse demo usernames (`LOCUST_USERNAME_COUNT` wraps), several virtual users act as the
