@@ -64,6 +64,11 @@
       <div class="copyfield"><input class="input" value="{{ feed_url }}" readonly aria-label="Calendar feed link"><button class="btn btn--icon" type="button" data-copy="{{ feed_url }}" aria-label="Copy link">{% icon "copy" %}</button></div>
     </section>
     <section class="panel">
+      <h2 class="h-sm">Your data</h2>
+      <p class="small muted">Download everything LPU Reserve holds about you: profile, bookings, no-shows and notifications.</p>
+      <a class="btn" href="{% url 'accounts:export' %}">{% icon "download" %}Download my data</a>
+    </section>
+    <section class="panel">
       <h2 class="h-sm">Appearance</h2>
       <button class="btn" type="button" data-theme-toggle>{% icon "moon" cls="when-light" %}{% icon "sun" cls="when-dark" %}Switch light / dark</button>
     </section>

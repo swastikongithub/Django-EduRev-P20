@@ -53,14 +53,24 @@ def _hx_redirect(url):
 @login_required
 @require_POST
 def create(request, slug):
-    resource = get_object_or_404(Resource.objects.select_related("type"), institution_id=request.user.institution_id, slug=slug)
+    resource = get_object_or_404(
+        Resource.objects.select_related("type"), institution_id=request.user.institution_id, slug=slug
+    )
     p = request.POST
     d, t1, t2 = _date(p.get("date")), _time(p.get("start")), _time(p.get("end"))
     error, code = None, None
     if not (d and t1 and t2):
         error = "Pick a day, a start and an end time."
     else:
-        items = {int(k[5:]): _int(v, 0) for k, v in p.items() if k.startswith("item-") and k[5:].isdigit() and v}
+        items = {}
+        for k, v in p.items():
+            if k.startswith("item-") and k[5:].isdigit():
+                try:
+                    qty = int(v or 0)
+                except ValueError:
+                    qty = 0
+                if qty > 0:  # the form sends every item with 0 by default; only positive quantities are requests
+                    items[int(k[5:])] = qty
         try:
             booking = services.create_booking(
                 requester=request.user,
@@ -87,22 +97,37 @@ def create(request, slug):
 
         alts = []
         if d and t1 and t2 and code in ("conflict", "timetable", "maintenance"):
-            alts = services.suggest_alternatives(resource, aware(d, t1), aware(d, t2), attendees=_int(p.get("attendees")))
-        return render(request, "bookings/_book_panel.html", {
-            "r": resource, "error": error, "alternatives": alts, "form": p, "policy": policy_for(resource),
-            "workflow": _workflow_preview(resource, request.user), "items": items_for(resource),
-            "can_book": True, "can_on_behalf": has_cap(request.user, "book_on_behalf"),
-            "can_recurring": has_cap(request.user, "book_recurring"), "day": d or timezone.localdate(),
-        })
+            alts = services.suggest_alternatives(
+                resource, aware(d, t1), aware(d, t2), attendees=_int(p.get("attendees"))
+            )
+        return render(
+            request,
+            "bookings/_book_panel.html",
+            {
+                "r": resource,
+                "error": error,
+                "alternatives": alts,
+                "form": p,
+                "policy": policy_for(resource),
+                "workflow": _workflow_preview(resource, request.user),
+                "items": items_for(resource),
+                "can_book": True,
+                "can_on_behalf": has_cap(request.user, "book_on_behalf"),
+                "can_recurring": has_cap(request.user, "book_recurring"),
+                "day": d or timezone.localdate(),
+            },
+        )
     messages.error(request, error)
     return redirect(resource.get_absolute_url() + (f"?date={d.isoformat()}" if d else ""))
 
 
 def _visible_or_404(user, reference):
     try:
-        return services.visible_bookings(user).select_related(
-            "resource__type", "resource__building", "booked_for", "requester", "series"
-        ).get(reference=reference)
+        return (
+            services.visible_bookings(user)
+            .select_related("resource__type", "resource__building", "booked_for", "requester", "series")
+            .get(reference=reference)
+        )
     except Booking.DoesNotExist:
         raise Http404 from None
 
@@ -152,7 +177,9 @@ def _timeline(b, steps):
         else:
             out.append({"label": "Approved", "at": b.decided_at, "state": "done"})
     else:
-        out.append({"label": "Confirmed", "at": b.created_at, "state": "done" if s != BookingStatus.PENDING else "current"})
+        out.append(
+            {"label": "Confirmed", "at": b.created_at, "state": "done" if s != BookingStatus.PENDING else "current"}
+        )
     if s == BookingStatus.NO_SHOW:
         out.append({"label": "Released, no check-in", "at": b.updated_at, "state": "failed"})
     elif s == BookingStatus.CANCELLED:
@@ -186,9 +213,15 @@ def mine(request):
     user = request.user
     now = timezone.now()
     tab = request.GET.get("tab", "upcoming")
-    qs = Booking.objects.filter(Q(booked_for=user) | Q(requester=user)).select_related("resource__type", "resource__building").distinct()
+    qs = (
+        Booking.objects.filter(Q(booked_for=user) | Q(requester=user))
+        .select_related("resource__type", "resource__building")
+        .distinct()
+    )
     counts = {
-        "upcoming": qs.filter(status__in=[BookingStatus.APPROVED, BookingStatus.CHECKED_IN], period__endswith__gt=now).count(),
+        "upcoming": qs.filter(
+            status__in=[BookingStatus.APPROVED, BookingStatus.CHECKED_IN], period__endswith__gt=now
+        ).count(),
         "pending": qs.filter(status=BookingStatus.PENDING).count(),
     }
     if tab == "pending":
@@ -197,7 +230,9 @@ def mine(request):
         qs = qs.filter(Q(period__endswith__lte=now) | ~Q(status__in=HOLDING_STATUSES)).order_by("-period")
     else:
         tab = "upcoming"
-        qs = qs.filter(status__in=[BookingStatus.APPROVED, BookingStatus.CHECKED_IN], period__endswith__gt=now).order_by("period")
+        qs = qs.filter(
+            status__in=[BookingStatus.APPROVED, BookingStatus.CHECKED_IN], period__endswith__gt=now
+        ).order_by("period")
     page = Paginator(qs, 20).get_page(request.GET.get("page"))
     groups = []
     for b in page.object_list:
@@ -205,8 +240,12 @@ def mine(request):
         if not groups or groups[-1][0] != day:
             groups.append((day, []))
         groups[-1][1].append(b)
-    series = BookingSeries.objects.filter(requester=user, until_date__gte=timezone.localdate()).select_related("resource")[:5]
-    return render(request, "bookings/mine.html", {"tab": tab, "page": page, "groups": groups, "counts": counts, "series": series})
+    series = BookingSeries.objects.filter(requester=user, until_date__gte=timezone.localdate()).select_related(
+        "resource"
+    )[:5]
+    return render(
+        request, "bookings/mine.html", {"tab": tab, "page": page, "groups": groups, "counts": counts, "series": series}
+    )
 
 
 @login_required
@@ -231,17 +270,21 @@ def calendar(request):
         top = max(0, (s.hour - first_hour) * 60 + s.minute)
         height = max(20, int((e - s).total_seconds() // 60))
         by_day.setdefault(s.date(), []).append({"b": b, "top": top, "height": height})
-    return render(request, "bookings/calendar.html", {
-        "days": [(x, by_day.get(x, [])) for x in days],
-        "hours": [f"{h:02d}:00" for h in range(first_hour, last_hour)],
-        "total_minutes": (last_hour - first_hour) * 60,
-        "prev": week_start - timedelta(days=7),
-        "next": week_start + timedelta(days=7),
-        "week_start": week_start,
-        "today": today,
-        "now_minutes": (timezone.localtime().hour - first_hour) * 60 + timezone.localtime().minute,
-        "feed_url": request.build_absolute_uri(f"/feed/{user.calendar_token}.ics"),
-    })
+    return render(
+        request,
+        "bookings/calendar.html",
+        {
+            "days": [(x, by_day.get(x, [])) for x in days],
+            "hours": [f"{h:02d}:00" for h in range(first_hour, last_hour)],
+            "total_minutes": (last_hour - first_hour) * 60,
+            "prev": week_start - timedelta(days=7),
+            "next": week_start + timedelta(days=7),
+            "week_start": week_start,
+            "today": today,
+            "now_minutes": (timezone.localtime().hour - first_hour) * 60 + timezone.localtime().minute,
+            "feed_url": request.build_absolute_uri(f"/feed/{user.calendar_token}.ics"),
+        },
+    )
 
 
 def _ics(bookings, name="LPU Reserve"):
@@ -272,8 +315,9 @@ def feed(request, token):
     if not user:
         raise Http404
     since = timezone.now() - timedelta(days=30)
-    bookings = Booking.objects.filter(booked_for=user, status__in=[*HOLDING_STATUSES, BookingStatus.COMPLETED],
-                                      period__endswith__gte=since).select_related("resource__building")
+    bookings = Booking.objects.filter(
+        booked_for=user, status__in=[*HOLDING_STATUSES, BookingStatus.COMPLETED], period__endswith__gte=since
+    ).select_related("resource__building")
     return HttpResponse(_ics(bookings), content_type="text/calendar; charset=utf-8")
 
 
@@ -283,27 +327,62 @@ def series_new(request):
     if not has_cap(request.user, "book_recurring"):
         raise Http404
     g = request.POST if request.method == "POST" else request.GET
-    resource = Resource.objects.filter(institution_id=request.user.institution_id, slug=g.get("resource")).select_related("type").first()
-    resources = Resource.objects.filter(institution_id=request.user.institution_id, status="active", is_bookable=True).select_related("type", "building").order_by("type__sort_order", "code")
+    resource = (
+        Resource.objects.filter(institution_id=request.user.institution_id, slug=g.get("resource"))
+        .select_related("type")
+        .first()
+    )
+    resources = (
+        Resource.objects.filter(institution_id=request.user.institution_id, status="active", is_bookable=True)
+        .select_related("type", "building")
+        .order_by("type__sort_order", "code")
+    )
     today = timezone.localdate()
     start_date = _date(g.get("start_date"), _date(g.get("date"), today + timedelta(days=1)))
     until_date = _date(g.get("until_date"), start_date + timedelta(weeks=6))
     t1, t2 = _time(g.get("start") or g.get("from")) or time(10), _time(g.get("end") or g.get("to")) or time(11)
     weekdays = [int(x) for x in g.getlist("weekday") if x.isdigit() and 0 <= int(x) <= 6] or [start_date.weekday()]
-    ctx = {"resource": resource, "resources": resources, "start_date": start_date, "until_date": until_date,
-           "t1": t1.strftime("%H:%M"), "t2": t2.strftime("%H:%M"), "weekdays": weekdays, "title": g.get("title", ""),
-           "group_label": g.get("group_label", ""), "attendees": g.get("attendees", ""),
-           "weekday_names": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], "plans": None, "error": None,
-           "times": [f"{h:02d}:{m:02d}" for h in range(6, 23) for m in (0, 30)]}
+    ctx = {
+        "resource": resource,
+        "resources": resources,
+        "start_date": start_date,
+        "until_date": until_date,
+        "t1": t1.strftime("%H:%M"),
+        "t2": t2.strftime("%H:%M"),
+        "weekdays": weekdays,
+        "title": g.get("title", ""),
+        "group_label": g.get("group_label", ""),
+        "attendees": g.get("attendees", ""),
+        "weekday_names": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        "plans": None,
+        "error": None,
+        "times": [f"{h:02d}:{m:02d}" for h in range(6, 23) for m in (0, 30)],
+    }
     if resource and g.get("action") in ("preview", "create"):
-        occ = services.expand_occurrences(frequency="weekly", interval=1, weekdays=weekdays, start_date=start_date,
-                                          until_date=until_date, start_time=t1, end_time=t2)
+        occ = services.expand_occurrences(
+            frequency="weekly",
+            interval=1,
+            weekdays=weekdays,
+            start_date=start_date,
+            until_date=until_date,
+            start_time=t1,
+            end_time=t2,
+        )
         if g.get("action") == "create" and request.method == "POST":
             try:
                 series, created, skipped = services.create_series(
-                    requester=request.user, resource=resource, title=g.get("title") or "Weekly session",
-                    frequency="weekly", interval=1, weekdays=weekdays, start_date=start_date, until_date=until_date,
-                    start_time=t1, end_time=t2, attendees=_int(g.get("attendees")), group_label=g.get("group_label", ""),
+                    requester=request.user,
+                    resource=resource,
+                    title=g.get("title") or "Weekly session",
+                    frequency="weekly",
+                    interval=1,
+                    weekdays=weekdays,
+                    start_date=start_date,
+                    until_date=until_date,
+                    start_time=t1,
+                    end_time=t2,
+                    attendees=_int(g.get("attendees")),
+                    group_label=g.get("group_label", ""),
                     request=request,
                 )
             except DomainError as exc:
@@ -314,11 +393,14 @@ def series_new(request):
                     msg += f"; {len(skipped)} skipped — see the list below"
                 messages.success(request, msg + ".")
                 return redirect(f"{request.path}?series={series.pk}")
-        ctx["plans"] = services.preview_series(requester=request.user, resource=resource, occurrences=occ,
-                                               attendees=_int(g.get("attendees")))
+        ctx["plans"] = services.preview_series(
+            requester=request.user, resource=resource, occurrences=occ, attendees=_int(g.get("attendees"))
+        )
         ctx["ok_count"] = sum(1 for p in ctx["plans"] if p.ok)
     if g.get("series"):
-        ctx["done"] = BookingSeries.objects.filter(pk=g.get("series"), requester=request.user).select_related("resource").first()
+        ctx["done"] = (
+            BookingSeries.objects.filter(pk=g.get("series"), requester=request.user).select_related("resource").first()
+        )
         if ctx["done"]:
             ctx["done_bookings"] = ctx["done"].bookings.order_by("period")
     return render(request, "bookings/series.html", ctx)

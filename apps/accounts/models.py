@@ -41,6 +41,8 @@ class User(TenantModel, AbstractUser):
     designation = models.CharField(max_length=120, blank=True)
     phone = models.CharField(max_length=20, blank=True)
     calendar_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    mfa_secret = models.TextField(blank=True, help_text="TOTP secret, encrypted at rest (apps.accounts.mfa)")
+    mfa_enabled = models.BooleanField(default=False)
     failed_logins = models.PositiveSmallIntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)
 

@@ -15,6 +15,7 @@ from django_ratelimit.decorators import ratelimit
 
 from apps.audit.services import record
 
+from . import mfa
 from .models import User
 
 # Stable usernames created by `manage.py seed_demo`. Only reachable when DEMO_MODE=1.
@@ -30,7 +31,9 @@ DEMO_PERSONAS = [
 
 def _safe_next(request, fallback="core:home"):
     nxt = request.POST.get("next") or request.GET.get("next")
-    if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+    if nxt and url_has_allowed_host_and_scheme(
+        nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
         return nxt
     return fallback
 
@@ -47,7 +50,9 @@ def login_view(request):
         else:
             username = (request.POST.get("username") or "").strip()
             password = request.POST.get("password") or ""
-            account = User.objects.filter(username__iexact=username).first() or User.objects.filter(vid=username).first()
+            account = (
+                User.objects.filter(username__iexact=username).first() or User.objects.filter(vid=username).first()
+            )
             if account and account.is_locked:
                 mins = int((account.locked_until - timezone.now()).total_seconds() // 60) + 1
                 error = f"This account is locked after repeated failed attempts. Try again in {mins} min."
@@ -55,6 +60,12 @@ def login_view(request):
                 user = authenticate(request, username=account.username if account else username, password=password)
                 if user is not None:
                     User.objects.filter(pk=user.pk).update(failed_logins=0, locked_until=None)
+                    if user.mfa_enabled or mfa.required_for(user):
+                        # Password is right, but privileged roles need a second factor before
+                        # a session exists. Keep only the pending user id in the anonymous session.
+                        request.session["mfa_pending"] = user.pk
+                        request.session["mfa_next"] = _safe_next(request, fallback="/home/")
+                        return redirect("accounts:mfa")
                     login(request, user)
                     record(user, "auth.login", user, request=request)
                     return redirect(_safe_next(request))
@@ -72,8 +83,11 @@ def login_view(request):
     if settings.DEMO_MODE:
         found = {u.username: u for u in User.objects.filter(username__in=[p[0] for p in DEMO_PERSONAS], is_active=True)}
         personas = [(found[u], label, blurb) for u, label, blurb in DEMO_PERSONAS if u in found]
-    return render(request, "accounts/login.html", {"error": error, "username": username, "personas": personas,
-                                                   "next": request.GET.get("next", "")})
+    return render(
+        request,
+        "accounts/login.html",
+        {"error": error, "username": username, "personas": personas, "next": request.GET.get("next", "")},
+    )
 
 
 @require_POST
@@ -112,18 +126,149 @@ def me(request):
     now = timezone.now()
     tiers = list(RestrictionTier.objects.filter(institution_id=user.institution_id).order_by("no_shows"))
     window = max([t.window_days for t in tiers], default=30)
-    recent_no_shows = NoShow.objects.filter(user=user, forgiven=False, detected_at__gte=now - timedelta(days=window)).select_related("resource", "booking")
+    recent_no_shows = NoShow.objects.filter(
+        user=user, forgiven=False, detected_at__gte=now - timedelta(days=window)
+    ).select_related("resource", "booking")
     stats = {
         "completed": Booking.objects.filter(booked_for=user, status=BookingStatus.COMPLETED).count(),
         "no_shows": NoShow.objects.filter(user=user, forgiven=False).count(),
-        "upcoming": Booking.objects.filter(booked_for=user, status__in=["pending", "approved"], period__startswith__gte=now).count(),
+        "upcoming": Booking.objects.filter(
+            booked_for=user, status__in=["pending", "approved"], period__startswith__gte=now
+        ).count(),
     }
     feed_url = request.build_absolute_uri(f"/feed/{user.calendar_token}.ics")
-    return render(request, "accounts/me.html", {
-        "quotas": quota_usage(user),
-        "restriction": active_restriction(user),
-        "recent_no_shows": recent_no_shows,
-        "tiers": tiers,
-        "stats": stats,
-        "feed_url": feed_url,
-    })
+    return render(
+        request,
+        "accounts/me.html",
+        {
+            "quotas": quota_usage(user),
+            "restriction": active_restriction(user),
+            "recent_no_shows": recent_no_shows,
+            "tiers": tiers,
+            "stats": stats,
+            "feed_url": feed_url,
+        },
+    )
+
+
+@login_required
+def export_my_data(request):
+    """DPDP Act 2023 data-subject access: everything we hold about the signed-in person, as JSON."""
+    import json
+
+    from django.http import HttpResponse
+
+    from apps.bookings.models import Booking
+    from apps.checkins.models import NoShow, Restriction
+    from apps.notifications.models import Notification
+
+    user = request.user
+    data = {
+        "generated_at": timezone.now().isoformat(),
+        "profile": {
+            "username": user.username,
+            "name": user.display_name,
+            "email": user.email,
+            "vid": user.vid,
+            "role": user.role,
+            "department": str(user.department or ""),
+            "section": user.section,
+            "programme": user.programme,
+            "designation": user.designation,
+            "date_joined": user.date_joined.isoformat(),
+            "last_login": user.last_login.isoformat() if user.last_login else None,
+        },
+        "bookings": [
+            {
+                "reference": b.reference,
+                "resource": b.resource.name,
+                "start": b.start.isoformat(),
+                "end": b.end.isoformat(),
+                "status": b.status,
+                "title": b.title,
+                "group": b.group_label,
+                "attendees": b.attendees,
+                "checked_in_at": b.checked_in_at.isoformat() if b.checked_in_at else None,
+            }
+            for b in Booking.objects.filter(booked_for=user).select_related("resource").order_by("period")
+        ],
+        "no_shows": [
+            {
+                "booking": n.booking.reference,
+                "resource": n.resource.name,
+                "detected_at": n.detected_at.isoformat(),
+                "forgiven": n.forgiven,
+            }
+            for n in NoShow.objects.filter(user=user).select_related("booking", "resource")
+        ],
+        "restrictions": [
+            {
+                "from": r.starts_at.isoformat(),
+                "until": r.ends_at.isoformat(),
+                "reason": r.reason,
+                "lifted_at": r.lifted_at.isoformat() if r.lifted_at else None,
+            }
+            for r in Restriction.objects.filter(user=user)
+        ],
+        "notifications": [
+            {"at": n.created_at.isoformat(), "title": n.title, "body": n.body}
+            for n in Notification.objects.filter(user=user)[:500]
+        ],
+    }
+    record(user, "privacy.export", user, request=request)
+    resp = HttpResponse(json.dumps(data, indent=2), content_type="application/json")
+    resp["Content-Disposition"] = 'attachment; filename="my-lpu-reserve-data.json"'
+    return resp
+
+
+@ratelimit(key="ip", rate="20/m", method="POST", block=False)
+def mfa_view(request):
+    """Second step for privileged roles: verify a TOTP code, or enrol on first sign-in."""
+    pk = request.session.get("mfa_pending")
+    user = User.objects.filter(pk=pk, is_active=True).first() if pk else None
+    if user is None:
+        return redirect("accounts:login")
+    enrolling = not user.mfa_enabled
+    secret = None
+    if enrolling:
+        if "mfa_new_secret" not in request.session:
+            request.session["mfa_new_secret"] = mfa.encrypt(mfa.new_secret())
+        secret = mfa.decrypt(request.session["mfa_new_secret"])
+    else:
+        secret = mfa.decrypt(user.mfa_secret)
+    error = ""
+    if request.method == "POST":
+        if getattr(request, "limited", False):
+            error = "Too many attempts. Wait a minute and try again."
+        elif user.is_locked:
+            error = "This account is locked after repeated failed attempts."
+        elif mfa.verify(secret, request.POST.get("code", "")):
+            if enrolling:
+                user.mfa_secret = mfa.encrypt(secret)
+                user.mfa_enabled = True
+                user.save(update_fields=["mfa_secret", "mfa_enabled"])
+                record(user, "auth.mfa_enrolled", user, request=request)
+            nxt = request.session.get("mfa_next") or "/home/"
+            for k in ("mfa_pending", "mfa_new_secret", "mfa_next"):
+                request.session.pop(k, None)
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+            record(user, "auth.login", user, after={"mfa": True}, request=request)
+            return redirect(nxt)
+        else:
+            user.failed_logins += 1
+            fields = ["failed_logins"]
+            if user.failed_logins >= settings.LOGIN_LOCKOUT_THRESHOLD:
+                user.locked_until = timezone.now() + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
+                user.failed_logins = 0
+                fields.append("locked_until")
+                for k in ("mfa_pending", "mfa_new_secret"):
+                    request.session.pop(k, None)
+            user.save(update_fields=fields)
+            error = "That code didn't match. Codes change every 30 seconds; use the current one."
+    ctx = {"error": error, "enrolling": enrolling, "user_name": user.display_name}
+    if enrolling:
+        from apps.checkins.qr import svg
+
+        ctx["qr"] = svg(mfa.provisioning_uri(user, secret), box_size=6)
+        ctx["secret"] = secret
+    return render(request, "accounts/mfa.html", ctx)
