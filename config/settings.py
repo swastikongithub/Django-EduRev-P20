@@ -39,16 +39,29 @@ DEMO_MODE = env("DEMO_MODE")
 _DEV_SECRET_KEY = "dev-only-insecure-key-change-me"
 _PLACEHOLDER_SECRET_KEYS = {_DEV_SECRET_KEY, "replace-me-with-a-long-random-string", "changeme", "secret"}
 SECRET_KEY = env("DJANGO_SECRET_KEY", default=_DEV_SECRET_KEY if DEBUG else "")
-if not DEBUG and (
-    SECRET_KEY in _PLACEHOLDER_SECRET_KEYS
-    or len(SECRET_KEY) < 32
-    or SECRET_KEY.startswith("django-insecure-")
-    or (SECRET_KEY.startswith("dev-only-") and not DEMO_MODE)
-):
+# Previous keys, newest first, while rotating (Django's SECRET_KEY_FALLBACKS). Sessions and tokens
+# signed with them stay valid, and TOTP secrets encrypted under them stay readable; each is
+# re-encrypted with the current key at its next sign-in, or all at once by
+# `manage.py mfa_keys --rotate`. Remove a fallback once `manage.py mfa_keys` reports none left on it.
+SECRET_KEY_FALLBACKS = env.list("DJANGO_SECRET_KEY_FALLBACKS", default=[])
+
+
+def _weak_secret_key(key: str) -> bool:
+    return (
+        key in _PLACEHOLDER_SECRET_KEYS
+        or len(key) < 32
+        or key.startswith("django-insecure-")
+        or (key.startswith("dev-only-") and not DEMO_MODE)
+    )
+
+
+if not DEBUG and (_weak_secret_key(SECRET_KEY) or any(_weak_secret_key(k) for k in SECRET_KEY_FALLBACKS)):
     from django.core.exceptions import ImproperlyConfigured
 
+    # A weak fallback is as dangerous as a weak key: signatures made with it are still accepted.
     raise ImproperlyConfigured(
-        "DJANGO_SECRET_KEY must be set to a private random value of at least 32 characters when DEBUG is off. "
+        "DJANGO_SECRET_KEY (and every DJANGO_SECRET_KEY_FALLBACKS entry) must be a private random value of at "
+        "least 32 characters when DEBUG is off. "
         'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(50))"'
     )
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
