@@ -1,7 +1,9 @@
-"""Request helpers: safe redirects and bounded parsing of untrusted query/form values."""
+"""Request helpers: client address, safe redirects and bounded parsing of untrusted values."""
 
+import ipaddress
 from datetime import date, timedelta
 
+from django.conf import settings
 from django.http import Http404
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -11,6 +13,31 @@ MAX_PK = 2**63 - 1
 # Calendar views and forms only make sense within a few years of today. Bounding dates keeps
 # `day ± timedelta` arithmetic away from date.min/date.max, where it overflows (SEC-13).
 MAX_DATE_DISTANCE = timedelta(days=3660)
+
+
+def client_ip(request) -> str | None:
+    """
+    The address of whoever connected to our outermost trusted proxy (SEC-07).
+
+    X-Forwarded-For is written left to right by each hop, and anything left of our own proxies is
+    whatever the client chose to send. With TRUSTED_PROXY_HOPS = n reverse proxies in front of the
+    app, the real client is the n-th entry from the right. With 0 (the default) the header is
+    ignored and REMOTE_ADDR is used. Shared by the audit log and the rate limiter
+    (RATELIMIT_IP_META_KEY), so both see the same address.
+    """
+    if request is None:
+        return None
+    remote = request.META.get("REMOTE_ADDR") or None
+    hops = getattr(settings, "TRUSTED_PROXY_HOPS", 0)
+    if hops > 0:
+        chain = [part.strip() for part in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",") if part.strip()]
+        if len(chain) >= hops:
+            candidate = chain[-hops]
+            try:
+                return str(ipaddress.ip_address(candidate))
+            except ValueError:
+                pass
+    return remote
 
 
 def safe_next(request, fallback: str) -> str:

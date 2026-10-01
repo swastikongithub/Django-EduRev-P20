@@ -5,6 +5,8 @@ import logging
 from django.db import transaction
 from django.forms.models import model_to_dict
 
+from apps.core.http import client_ip
+
 from .models import AuditLog
 
 log = logging.getLogger(__name__)
@@ -15,13 +17,6 @@ def snapshot(instance, fields=None) -> dict:
     return {
         k: (str(v) if not isinstance(v, (int, float, bool, type(None), list, dict)) else v) for k, v in data.items()
     }
-
-
-def client_ip(request):
-    if request is None:
-        return None
-    fwd = request.META.get("HTTP_X_FORWARDED_FOR")
-    return (fwd.split(",")[0].strip() if fwd else request.META.get("REMOTE_ADDR")) or None
 
 
 def record(actor, action: str, target, *, before=None, after=None, request=None, label: str | None = None):

@@ -44,10 +44,13 @@ Booleans accept `1/0`, `true/false`, `yes/no`, `on/off`. Lists are comma-separat
 |---|---|---|---|
 | `MFA_REQUIRED_ROLES` | `admin,facility_manager` | Roles that must pass TOTP after a password sign-in (superusers always) | Keep the default or add `dept_head`, `custodian` |
 | `MFA_ENFORCED` | `True` | Master switch for the above | Must be `1` |
+| `TRUSTED_PROXY_HOPS` | `0` | Number of reverse proxies in front of the app that append to `X-Forwarded-For`. The client address used by the audit log and the rate limiter is the entry that many places from the right; with `0` the header is ignored and `REMOTE_ADDR` is used | `1` behind a single platform load balancer (Render, Railway, nginx). Never higher than the real number of proxies: every extra hop lets clients choose their own address |
 | `API_USER_RATE` | `600/min` | DRF throttle per signed-in user (anonymous is fixed at `60/min`) | Lower for public exposure; raise for integrations such as the load test |
 
-Fixed in code (not environment): sign-in lockout after 5 failures for 15 minutes; IP rate
-limits of 20/min on sign-in and MFA and 30/min on demo sign-in; session lifetime 10 hours.
+Fixed in code (not environment): sign-in lockout after 5 failures for 15 minutes (password and
+TOTP failures count together; a locked account gets the same answer as a wrong password); IP rate
+limits of 20/min on sign-in and MFA and 30/min on demo sign-in; single-use TOTP codes; session
+lifetime 10 hours; the live API schema (`/api/v1/schema/`, `/api/v1/docs/`) requires sign-in.
 
 ### Email
 
@@ -115,6 +118,7 @@ ALLOWED_HOSTS=reserve.example.edu
 CSRF_TRUSTED_ORIGINS=https://reserve.example.edu
 SITE_URL=https://reserve.example.edu
 SECURE_SSL_REDIRECT=1
+TRUSTED_PROXY_HOPS=1
 DATABASE_URL=postgres://reserve:<password>@db.internal:5432/reserve
 REDIS_URL=redis://redis.internal:6379/0
 CELERY_BROKER_URL=redis://redis.internal:6379/1

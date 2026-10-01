@@ -255,6 +255,10 @@ if not DEBUG:  # pragma: no cover - production hardening
     SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 RATELIMIT_USE_CACHE = "default"
+# Reverse proxies in front of the app that append to X-Forwarded-For (Render, Railway, a load
+# balancer: 1). 0 means clients connect directly and the header is ignored (SEC-07).
+TRUSTED_PROXY_HOPS = env.int("TRUSTED_PROXY_HOPS", default=0)
+RATELIMIT_IP_META_KEY = "apps.core.http.client_ip"
 LOGIN_LOCKOUT_THRESHOLD = 5
 # CES §1.1: TOTP MFA for admin roles. Demo persona sign-in (DEMO_MODE only) skips it.
 MFA_REQUIRED_ROLES = env.list("MFA_REQUIRED_ROLES", default=["admin", "facility_manager"])

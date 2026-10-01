@@ -12,6 +12,7 @@ from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
 from apps.accounts.permissions import can_manage_resource, has_cap
@@ -127,6 +128,7 @@ def _visible_or_404(user, reference):
         raise Http404 from None
 
 
+@never_cache
 @login_required
 def detail(request, reference):
     from apps.checkins.qr import pass_url, svg
@@ -294,6 +296,7 @@ def _ics(bookings, name="LPU Reserve"):
     return cal.serialize()
 
 
+@never_cache
 @login_required
 def ics(request, reference):
     b = _visible_or_404(request.user, reference)
@@ -302,6 +305,7 @@ def ics(request, reference):
     return resp
 
 
+@never_cache
 def feed(request, token):
     """Personal subscription feed (Google / Outlook / Apple). The unguessable token is the credential."""
     from apps.accounts.models import User

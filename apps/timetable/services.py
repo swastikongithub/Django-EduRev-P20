@@ -28,6 +28,7 @@ from apps.accounts.permissions import has_cap
 from apps.bookings.models import HOLDING_STATUSES, Booking, BookingSlot, SlotKind
 from apps.catalogue.models import Resource
 from apps.core.errors import BookingRejected, NotPermitted
+from apps.core.exports import spreadsheet_safe, unguard
 from apps.core.timeutil import aware, trange
 
 from .models import AcademicTerm, PublicationStatus, TimetableEntry, TimetablePublication
@@ -69,6 +70,7 @@ def parse_rows(source, institution_id):
     rooms = {r.code: r for r in Resource.objects.filter(institution_id=institution_id)}
     entries, errors = [], []
     for n, row in enumerate(rows, start=2):
+        row = {k: unguard(v) if isinstance(v, str) else v for k, v in row.items()}  # our own exports
         try:
             code = str(row.get("room_code", "")).strip()
             resource = rooms.get(code)
@@ -250,19 +252,18 @@ def export_csv(pub: TimetablePublication) -> str:
     w = csv.writer(out)
     w.writerow(COLUMNS)
     for e in pub.entries.select_related("resource"):
-        w.writerow(
-            [
-                e.resource.code,
-                list(DAYS)[e.weekday].title(),
-                f"{e.start_time:%H:%M}",
-                f"{e.end_time:%H:%M}",
-                e.course_code,
-                e.course_title,
-                e.section,
-                e.faculty,
-                e.kind,
-            ]
-        )
+        row = [
+            e.resource.code,
+            list(DAYS)[e.weekday].title(),
+            f"{e.start_time:%H:%M}",
+            f"{e.end_time:%H:%M}",
+            e.course_code,
+            e.course_title,
+            e.section,
+            e.faculty,
+            e.kind,
+        ]
+        w.writerow([spreadsheet_safe(v) for v in row])
     return out.getvalue()
 
 
