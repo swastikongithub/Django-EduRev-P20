@@ -20,7 +20,8 @@ def client_ip(request) -> str | None:
     The address of whoever connected to our outermost trusted proxy (SEC-07).
 
     X-Forwarded-For is written left to right by each hop, and anything left of our own proxies is
-    whatever the client chose to send. With TRUSTED_PROXY_HOPS = n reverse proxies in front of the
+    whatever the client chose to send. TRUSTED_CLIENT_IP_HEADER, when set, wins: it names a header
+    the edge itself writes (Railway's X-Real-IP). Otherwise, with TRUSTED_PROXY_HOPS = n reverse proxies in front of the
     app, the real client is the n-th entry from the right. With 0 (the default) the header is
     ignored and REMOTE_ADDR is used. Shared by the audit log and the rate limiter
     (RATELIMIT_IP_META_KEY), so both see the same address.
@@ -28,6 +29,15 @@ def client_ip(request) -> str | None:
     if request is None:
         return None
     remote = request.META.get("REMOTE_ADDR") or None
+    header = getattr(settings, "TRUSTED_CLIENT_IP_HEADER", "")
+    if header:
+        # A header the edge proxy sets itself (Railway: X-Real-IP). Malformed or missing values
+        # fall through to the hop count / REMOTE_ADDR rather than trusting garbage.
+        value = request.META.get("HTTP_" + header.upper().replace("-", "_"), "").strip()
+        try:
+            return str(ipaddress.ip_address(value))
+        except ValueError:
+            pass
     hops = getattr(settings, "TRUSTED_PROXY_HOPS", 0)
     if hops > 0:
         chain = [part.strip() for part in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",") if part.strip()]
