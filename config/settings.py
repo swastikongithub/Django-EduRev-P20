@@ -231,9 +231,14 @@ CELERY_BEAT_SCHEDULE = {
 # balancer: 1). 0 means clients connect directly and the header is ignored (SEC-07). The audit
 # log, the sign-in rate limiter and the API throttle all derive the client address from it.
 TRUSTED_PROXY_HOPS = env.int("TRUSTED_PROXY_HOPS", default=0)
+# Alternatively, name a header that the edge proxy *sets* (overwriting anything the client sent).
+# Railway documents X-Real-IP as its client-address header and does not document how it treats
+# X-Forwarded-For, so on Railway use TRUSTED_CLIENT_IP_HEADER=X-Real-IP and leave the hop count
+# at 0. Never set this when clients can reach the app without passing through that proxy.
+TRUSTED_CLIENT_IP_HEADER = env("TRUSTED_CLIENT_IP_HEADER", default="")
 
 REST_FRAMEWORK = {
-    # Without this DRF's throttles key anonymous callers on the raw, client-supplied header.
+    # DRF's own X-Forwarded-For handling, for any throttle other than apps.core.throttling's.
     "NUM_PROXIES": TRUSTED_PROXY_HOPS,
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
@@ -242,8 +247,9 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 25,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.UserRateThrottle",
-        "rest_framework.throttling.AnonRateThrottle",
+        # Same client address as the sign-in limiter and the audit log (apps.core.http.client_ip).
+        "apps.core.throttling.ClientUserRateThrottle",
+        "apps.core.throttling.ClientAnonRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {"user": env("API_USER_RATE", default="600/min"), "anon": "60/min"},
     "EXCEPTION_HANDLER": "apps.core.api.exception_handler",
