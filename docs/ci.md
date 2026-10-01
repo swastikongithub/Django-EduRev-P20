@@ -10,7 +10,7 @@ same gates on a laptop.
 |---|---|
 | Push to `main` | All jobs, then the deploy placeholder |
 | Pull request into `main` | All jobs |
-| Push to a development branch listed under `on.push.branches` (during Phase 3: `feat/phase3-ci-qa`) | All jobs |
+| Push to the development branch listed under `on.push.branches` (currently `feat/production-readiness`; removed when it merges) | All jobs |
 | Manual (`workflow_dispatch`) | All jobs |
 
 A newer push to the same pull request or branch cancels the run already in progress.

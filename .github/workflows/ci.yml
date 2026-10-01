@@ -1,12 +1,13 @@
 name: CI
 
-# Every gate runs on pushes to main, on pull requests into main, and on demand. While Phase 3 is
-# under development its branch is tested on every push too; remove it from this list once merged.
+# Every gate runs on pushes to main, on pull requests into main, and on demand. A development
+# branch under way is listed here too, so its pushes are tested before a pull request exists;
+# remove it from this list once it is merged.
 on:
   push:
     branches:
       - main
-      - feat/phase3-ci-qa
+      - feat/production-readiness
   pull_request:
     branches: [main]
   workflow_dispatch:
