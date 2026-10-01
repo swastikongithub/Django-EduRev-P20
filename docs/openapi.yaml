@@ -1,0 +1,3106 @@
+openapi: 3.0.3
+info:
+  title: LPU Reserve API
+  version: 1.0.0
+  description: Campus Resource, Laboratory & Facility Booking Platform (EduRev P20).
+paths:
+  /api/v1/analytics/utilisation/:
+    get:
+      operationId: analytics_utilisation_retrieve
+      summary: Utilisation grouped by type, resource, department or building
+      parameters:
+      - in: query
+        name: by
+        schema:
+          enum:
+          - type
+          - resource
+          - department
+          - building
+          type: string
+          default: type
+          minLength: 1
+        description: |-
+          * `type` - type
+          * `resource` - resource
+          * `department` - department
+          * `building` - building
+      - in: query
+        name: department
+        schema:
+          type: string
+          maxLength: 16
+          minLength: 1
+        description: Department code (campus analysts only; others see their own)
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+        description: 'Last day, inclusive (default: yesterday)'
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+        description: 'First day (default: 30 days ago)'
+      - in: query
+        name: type
+        schema:
+          type: string
+          maxLength: 40
+          minLength: 1
+        description: Restrict to one resource type code
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UtilisationReport'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/approvals/:
+    get:
+      operationId: approvals_list
+      summary: Approval steps I can decide now, soonest booking first
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - approvals
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedApprovalQueueItemList'
+          description: ''
+  /api/v1/bookings/:
+    get:
+      operationId: bookings_list
+      summary: Bookings visible to me (own, plus resources I manage)
+      parameters:
+      - in: query
+        name: date_from
+        schema:
+          type: string
+          format: date
+        description: Bookings starting on/after this date
+      - in: query
+        name: date_to
+        schema:
+          type: string
+          format: date
+        description: Bookings starting on/before this date
+      - in: query
+        name: mine
+        schema:
+          type: boolean
+        description: Only bookings made by or for me
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: resource
+        schema:
+          type: number
+        description: Resource id
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: Status(es), comma-separated
+      tags:
+      - bookings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBookingList'
+          description: ''
+    post:
+      operationId: bookings_create
+      description: Atomic claim on the shared ledger. 409 when the time is taken (with
+        the reason), 422 when a rule forbids it (hours, quota, blackout, lead time,
+        capacity...).
+      summary: Book a resource
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BookingCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BookingCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetail'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/bookings/{reference}/:
+    get:
+      operationId: bookings_retrieve
+      summary: Booking detail
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9-]+$
+        required: true
+      tags:
+      - bookings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetail'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/bookings/{reference}/approve/:
+    post:
+      operationId: bookings_approve_create
+      summary: Approve the booking's current approval step
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9-]+$
+        required: true
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Approve'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Approve'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Approve'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetail'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/bookings/{reference}/cancel/:
+    post:
+      operationId: bookings_cancel_create
+      summary: Cancel a booking
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9-]+$
+        required: true
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Cancel'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Cancel'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Cancel'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetail'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/bookings/{reference}/check-in/:
+    post:
+      operationId: bookings_check_in_create
+      summary: Check in (from the app, or by the custodian)
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9-]+$
+        required: true
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckIn'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CheckIn'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CheckIn'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetail'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/bookings/{reference}/check-out/:
+    post:
+      operationId: bookings_check_out_create
+      summary: Check out early and hand the rest of the slot back
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9-]+$
+        required: true
+      tags:
+      - bookings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetail'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/bookings/{reference}/ics/:
+    get:
+      operationId: bookings_ics_retrieve
+      summary: Download the booking as an iCalendar event
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9-]+$
+        required: true
+      tags:
+      - bookings
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            text/calendar:
+              schema:
+                type: string
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/bookings/{reference}/reject/:
+    post:
+      operationId: bookings_reject_create
+      summary: Reject the booking's current approval step (a comment is required)
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9-]+$
+        required: true
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reject'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Reject'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Reject'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetail'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/maintenance/:
+    get:
+      operationId: maintenance_list
+      summary: Maintenance windows on resources I manage
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: resource
+        schema:
+          type: number
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - cancelled
+          - completed
+          - in_progress
+          - scheduled
+        description: |-
+          * `scheduled` - Scheduled
+          * `in_progress` - In progress
+          * `completed` - Completed
+          * `cancelled` - Cancelled
+      tags:
+      - maintenance
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMaintenanceWindowList'
+          description: ''
+    post:
+      operationId: maintenance_create
+      summary: Schedule maintenance (displaces overlapping bookings, whose owners
+        are told)
+      tags:
+      - maintenance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaintenanceCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaintenanceCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaintenanceCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceWindow'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/maintenance/{id}/:
+    get:
+      operationId: maintenance_retrieve
+      summary: Maintenance window detail
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this maintenance window.
+        required: true
+      tags:
+      - maintenance
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceWindow'
+          description: ''
+  /api/v1/maintenance/{id}/cancel/:
+    post:
+      operationId: maintenance_cancel_create
+      summary: Cancel a maintenance window (frees its time)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this maintenance window.
+        required: true
+      tags:
+      - maintenance
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceWindow'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/maintenance/{id}/complete/:
+    post:
+      operationId: maintenance_complete_create
+      summary: Mark a maintenance window complete (hands unused time back)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this maintenance window.
+        required: true
+      tags:
+      - maintenance
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceWindow'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/me/:
+    get:
+      operationId: me_retrieve
+      summary: My profile, capabilities, quota usage and restriction
+      tags:
+      - accounts
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+  /api/v1/notifications/:
+    get:
+      operationId: notifications_list
+      summary: My notifications, newest first
+      parameters:
+      - in: query
+        name: kind
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: unread
+        schema:
+          type: boolean
+        description: Only unread
+      tags:
+      - notifications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationList'
+          description: ''
+  /api/v1/notifications/{id}/read/:
+    post:
+      operationId: notifications_read_create
+      summary: Mark one notification read
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this notification.
+        required: true
+      tags:
+      - notifications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/notifications/read-all/:
+    post:
+      operationId: notifications_read_all_create
+      summary: Mark all my notifications read
+      tags:
+      - notifications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadAllResult'
+          description: ''
+  /api/v1/resources/:
+    get:
+      operationId: resources_list
+      description: Bookable resources of the caller's institution (retired resources
+        are hidden).
+      summary: Search and filter resources
+      parameters:
+      - in: query
+        name: building
+        schema:
+          type: string
+        description: Building code, e.g. 34
+      - in: query
+        name: category
+        schema:
+          type: string
+        description: space, lab, equipment, ...
+      - in: query
+        name: department
+        schema:
+          type: string
+        description: Owning department code
+      - in: query
+        name: features
+        schema:
+          type: string
+        description: Comma-separated feature ids or names; the resource must have
+          all
+      - in: query
+        name: free_from
+        schema:
+          type: string
+          format: date-time
+        description: 'With free_to: only resources free then'
+      - in: query
+        name: free_to
+        schema:
+          type: string
+          format: date-time
+        description: End of the free window
+      - in: query
+        name: min_capacity
+        schema:
+          type: integer
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Full-text + fuzzy search on name, code, features
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - active
+          - out_of_service
+          - retired
+        description: |-
+          * `active` - Active
+          * `out_of_service` - Out of service
+          * `retired` - Retired
+      - in: query
+        name: type
+        schema:
+          type: string
+        description: Resource type code(s), comma-separated
+      tags:
+      - catalogue
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResourceList'
+          description: ''
+  /api/v1/resources/{id_or_slug}/:
+    get:
+      operationId: resources_retrieve
+      description: Bookable resources of the caller's institution (retired resources
+        are hidden).
+      summary: Resource detail
+      parameters:
+      - in: path
+        name: id_or_slug
+        schema:
+          type: string
+        description: Resource id or slug
+        required: true
+      tags:
+      - catalogue
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceDetail'
+          description: ''
+  /api/v1/resources/{id_or_slug}/availability/:
+    get:
+      operationId: resources_availability_retrieve
+      description: Bookable resources of the caller's institution (retired resources
+        are hidden).
+      summary: Availability grid with a reason for every cell
+      parameters:
+      - in: query
+        name: date
+        schema:
+          type: string
+          format: date
+        description: First day (YYYY-MM-DD). Defaults to today.
+      - in: query
+        name: days
+        schema:
+          type: integer
+          maximum: 7
+          minimum: 1
+          default: 1
+      - in: path
+        name: id_or_slug
+        schema:
+          type: string
+        description: Resource id or slug
+        required: true
+      tags:
+      - catalogue
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Availability'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/resources/{id_or_slug}/report-breakdown/:
+    post:
+      operationId: resources_report_breakdown_create
+      description: Anyone who can see a resource can report it broken; critical reports
+        take it offline.
+      summary: Report a breakdown
+      parameters:
+      - in: path
+        name: id_or_slug
+        schema:
+          type: string
+        description: Resource id or slug
+        required: true
+      tags:
+      - maintenance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BreakdownCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BreakdownCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BreakdownCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BreakdownReport'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/series/:
+    post:
+      operationId: series_create
+      description: Recurring bookings (faculty and staff).
+      summary: Create a recurring booking; dates that can't be booked are skipped
+        with a reason
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeriesRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SeriesRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SeriesRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeriesResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/series/preview/:
+    post:
+      operationId: series_preview_create
+      description: Recurring bookings (faculty and staff).
+      summary: 'Dry-run a recurring pattern: which dates can be booked, and why not'
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeriesRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SeriesRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SeriesRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeriesPreview'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+  /api/v1/timetable/publications/:
+    get:
+      operationId: timetable_publications_list
+      summary: Timetable publications, newest first
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - timetable
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPublicationList'
+          description: ''
+    post:
+      operationId: timetable_publications_create
+      description: 'All-or-nothing: if any row is invalid nothing is published and
+        every row error is returned (422, code `invalid_rows`, `detail.rows`). Publishing
+        supersedes the term''s previous version and cancels ordinary bookings that
+        the new classes override.'
+      summary: Publish a term timetable (P13 push)
+      tags:
+      - timetable
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PublishRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PublishRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
+components:
+  schemas:
+    ApprovalQueueItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        booking:
+          allOf:
+          - $ref: '#/components/schemas/Booking'
+          readOnly: true
+        step_order:
+          type: integer
+          readOnly: true
+        approver_role:
+          allOf:
+          - $ref: '#/components/schemas/ApproverRoleEnum'
+          readOnly: true
+        approver_role_display:
+          type: string
+          readOnly: true
+        workflow:
+          type: string
+          readOnly: true
+          nullable: true
+        due_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - approver_role
+      - approver_role_display
+      - booking
+      - created_at
+      - due_at
+      - id
+      - step_order
+      - workflow
+    ApprovalStep:
+      type: object
+      properties:
+        step:
+          type: integer
+        approver_role:
+          type: string
+        decision:
+          type: string
+        decided_by:
+          type: string
+          nullable: true
+        comment:
+          type: string
+        due_at:
+          type: string
+          format: date-time
+          nullable: true
+        decided_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - approver_role
+      - comment
+      - decided_at
+      - decision
+      - due_at
+      - step
+    Approve:
+      type: object
+      properties:
+        comment:
+          type: string
+          default: ''
+          maxLength: 500
+    ApproverRoleEnum:
+      enum:
+      - custodian
+      - dept_head
+      - facility_manager
+      - admin
+      - user
+      type: string
+      description: |-
+        * `custodian` - Resource custodian
+        * `dept_head` - Head of owning department
+        * `facility_manager` - Facility manager
+        * `admin` - Administrator
+        * `user` - Named person
+    Attribute:
+      type: object
+      properties:
+        key:
+          type: string
+          maxLength: 60
+        value:
+          type: string
+          maxLength: 200
+      required:
+      - key
+      - value
+    Availability:
+      type: object
+      properties:
+        resource:
+          $ref: '#/components/schemas/ResourceRef'
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/DaySchedule'
+      required:
+      - days
+      - resource
+    Block:
+      type: object
+      properties:
+        kind:
+          type: string
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        label:
+          type: string
+        reference:
+          type: string
+          description: Booking reference, only for your own bookings or managers
+      required:
+      - end
+      - kind
+      - label
+      - reference
+      - start
+    Booking:
+      type: object
+      properties:
+        reference:
+          type: string
+          readOnly: true
+        resource:
+          allOf:
+          - $ref: '#/components/schemas/ResourceRef'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        start:
+          type: string
+          format: date-time
+          readOnly: true
+        end:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status878Enum'
+          readOnly: true
+        status_display:
+          type: string
+          readOnly: true
+        status_reason:
+          type: string
+          readOnly: true
+        attendees:
+          type: integer
+          readOnly: true
+        group_label:
+          type: string
+          readOnly: true
+          description: Class / section / club this is for
+        requester:
+          type: string
+          readOnly: true
+        booked_for:
+          type: string
+          readOnly: true
+        series:
+          type: integer
+          readOnly: true
+        requires_checkin:
+          type: boolean
+          readOnly: true
+        checked_in_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        checked_out_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - attendees
+      - booked_for
+      - checked_in_at
+      - checked_out_at
+      - created_at
+      - end
+      - group_label
+      - reference
+      - requester
+      - requires_checkin
+      - resource
+      - series
+      - start
+      - status
+      - status_display
+      - status_reason
+      - title
+    BookingCreate:
+      type: object
+      description: Restrict relational inputs to the requesting user's institution.
+      properties:
+        resource:
+          type: integer
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        title:
+          type: string
+          default: ''
+          maxLength: 140
+        attendees:
+          type: integer
+          maximum: 10000
+          minimum: 1
+          default: 1
+        notes:
+          type: string
+          default: ''
+          maxLength: 2000
+        group_label:
+          type: string
+          default: ''
+          maxLength: 120
+        booked_for:
+          type: string
+          description: Username of the person this is for (faculty/staff booking on
+            behalf).
+        items:
+          type: object
+          additionalProperties:
+            type: integer
+            maximum: 1000
+            minimum: 0
+          description: Inventory item id -> quantity to reserve with the booking.
+      required:
+      - end
+      - resource
+      - start
+    BookingDetail:
+      type: object
+      properties:
+        reference:
+          type: string
+          readOnly: true
+        resource:
+          allOf:
+          - $ref: '#/components/schemas/ResourceRef'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        start:
+          type: string
+          format: date-time
+          readOnly: true
+        end:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status878Enum'
+          readOnly: true
+        status_display:
+          type: string
+          readOnly: true
+        status_reason:
+          type: string
+          readOnly: true
+        attendees:
+          type: integer
+          readOnly: true
+        group_label:
+          type: string
+          readOnly: true
+          description: Class / section / club this is for
+        requester:
+          type: string
+          readOnly: true
+        booked_for:
+          type: string
+          readOnly: true
+        series:
+          type: integer
+          readOnly: true
+        requires_checkin:
+          type: boolean
+          readOnly: true
+        checked_in_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        checked_out_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        approvals:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApprovalStep'
+          readOnly: true
+        checkin:
+          allOf:
+          - $ref: '#/components/schemas/CheckinState'
+          readOnly: true
+        qr_token:
+          type: string
+          description: The pass token is only shown to the person the booking is for.
+          readOnly: true
+      required:
+      - approvals
+      - attendees
+      - booked_for
+      - checked_in_at
+      - checked_out_at
+      - checkin
+      - created_at
+      - end
+      - group_label
+      - notes
+      - qr_token
+      - reference
+      - requester
+      - requires_checkin
+      - resource
+      - series
+      - start
+      - status
+      - status_display
+      - status_reason
+      - title
+    BookingSeries:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        resource:
+          allOf:
+          - $ref: '#/components/schemas/ResourceRef'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        frequency:
+          allOf:
+          - $ref: '#/components/schemas/FrequencyEnum'
+          readOnly: true
+        interval:
+          type: integer
+          readOnly: true
+        weekdays:
+          type: array
+          items:
+            type: integer
+            maximum: 32767
+            minimum: 0
+          readOnly: true
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        until_date:
+          type: string
+          format: date
+          readOnly: true
+        start_time:
+          type: string
+          format: time
+          readOnly: true
+        end_time:
+          type: string
+          format: time
+          readOnly: true
+        group_label:
+          type: string
+          readOnly: true
+        created_count:
+          type: integer
+          readOnly: true
+        skipped:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkippedOccurrence'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - created_count
+      - end_time
+      - frequency
+      - group_label
+      - id
+      - interval
+      - resource
+      - skipped
+      - start_date
+      - start_time
+      - title
+      - until_date
+      - weekdays
+    BreakdownCreate:
+      type: object
+      properties:
+        summary:
+          type: string
+          maxLength: 160
+        details:
+          type: string
+          default: ''
+          maxLength: 4000
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/SeverityEnum'
+          default: high
+      required:
+      - summary
+    BreakdownReport:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        resource:
+          allOf:
+          - $ref: '#/components/schemas/ResourceRef'
+          readOnly: true
+        summary:
+          type: string
+          readOnly: true
+        details:
+          type: string
+          readOnly: true
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/SeverityEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BreakdownReportStatusEnum'
+          readOnly: true
+        window:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - details
+      - id
+      - resource
+      - severity
+      - status
+      - summary
+      - window
+    BreakdownReportStatusEnum:
+      enum:
+      - open
+      - acknowledged
+      - resolved
+      type: string
+      description: |-
+        * `open` - Open
+        * `acknowledged` - Acknowledged
+        * `resolved` - Resolved
+    Building:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 16
+        name:
+          type: string
+          maxLength: 120
+        zone:
+          type: string
+          description: Campus zone, e.g. Academic Zone, Sports Complex
+          maxLength: 80
+      required:
+      - code
+      - id
+      - name
+    Cancel:
+      type: object
+      properties:
+        reason:
+          type: string
+          default: ''
+          maxLength: 240
+    CategoryEnum:
+      enum:
+      - space
+      - lab
+      - equipment
+      - sports
+      - vehicle
+      type: string
+      description: |-
+        * `space` - Space
+        * `lab` - Laboratory
+        * `equipment` - Equipment
+        * `sports` - Sports
+        * `vehicle` - Vehicle
+    Cell:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        state:
+          type: string
+          description: free, mine, booked, pending, class, maintenance, blackout,
+            closed, ...
+        reason:
+          type: string
+          description: Why the cell is in this state, in words
+        selectable:
+          type: boolean
+      required:
+      - end
+      - reason
+      - selectable
+      - start
+      - state
+    CheckIn:
+      type: object
+      properties:
+        method:
+          allOf:
+          - $ref: '#/components/schemas/MethodEnum'
+          default: app
+    CheckinState:
+      type: object
+      properties:
+        state:
+          type: string
+          description: in_use, inactive, not_required, not_yet, open, missed
+        opens:
+          type: string
+          format: date-time
+        closes:
+          type: string
+          format: date-time
+        ends:
+          type: string
+          format: date-time
+        seconds_left:
+          type: integer
+      required:
+      - state
+    DaySchedule:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        is_open:
+          type: boolean
+        open_minutes:
+          type: integer
+        free_minutes:
+          type: integer
+        cells:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cell'
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Block'
+      required:
+      - blocks
+      - cells
+      - date
+      - free_minutes
+      - is_open
+      - open_minutes
+    Department:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 16
+        name:
+          type: string
+          maxLength: 160
+        school:
+          type: string
+          maxLength: 160
+      required:
+      - code
+      - id
+      - name
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Machine-readable code, e.g. conflict, quota, forbidden, invalid
+        message:
+          type: string
+          description: A sentence the user can act on
+        detail:
+          type: object
+          additionalProperties: {}
+          description: Structured context (conflicts, field errors...)
+      required:
+      - code
+      - detail
+      - message
+    ErrorEnvelope:
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/Error'
+      required:
+      - error
+    Feature:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 60
+        icon:
+          type: string
+          maxLength: 40
+      required:
+      - id
+      - name
+    FrequencyEnum:
+      enum:
+      - daily
+      - weekly
+      type: string
+      description: |-
+        * `daily` - Daily
+        * `weekly` - Weekly
+    Kind0b3Enum:
+      enum:
+      - preventive
+      - repair
+      - calibration
+      - upgrade
+      - cleaning
+      type: string
+      description: |-
+        * `preventive` - Preventive maintenance
+        * `repair` - Repair
+        * `calibration` - Calibration
+        * `upgrade` - Upgrade
+        * `cleaning` - Deep cleaning
+    MaintenanceCreate:
+      type: object
+      properties:
+        resource:
+          type: integer
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        title:
+          type: string
+          maxLength: 140
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/Kind0b3Enum'
+          default: preventive
+        notes:
+          type: string
+          default: ''
+          maxLength: 4000
+        vendor:
+          type: string
+          default: ''
+          maxLength: 120
+      required:
+      - end
+      - resource
+      - start
+      - title
+    MaintenanceWindow:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        resource:
+          allOf:
+          - $ref: '#/components/schemas/ResourceRef'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/Kind0b3Enum'
+          readOnly: true
+        start:
+          type: string
+          format: date-time
+          readOnly: true
+        end:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MaintenanceWindowStatusEnum'
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        vendor:
+          type: string
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+          nullable: true
+        displaced_bookings:
+          type: integer
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - completed_at
+      - created_at
+      - created_by
+      - displaced_bookings
+      - end
+      - id
+      - kind
+      - notes
+      - resource
+      - start
+      - status
+      - title
+      - vendor
+    MaintenanceWindowStatusEnum:
+      enum:
+      - scheduled
+      - in_progress
+      - completed
+      - cancelled
+      type: string
+      description: |-
+        * `scheduled` - Scheduled
+        * `in_progress` - In progress
+        * `completed` - Completed
+        * `cancelled` - Cancelled
+    Me:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+        vid:
+          type: string
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+        role_display:
+          type: string
+        department:
+          allOf:
+          - $ref: '#/components/schemas/Department'
+          nullable: true
+        section:
+          type: string
+          readOnly: true
+        programme:
+          type: string
+          readOnly: true
+        designation:
+          type: string
+          readOnly: true
+        capabilities:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        quotas:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuotaUsage'
+        restriction:
+          allOf:
+          - $ref: '#/components/schemas/Restriction'
+          nullable: true
+        unread_notifications:
+          type: integer
+      required:
+      - capabilities
+      - department
+      - designation
+      - email
+      - id
+      - name
+      - programme
+      - quotas
+      - restriction
+      - role
+      - role_display
+      - section
+      - unread_notifications
+      - username
+      - vid
+    MethodEnum:
+      enum:
+      - app
+      - custodian
+      type: string
+      description: |-
+        * `app` - Tapped check-in in app
+        * `custodian` - Checked in by custodian
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/NotificationKindEnum'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        body:
+          type: string
+          readOnly: true
+        url:
+          type: string
+          readOnly: true
+        tone:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        read_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        unread:
+          type: boolean
+          readOnly: true
+      required:
+      - body
+      - created_at
+      - id
+      - kind
+      - read_at
+      - title
+      - tone
+      - unread
+      - url
+    NotificationKindEnum:
+      enum:
+      - booking_confirmed
+      - approval_required
+      - approval_pending
+      - approved
+      - rejected
+      - reminder
+      - checkin_open
+      - auto_released
+      - restricted
+      - maintenance
+      - unavailable
+      - cancelled
+      - expired
+      - stock_low
+      - breakdown
+      - series
+      type: string
+      description: |-
+        * `booking_confirmed` - Booking confirmed
+        * `approval_required` - Approval required
+        * `approval_pending` - Waiting for approval
+        * `approved` - Approved
+        * `rejected` - Rejected
+        * `reminder` - Starting soon
+        * `checkin_open` - Check-in open
+        * `auto_released` - Auto-released
+        * `restricted` - Booking restricted
+        * `maintenance` - Maintenance scheduled
+        * `unavailable` - Resource unavailable
+        * `cancelled` - Cancelled
+        * `expired` - Expired
+        * `stock_low` - Stock low
+        * `breakdown` - Breakdown reported
+        * `series` - Recurring booking
+    OccurrencePlan:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        ok:
+          type: boolean
+        code:
+          type: string
+          description: Why it can't be booked (conflict, timetable, closed, ...)
+        reason:
+          type: string
+        alternatives:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceRef'
+      required:
+      - alternatives
+      - code
+      - end
+      - ok
+      - reason
+      - start
+    Overview:
+      type: object
+      properties:
+        open_hours:
+          type: number
+          format: double
+        class_hours:
+          type: number
+          format: double
+        maintenance_hours:
+          type: number
+          format: double
+        booked_hours:
+          type: number
+          format: double
+        used_hours:
+          type: number
+          format: double
+        released_hours:
+          type: number
+          format: double
+        idle_hours:
+          type: number
+          format: double
+        utilisation_pct:
+          type: number
+          format: double
+        realised_pct:
+          type: number
+          format: double
+        bookings:
+          type: integer
+        no_shows:
+          type: integer
+        no_show_rate_pct:
+          type: number
+          format: double
+        cancellations:
+          type: integer
+        denied_attempts:
+          type: integer
+        resources:
+          type: integer
+        days:
+          type: integer
+        pending_approvals:
+          type: integer
+        avg_turnaround_hours:
+          type: number
+          format: double
+          nullable: true
+        top_resource:
+          allOf:
+          - $ref: '#/components/schemas/UtilisationRow'
+          nullable: true
+      required:
+      - avg_turnaround_hours
+      - booked_hours
+      - bookings
+      - cancellations
+      - class_hours
+      - days
+      - denied_attempts
+      - idle_hours
+      - maintenance_hours
+      - no_show_rate_pct
+      - no_shows
+      - open_hours
+      - pending_approvals
+      - realised_pct
+      - released_hours
+      - resources
+      - top_resource
+      - used_hours
+      - utilisation_pct
+    PaginatedApprovalQueueItemList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApprovalQueueItem'
+    PaginatedBookingList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Booking'
+    PaginatedMaintenanceWindowList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaintenanceWindow'
+    PaginatedNotificationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+    PaginatedPublicationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Publication'
+    PaginatedResourceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Resource'
+    Publication:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        term:
+          type: string
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        source:
+          type: string
+          readOnly: true
+          description: csv | p13-api | manual
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PublicationStatusEnum'
+          readOnly: true
+        entry_count:
+          type: integer
+          readOnly: true
+        occurrence_count:
+          type: integer
+          readOnly: true
+        displaced_count:
+          type: integer
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        published_by:
+          type: string
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - displaced_count
+      - entry_count
+      - id
+      - occurrence_count
+      - published_at
+      - published_by
+      - source
+      - status
+      - term
+      - version
+    PublicationStatusEnum:
+      enum:
+      - draft
+      - published
+      - superseded
+      - failed
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `published` - Published
+        * `superseded` - Superseded
+        * `failed` - Failed
+    PublishRequest:
+      type: object
+      properties:
+        term:
+          type: string
+          description: UMS term code, e.g. 26271
+          maxLength: 16
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimetableRow'
+      required:
+      - entries
+      - term
+    PublishResult:
+      type: object
+      properties:
+        publication:
+          $ref: '#/components/schemas/Publication'
+        occurrences:
+          type: integer
+          description: Class occurrences written to the availability ledger
+        displaced:
+          type: integer
+          description: Ordinary bookings cancelled because a class now owns the time
+        superseded:
+          type: integer
+          description: Previously published versions replaced
+      required:
+      - displaced
+      - occurrences
+      - publication
+      - superseded
+    QuotaUsage:
+      type: object
+      properties:
+        name:
+          type: string
+        period:
+          type: string
+        departmental:
+          type: boolean
+        resource_type:
+          type: string
+          nullable: true
+        window_start:
+          type: string
+          format: date-time
+          readOnly: true
+        window_end:
+          type: string
+          format: date-time
+          readOnly: true
+        hours_used:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,1})?$
+        max_hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,5}(?:\.\d{0,1})?$
+          nullable: true
+        bookings_used:
+          type: integer
+        max_bookings:
+          type: integer
+          nullable: true
+        pct:
+          type: integer
+          description: Highest share of any limit used, 0-100
+      required:
+      - bookings_used
+      - departmental
+      - hours_used
+      - max_bookings
+      - max_hours
+      - name
+      - pct
+      - period
+      - window_end
+      - window_start
+    ReadAllResult:
+      type: object
+      properties:
+        updated:
+          type: integer
+          description: Notifications marked read
+      required:
+      - updated
+    Reject:
+      type: object
+      properties:
+        comment:
+          type: string
+          description: 'Required: tell the requester why.'
+          maxLength: 500
+      required:
+      - comment
+    Resource:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          description: Human code, e.g. 34-301
+          maxLength: 32
+        slug:
+          type: string
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          maxLength: 140
+        tagline:
+          type: string
+          maxLength: 160
+        type:
+          allOf:
+          - $ref: '#/components/schemas/ResourceType'
+          readOnly: true
+        capacity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        building:
+          allOf:
+          - $ref: '#/components/schemas/Building'
+          readOnly: true
+        floor:
+          type: string
+          maxLength: 16
+        room:
+          type: string
+          maxLength: 24
+        location:
+          type: string
+          readOnly: true
+        department:
+          type: string
+          readOnly: true
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/Status800Enum'
+        status_note:
+          type: string
+          maxLength: 200
+        is_bookable:
+          type: boolean
+        available_for_booking:
+          type: boolean
+          readOnly: true
+      required:
+      - available_for_booking
+      - building
+      - code
+      - department
+      - features
+      - id
+      - location
+      - name
+      - slug
+      - type
+    ResourceDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          description: Human code, e.g. 34-301
+          maxLength: 32
+        slug:
+          type: string
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          maxLength: 140
+        tagline:
+          type: string
+          maxLength: 160
+        type:
+          allOf:
+          - $ref: '#/components/schemas/ResourceType'
+          readOnly: true
+        capacity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        building:
+          allOf:
+          - $ref: '#/components/schemas/Building'
+          readOnly: true
+        floor:
+          type: string
+          maxLength: 16
+        room:
+          type: string
+          maxLength: 24
+        location:
+          type: string
+          readOnly: true
+        department:
+          type: string
+          readOnly: true
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/Status800Enum'
+        status_note:
+          type: string
+          maxLength: 200
+        is_bookable:
+          type: boolean
+        available_for_booking:
+          type: boolean
+          readOnly: true
+        description:
+          type: string
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attribute'
+          readOnly: true
+      required:
+      - attributes
+      - available_for_booking
+      - building
+      - code
+      - department
+      - features
+      - id
+      - location
+      - name
+      - slug
+      - type
+    ResourceRef:
+      type: object
+      description: Compact reference embedded in bookings, windows and suggestions.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          description: Human code, e.g. 34-301
+          maxLength: 32
+        slug:
+          type: string
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          maxLength: 140
+      required:
+      - code
+      - id
+      - name
+      - slug
+    ResourceType:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 40
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          maxLength: 80
+        plural:
+          type: string
+          maxLength: 80
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+      required:
+      - category
+      - code
+      - id
+      - name
+    Restriction:
+      type: object
+      properties:
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+        tier_label:
+          type: string
+      required:
+      - ends_at
+      - reason
+      - starts_at
+      - tier_label
+    RoleEnum:
+      enum:
+      - student
+      - faculty
+      - staff
+      - custodian
+      - dept_head
+      - facility_manager
+      - admin
+      type: string
+      description: |-
+        * `student` - Student
+        * `faculty` - Faculty
+        * `staff` - Staff
+        * `custodian` - Resource Custodian
+        * `dept_head` - Head of Department
+        * `facility_manager` - Facility Manager
+        * `admin` - Administrator
+    Scope:
+      type: object
+      properties:
+        department:
+          type: string
+          nullable: true
+          description: Department code, or null for campus-wide
+        type:
+          type: string
+          nullable: true
+      required:
+      - department
+      - type
+    SeriesPreview:
+      type: object
+      properties:
+        total:
+          type: integer
+        bookable:
+          type: integer
+        occurrences:
+          type: array
+          items:
+            $ref: '#/components/schemas/OccurrencePlan'
+      required:
+      - bookable
+      - occurrences
+      - total
+    SeriesRequest:
+      type: object
+      description: Restrict relational inputs to the requesting user's institution.
+      properties:
+        resource:
+          type: integer
+        title:
+          type: string
+          default: ''
+          maxLength: 140
+        frequency:
+          allOf:
+          - $ref: '#/components/schemas/FrequencyEnum'
+          default: weekly
+        interval:
+          type: integer
+          maximum: 8
+          minimum: 1
+          default: 1
+        weekdays:
+          type: array
+          items:
+            type: integer
+            maximum: 6
+            minimum: 0
+          description: 0 = Monday ... 6 = Sunday (weekly only; defaults to the start
+            date's weekday)
+          maxItems: 7
+        start_date:
+          type: string
+          format: date
+        until_date:
+          type: string
+          format: date
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        attendees:
+          type: integer
+          maximum: 10000
+          minimum: 1
+          default: 1
+        group_label:
+          type: string
+          default: ''
+          maxLength: 120
+        notes:
+          type: string
+          default: ''
+          maxLength: 2000
+        booked_for:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+      required:
+      - end_time
+      - resource
+      - start_date
+      - start_time
+      - until_date
+    SeriesResult:
+      type: object
+      properties:
+        series:
+          $ref: '#/components/schemas/BookingSeries'
+        created:
+          type: array
+          items:
+            $ref: '#/components/schemas/Booking'
+        skipped:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkippedOccurrence'
+      required:
+      - created
+      - series
+      - skipped
+    SeverityEnum:
+      enum:
+      - low
+      - high
+      - critical
+      type: string
+      description: |-
+        * `low` - Minor — still usable
+        * `high` - Major — partly unusable
+        * `critical` - Critical — unusable
+    SkippedOccurrence:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        code:
+          type: string
+        reason:
+          type: string
+      required:
+      - code
+      - end
+      - reason
+      - start
+    Status800Enum:
+      enum:
+      - active
+      - out_of_service
+      - retired
+      type: string
+      description: |-
+        * `active` - Active
+        * `out_of_service` - Out of service
+        * `retired` - Retired
+    Status878Enum:
+      enum:
+      - draft
+      - pending
+      - approved
+      - checked_in
+      - completed
+      - cancelled
+      - rejected
+      - expired
+      - no_show
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `pending` - Pending approval
+        * `approved` - Confirmed
+        * `checked_in` - In use
+        * `completed` - Completed
+        * `cancelled` - Cancelled
+        * `rejected` - Rejected
+        * `expired` - Expired
+        * `no_show` - Released · no-show
+    TimetableRow:
+      type: object
+      description: One class row, as pushed by P13. Values are parsed (and row errors
+        reported) by the timetable service.
+      properties:
+        room_code:
+          type: string
+          maxLength: 32
+        day:
+          type: string
+          description: Mon..Sun, or 0 (Monday) .. 6
+          maxLength: 12
+        start:
+          type: string
+          description: HH:MM
+          maxLength: 12
+        end:
+          type: string
+          description: HH:MM
+          maxLength: 12
+        course_code:
+          type: string
+          maxLength: 16
+        course_title:
+          type: string
+          maxLength: 160
+        section:
+          type: string
+          maxLength: 24
+        faculty:
+          type: string
+          maxLength: 120
+        kind:
+          type: string
+          description: Lecture | Practical | Tutorial
+          maxLength: 16
+      required:
+      - course_code
+      - day
+      - end
+      - room_code
+      - start
+    UtilisationReport:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date
+        end:
+          type: string
+          format: date
+        by:
+          type: string
+        scope:
+          $ref: '#/components/schemas/Scope'
+        overview:
+          $ref: '#/components/schemas/Overview'
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/UtilisationRow'
+      required:
+      - by
+      - end
+      - overview
+      - rows
+      - scope
+      - start
+    UtilisationRow:
+      type: object
+      properties:
+        open_hours:
+          type: number
+          format: double
+        class_hours:
+          type: number
+          format: double
+        maintenance_hours:
+          type: number
+          format: double
+        booked_hours:
+          type: number
+          format: double
+        used_hours:
+          type: number
+          format: double
+        released_hours:
+          type: number
+          format: double
+        idle_hours:
+          type: number
+          format: double
+        utilisation_pct:
+          type: number
+          format: double
+        realised_pct:
+          type: number
+          format: double
+        bookings:
+          type: integer
+        no_shows:
+          type: integer
+        no_show_rate_pct:
+          type: number
+          format: double
+        cancellations:
+          type: integer
+        denied_attempts:
+          type: integer
+        key:
+          type: integer
+          nullable: true
+          description: Id of the resource/type/department/building
+        label:
+          type: string
+        resources:
+          type: integer
+      required:
+      - booked_hours
+      - bookings
+      - cancellations
+      - class_hours
+      - denied_attempts
+      - idle_hours
+      - key
+      - label
+      - maintenance_hours
+      - no_show_rate_pct
+      - no_shows
+      - open_hours
+      - realised_pct
+      - released_hours
+      - resources
+      - used_hours
+      - utilisation_pct
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
