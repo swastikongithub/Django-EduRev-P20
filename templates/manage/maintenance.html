@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block title %}Maintenance{% endblock %}
+{% block topbar_title %}Upkeep<small>{{ scope_label }}</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div>
+    <h1>Maintenance</h1>
+    <p>Breakdown reports and planned upkeep for the next two weeks. A maintenance window takes its time off the calendar and cancels any bookings inside it, telling each person why.</p>
+  </div>
+  <a class="btn btn--primary" href="#schedule-panel">{% icon "calendar-plus" %}Schedule maintenance</a>
+</div>
+
+<div class="split split--wide-side console-split">
+  <div class="stack" style="--gap: var(--s8)">
+
+    <section class="panel panel--flagged" aria-labelledby="br-h">
+      <span class="flag">{% icon "triangle-alert" %}<span id="br-h">Breakdowns</span></span>
+      {% if reports %}
+      <p class="small muted reports__sum">{{ reports|length }} unresolved{% if critical %}, <strong class="ember">{{ critical }} critical</strong>{% endif %}{% if unacknowledged %}, {{ unacknowledged }} not yet acknowledged{% endif %}.</p>
+      <ul class="list">
+        {% for rp in reports %}
+        <li class="reportrow">
+          <div class="reportrow__main">
+            <div class="row row--wrap" style="--gap: 6px">
+              {% if rp.severity == "critical" %}<span class="badge badge--danger">{% icon "flame" %}Critical</span>{% elif rp.severity == "high" %}<span class="badge badge--warn">{% icon "triangle-alert" %}Major</span>{% else %}<span class="badge badge--plain">{% icon "info" %}Minor</span>{% endif %}
+              {% if rp.status == "acknowledged" %}<span class="badge badge--info">{% icon "eye" %}Acknowledged</span>{% else %}<span class="badge badge--pending">{% icon "circle-dot" %}New</span>{% endif %}
+            </div>
+            <strong class="reportrow__title">{{ rp.summary }}</strong>
+            <span class="small"><a href="{{ rp.resource.get_absolute_url }}">{{ rp.resource.name }}</a>{% if rp.resource.building %}<span class="muted">, {{ rp.resource.building.name }}</span>{% endif %}</span>
+            <span class="xsmall faint">Reported by {{ rp.reported_by.display_name }} <time datetime="{{ rp.created_at|date:'c' }}" title="{{ rp.created_at|dayname }} {{ rp.created_at|hm }}">{{ rp.created_at|timesince }} ago</time></span>
+            {% if rp.details %}<p class="small muted reportrow__details">{{ rp.details|truncatechars:240 }}</p>{% endif %}
+            {% if rp.window and rp.window.status in "scheduled in_progress" %}<span class="xsmall reportrow__window">{% icon "wrench" 13 %}Blocked for repair until {{ rp.window.end|dayname }} {{ rp.window.end|hm }}</span>{% endif %}
+          </div>
+          <div class="reportrow__act">
+            {% if rp.status == "open" %}
+            <form method="post" action="{% url 'manage:maintenance_report' rp.pk 'acknowledge' %}">{% csrf_token %}
+              <button class="btn btn--sm" type="submit">{% icon "eye" %}Acknowledge</button></form>
+            {% endif %}
+            {% if not rp.window or rp.window.status not in "scheduled in_progress" %}
+            <a class="btn btn--sm btn--ghost" href="?resource={{ rp.resource_id }}&amp;report={{ rp.pk }}#schedule-panel">{% icon "calendar-plus" %}Plan repair</a>
+            {% endif %}
+            <button class="btn btn--sm btn--ink" type="button" data-open="resolve-{{ rp.pk }}">{% icon "check" %}Resolve</button>
+          </div>
+          <dialog id="resolve-{{ rp.pk }}" class="sheet" aria-labelledby="resolve-{{ rp.pk }}-h">
+            <div class="sheet__head"><h2 id="resolve-{{ rp.pk }}-h" class="h-sm">Resolve &ldquo;{{ rp.summary|truncatechars:60 }}&rdquo;</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+            <form class="sheet__body stack" method="post" action="{% url 'manage:maintenance_report' rp.pk 'resolve' %}">
+              {% csrf_token %}
+              <p class="small muted">{{ rp.resource.name }}.{% if rp.window and rp.window.status in "scheduled in_progress" %} The repair block on its calendar ends now and the rest of the time becomes bookable.{% endif %}{% if rp.severity == "critical" %} It goes back into service unless another critical report is open.{% endif %}</p>
+              <div class="field">
+                <label for="resolve-{{ rp.pk }}-t">What was done?</label>
+                <input class="input" id="resolve-{{ rp.pk }}-t" name="resolution" required maxlength="240" autofocus placeholder="e.g. Replaced the HDMI cable and tested the projector">
+                <span class="hint">Shown on the report so the next person knows.</span>
+              </div>
+              <div class="row"><button class="btn btn--primary" type="submit">Mark resolved</button><button class="btn btn--ghost" type="button" data-close>Cancel</button></div>
+            </form>
+          </dialog>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty empty--compact">
+        <div class="empty__icon">{% icon "circle-check" %}</div>
+        <h3>No open breakdowns</h3>
+        <p class="small">Anyone can report a problem from a resource's page. Critical reports take the resource offline and land here straight away.</p>
+      </div>
+      {% endif %}
+    </section>
+
+    <section aria-labelledby="cal-h">
+      <div class="section-head"><h2 id="cal-h">Next 14 days</h2><span class="small muted">{{ upcoming_count }} window{{ upcoming_count|pluralize }} planned</span></div>
+      <ol class="mdays" aria-label="Days with planned maintenance">
+        {% for d in days %}
+        <li class="mdays__day{% if d.items %} has-items{% endif %}{% if forloop.first %} is-today{% endif %}">
+          {% if d.items %}<a href="#day-{{ d.date|date:'Ymd' }}">{% else %}<span>{% endif %}
+            <span class="mdays__dow">{{ d.date|date:"D" }}</span>
+            <strong class="tnum">{{ d.date|date:"j" }}</strong>
+            <span class="mdays__n">{% if d.items %}{{ d.items|length }}<span class="sr-only"> planned</span>{% else %}<span class="sr-only">nothing planned</span>{% endif %}</span>
+          {% if d.items %}</a>{% else %}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+
+      {% if busy_days %}
+      <div class="daygroups mlist">
+        {% for d in busy_days %}
+        <section class="daygroup" id="day-{{ d.date|date:'Ymd' }}" aria-labelledby="day-{{ d.date|date:'Ymd' }}-h">
+          <h3 id="day-{{ d.date|date:'Ymd' }}-h" class="daygroup__day"><span>{{ d.date|dayname }}</span>{% if d.date|dayname|length < 10 %}<small>{{ d.date|date:"j F" }}</small>{% endif %}</h3>
+          <ul class="bookinglist">
+            {% for it in d.items %}{% with w=it.w %}
+            <li class="mrow">
+              <span class="mrow__time tnum">
+                <strong>{% if it.continues %}<span class="faint">from</span> {{ w.start|dayname }}{% else %}{{ w.start|hm }}{% endif %}</strong>
+                <span>{% if it.carries_on %}until {{ w.end|dayname }} {{ w.end|hm }}{% else %}{{ w.end|hm }}{% endif %}</span>
+              </span>
+              <span class="mrow__swatch swatch swatch--maintenance" aria-hidden="true"></span>
+              <div class="mrow__text">
+                <strong class="truncate">{{ w.title }}</strong>
+                <span class="small muted truncate"><a href="{{ w.resource.get_absolute_url }}">{{ w.resource.name }}</a>, {{ w.get_kind_display|lower }}{% if w.vendor %}, by {{ w.vendor }}{% endif %}</span>
+                <div class="row row--wrap" style="--gap: 6px">
+                  {% if w.status == "in_progress" %}<span class="badge badge--live">{% icon "wrench" %}In progress</span>{% else %}<span class="badge badge--warn">{% icon "calendar-days" %}Scheduled</span>{% endif %}
+                  {% if w.displaced_bookings %}<span class="badge badge--plain" title="Bookings cancelled when this was scheduled">{{ w.displaced_bookings }} booking{{ w.displaced_bookings|pluralize }} moved off</span>{% endif %}
+                </div>
+              </div>
+              <div class="mrow__act">
+                {% if w.status == "in_progress" or w.start <= now %}
+                <form method="post" action="{% url 'manage:maintenance_window' w.pk 'complete' %}">{% csrf_token %}
+                  <button class="btn btn--sm btn--success" type="submit">{% icon "check" %}Done</button></form>
+                {% endif %}
+                <form method="post" action="{% url 'manage:maintenance_window' w.pk 'cancel' %}" data-confirm="Cancel &ldquo;{{ w.title }}&rdquo; on {{ w.resource.name }}? The time becomes bookable again.{% if w.displaced_bookings %} The {{ w.displaced_bookings }} booking{{ w.displaced_bookings|pluralize }} it cancelled will not come back.{% endif %}">{% csrf_token %}
+                  <button class="btn btn--sm btn--ghost" type="submit">Cancel</button></form>
+              </div>
+            </li>
+            {% endwith %}{% endfor %}
+          </ul>
+        </section>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="panel empty empty--compact">
+        <div class="empty__icon">{% icon "calendar-days" %}</div>
+        <h3>Nothing planned for the next two weeks</h3>
+        <p class="small">Plan preventive work ahead, ideally outside class hours, so fewer bookings need moving.</p>
+        <a class="btn" href="#schedule-panel">Schedule maintenance</a>
+      </div>
+      {% endif %}
+    </section>
+
+    <section aria-labelledby="hist-h">
+      <div class="section-head"><h2 id="hist-h">History</h2><span class="small muted">Last {{ history|length }} closed window{{ history|length|pluralize }}</span></div>
+      {% if history %}
+      <div class="tablewrap">
+        <table class="table console-table">
+          <thead><tr><th scope="col">Work</th><th scope="col">Resource</th><th scope="col">When</th><th scope="col">Outcome</th><th scope="col" class="num">Bookings moved</th></tr></thead>
+          <tbody>
+            {% for w in history %}
+            <tr>
+              <td><strong>{{ w.title }}</strong><div class="xsmall faint">{{ w.get_kind_display }}{% if w.vendor %}, {{ w.vendor }}{% endif %}</div></td>
+              <td><a class="rowlink" href="{{ w.resource.get_absolute_url }}">{{ w.resource.name }}</a></td>
+              <td class="nowrap tnum">{{ w.start|dayname }} {{ w.start|hm }}–{% if w.end|date:"Ymd" != w.start|date:"Ymd" %}{{ w.end|dayname }} {% endif %}{{ w.end|hm }}</td>
+              <td>{% if w.status == "completed" %}<span class="badge badge--success">{% icon "check" %}Completed</span>{% else %}<span class="badge">{% icon "x" %}Cancelled</span>{% endif %}</td>
+              <td class="num">{{ w.displaced_bookings }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="small muted">Completed and cancelled windows appear here.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <aside class="sticky-side">
+    <section class="panel schedpanel" id="schedule-panel" aria-labelledby="sch-h">
+      <h2 id="sch-h" class="h-sm">Schedule maintenance</h2>
+      {% if resources %}
+      <form class="stack" method="post" action="{% url 'manage:maintenance_schedule' %}" style="--gap: var(--s4)">
+        {% csrf_token %}
+        <div class="field">
+          <label for="ms-res">Resource</label>
+          <select class="select" id="ms-res" name="resource" required{% if errors.resource %} aria-invalid="true" aria-describedby="ms-res-e"{% endif %}>
+            <option value="">Choose a resource</option>
+            {% for r in resources %}<option value="{{ r.pk }}"{% if form.resource == r.pk|stringformat:"s" %} selected{% endif %}>{{ r.name }}{% if r.building %} ({{ r.building.name }}){% endif %}</option>{% endfor %}
+          </select>
+          {% if errors.resource %}<span class="error" id="ms-res-e">{{ errors.resource }}</span>{% endif %}
+        </div>
+        <fieldset class="fgroup">
+          <legend>Starts</legend>
+          <div class="form-grid form-grid--tight">
+            <label class="sr-only" for="ms-sd">Start day</label><input class="input" id="ms-sd" type="date" name="start_date" value="{{ form.start_date }}" required>
+            <label class="sr-only" for="ms-st">Start time</label><input class="input" id="ms-st" type="time" name="start_time" value="{{ form.start_time }}" step="900" required>
+          </div>
+          {% if errors.start %}<span class="error">{{ errors.start }}</span>{% endif %}
+        </fieldset>
+        <fieldset class="fgroup">
+          <legend>Ends</legend>
+          <div class="form-grid form-grid--tight">
+            <label class="sr-only" for="ms-ed">End day</label><input class="input" id="ms-ed" type="date" name="end_date" value="{{ form.end_date }}" required>
+            <label class="sr-only" for="ms-et">End time</label><input class="input" id="ms-et" type="time" name="end_time" value="{{ form.end_time }}" step="900" required>
+          </div>
+          {% if errors.end %}<span class="error">{{ errors.end }}</span>{% endif %}
+        </fieldset>
+        <div class="field">
+          <label for="ms-kind">Kind of work</label>
+          <select class="select" id="ms-kind" name="kind">{% for v, label in kinds %}<option value="{{ v }}"{% if form.kind == v %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+        </div>
+        <div class="field">
+          <label for="ms-title">Title</label>
+          <input class="input" id="ms-title" name="title" maxlength="140" value="{{ form.title }}" placeholder="e.g. Projector lamp replacement" required{% if errors.title %} aria-invalid="true"{% endif %}>
+          <span class="hint">People whose bookings are moved see this.</span>
+          {% if errors.title %}<span class="error">{{ errors.title }}</span>{% endif %}
+        </div>
+        <div class="field">
+          <label for="ms-vendor">Vendor <span class="faint">(optional)</span></label>
+          <input class="input" id="ms-vendor" name="vendor" maxlength="120" value="{{ form.vendor }}" placeholder="e.g. Epson service centre">
+        </div>
+        <div class="field">
+          <label for="ms-notes">Notes <span class="faint">(optional)</span></label>
+          <textarea class="textarea textarea--short" id="ms-notes" name="notes" maxlength="2000">{{ form.notes }}</textarea>
+        </div>
+
+        {% if error %}<div class="notice notice--danger" role="alert">{% icon "circle-alert" %}<div><strong>Not scheduled</strong>{{ error }}</div></div>{% endif %}
+
+        <div class="impact" role="status" aria-live="polite">
+          {% if preview %}
+            {% if preview.changed %}<div class="notice notice--warn">{% icon "triangle-alert" %}<div><strong>You changed the details</strong>Here's the impact of the new time. Confirm again if it looks right.</div></div>{% endif %}
+            {% if preview.blockers %}
+              <div class="notice notice--danger">{% icon "ban" %}<div><strong>This time can't be used</strong>{% for c in preview.blockers %}{{ c.sentence }} {% endfor %}{% if preview.blockers.0.kind == "class" %}Classes are never moved automatically: pick a time around it, or ask the timetable office to relocate the class first.{% else %}Adjust or cancel that window first.{% endif %}</div></div>
+            {% elif preview.bookings %}
+              <div class="notice notice--warn">{% icon "calendar-x" %}<div><strong>{{ preview.bookings|length }} booking{{ preview.bookings|length|pluralize }} will be cancelled</strong>Each person is told why and offered free alternatives.</div></div>
+              <ul class="impact__list">
+                {% for b in preview.bookings|slice:":6" %}<li class="small"><span class="tnum strong">{{ b.start|dayname }} {{ b.start|hm }}–{{ b.end|hm }}</span> <span class="muted">{{ b.booked_for.display_name }}{% if b.group_label %}, {{ b.group_label }}{% endif %}</span>{% if b.status == "checked_in" %} <span class="badge badge--live">In use</span>{% endif %}</li>{% endfor %}
+                {% if preview.bookings|length > 6 %}<li class="small faint">and {{ preview.bookings|length|add:"-6" }} more</li>{% endif %}
+              </ul>
+            {% else %}
+              <div class="notice notice--success">{% icon "circle-check" %}<div><strong>No bookings affected</strong>{{ preview.resource.name }} is free for the whole window.</div></div>
+            {% endif %}
+          {% endif %}
+        </div>
+
+        <div class="row row--wrap">
+          {% if preview and not preview.blockers %}
+            <input type="hidden" name="checked" value="{{ preview.signature }}">
+            <button class="btn {% if preview.bookings %}btn--danger-solid{% else %}btn--primary{% endif %}" type="submit" name="step" value="confirm">{% if preview.bookings %}Schedule and cancel {{ preview.bookings|length }}{% else %}Schedule maintenance{% endif %}</button>
+            <button class="btn btn--ghost" type="submit" name="step" value="preview" hx-post="{% url 'manage:maintenance_schedule' %}" hx-select="#schedule-panel" hx-target="#schedule-panel" hx-swap="outerHTML">Check again</button>
+          {% else %}
+            <button class="btn btn--ink" type="submit" name="step" value="preview" hx-post="{% url 'manage:maintenance_schedule' %}" hx-select="#schedule-panel" hx-target="#schedule-panel" hx-swap="outerHTML">{% icon "eye" %}Check impact</button>
+          {% endif %}
+        </div>
+        <p class="xsmall faint">Nothing changes until you confirm. Checking shows which bookings the window would cancel.</p>
+      </form>
+      {% else %}
+      <p class="small muted">You don't look after any resources yet, so there's nothing to schedule. Once you're named custodian of a resource it appears here.</p>
+      {% endif %}
+    </section>
+  </aside>
+</div>
+
+<dialog id="confirm-dialog" class="sheet" aria-labelledby="confirm-h">
+  <div class="sheet__head"><h2 id="confirm-h" class="h-sm">Cancel this window?</h2></div>
+  <div class="sheet__body stack"><p data-confirm-text></p><div class="row"><button class="btn btn--danger-solid" type="button" data-confirm-yes>Yes, cancel it</button><button class="btn btn--ghost" type="button" data-close>Keep it</button></div></div>
+</dialog>
+{% endblock %}

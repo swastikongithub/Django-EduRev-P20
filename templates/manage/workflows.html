@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Approval workflows{% endblock %}
+{% block topbar_title %}Setup<small>Approval workflows</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+{% if editing %}
+{% url 'manage:workflows' as wf_url %}
+{% include "manage/setup/_crumbs.html" with parent_url=wf_url parent_label="Approval workflows" here=form.instance.pk|yesno:"Edit workflow,New workflow" %}
+{% else %}
+{% include "manage/setup/_crumbs.html" with here="Approval workflows" %}
+{% endif %}
+<div class="pagehead">
+  <div>
+    <h1>{% if editing %}{% if form.instance.pk %}Edit {{ form.instance.name }}{% else %}New workflow{% endif %}{% else %}Approval workflows{% endif %}</h1>
+    <p>Who has to approve a booking before it's confirmed. The most specific matching workflow wins: one resource, then its type, then anything; ties go to the higher priority. When nothing matches, bookings are confirmed instantly.</p>
+  </div>
+  {% if can_edit and not editing %}<a class="btn btn--primary" href="?new=1">{% icon "plus" %}New workflow</a>{% endif %}
+</div>
+
+<div class="notice cfg-gap-b">{% icon "zap" %}<div><strong>Changes apply to the next booking, straight away.</strong>No deployment is needed. Requests already waiting for approval keep the approvers they were given.{% if not can_edit %} You can view workflows and use the tester; facility managers and administrators make changes.{% endif %}</div></div>
+
+<div class="split split--wide-side">
+  <div class="stack" style="--gap: var(--s6)">
+  {% if editing %}
+    {% include "manage/setup/_workflow_editor.html" %}
+  {% else %}
+    {% for title, note, items in groups %}
+    <section aria-labelledby="g{{ forloop.counter }}-h">
+      <div class="section-head cfg-sechead"><div><h2 id="g{{ forloop.counter }}-h" class="h-sm">{{ title }}</h2><p class="xsmall faint">{{ note }}</p></div></div>
+      {% if items %}
+      <ul class="wflist">
+        {% for w in items %}
+        <li class="panel wfcard{% if not w.active %} is-off{% endif %}" id="wf-{{ w.pk }}">
+          <div class="wfcard__head">
+            <div>
+              <h3 class="wfcard__title">{{ w.name }}</h3>
+              <div class="row row--wrap cfg-badges">
+                {% if w.active %}<span class="badge badge--success">{% icon "circle-check" %}Active</span>{% else %}<span class="badge badge--plain">{% icon "circle-pause" %}Off</span>{% endif %}
+                {% if w.auto_approve %}<span class="badge badge--info">{% icon "zap" %}Confirms instantly</span>{% endif %}
+                <span class="badge badge--plain">Priority {{ w.priority }}</span>
+              </div>
+            </div>
+            {% if can_edit %}
+            <div class="row cfg-rowactions">
+              <a class="btn btn--sm" href="?edit={{ w.pk }}">{% icon "pencil" %}Edit</a>
+              <form method="post">{% csrf_token %}<input type="hidden" name="action" value="toggle"><input type="hidden" name="pk" value="{{ w.pk }}"><button class="btn btn--sm btn--ghost" type="submit">{% if w.active %}{% icon "circle-pause" %}Turn off{% else %}{% icon "zap" %}Turn on{% endif %}</button></form>
+            </div>
+            {% endif %}
+          </div>
+          <p class="wfcard__summary">{{ w.summary }}.</p>
+          {% if not w.auto_approve %}
+          <ol class="chain" aria-label="Approval steps">
+            {% for s in w.steps.all %}<li class="chain__step"><span class="chain__n">{{ s.order }}</span><span><strong>{% if s.approver_role == "user" and s.approver_user %}{{ s.approver_user.display_name }}{% else %}{{ s.get_approver_role_display }}{% endif %}</strong><span class="xsmall faint">decides within {{ s.sla_hours }} h</span></span></li>{% empty %}<li class="xsmall faint">No steps, so this workflow never holds a booking.</li>{% endfor %}
+          </ol>
+          {% endif %}
+          {% if w.description %}<p class="xsmall faint">{{ w.description }}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="small muted">None.</p>
+      {% endif %}
+    </section>
+    {% endfor %}
+    {% if not count %}
+    <div class="panel empty">
+      <div class="empty__icon">{% icon "list-checks" %}</div>
+      <h3>No workflows yet, so every booking is confirmed instantly</h3>
+      <p>Add one for anything that needs a second pair of eyes, such as seminar halls booked by students.</p>
+      {% if can_edit %}<a class="btn btn--primary" href="?new=1">{% icon "plus" %}New workflow</a>{% endif %}
+    </div>
+    {% endif %}
+  {% endif %}
+  </div>
+
+  <aside class="sticky-side">
+    <section class="panel panel--flagged" aria-labelledby="tester-h">
+      <span class="flag">{% icon "mouse-pointer-click" %}<span id="tester-h">Who approves this?</span></span>
+      <p class="small muted cfg-lead">Try any request and see which workflow the booking engine picks right now.</p>
+      <form method="get" action="{% url 'manage:workflows' %}" class="stack" style="--gap: var(--s3)" hx-get="{% url 'manage:workflows' %}" hx-target="#wf-test" hx-trigger="change, submit" hx-push-url="false" hx-sync="this:replace">
+        <input type="hidden" name="test" value="1">
+        <div class="field"><label for="t-res">Resource</label>
+          <select class="select" id="t-res" name="resource"><option value="">Choose a resource</option>{% for r in resources %}<option value="{{ r.pk }}"{% if r.pk == tester.resource %} selected{% endif %}>{{ r.code }}, {{ r.name }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="t-role">Booked by</label>
+          <select class="select" id="t-role" name="role">{% for v, l in roles %}<option value="{{ v }}"{% if v == tester.role %} selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+        <div class="form-grid cfg-tight">
+          <div class="field"><label for="t-att">People</label><input class="input" id="t-att" type="number" min="1" name="attendees" value="{{ tester.attendees|default:1 }}" inputmode="numeric"></div>
+          <div class="field"><label for="t-min">Length</label><select class="select" id="t-min" name="minutes">{% for m in durations %}<option value="{{ m }}"{% if m == tester.minutes %} selected{% endif %}>{{ m|duration }}</option>{% endfor %}</select></div>
+        </div>
+        <noscript><button class="btn btn--ink" type="submit">Check</button></noscript>
+      </form>
+      <div id="wf-test" class="cfg-gap" aria-live="polite">{% include "manage/setup/_workflow_test.html" %}</div>
+    </section>
+  </aside>
+</div>
+{% include "manage/setup/_confirm.html" with confirm_yes="Yes, delete it" %}
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/setup.js' %}" defer></script>{% endblock %}

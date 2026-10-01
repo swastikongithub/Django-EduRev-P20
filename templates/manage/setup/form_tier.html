@@ -1,0 +1,11 @@
+<form method="post" action="{% url 'manage:policies' %}" class="stack" style="--gap: var(--s4)" novalidate>{% csrf_token %}
+  <input type="hidden" name="action" value="tier.save">{% if form.instance.pk %}<input type="hidden" name="pk" value="{{ form.instance.pk }}">{% endif %}
+  {% include "manage/setup/_sheet_errors.html" %}
+  <div class="form-grid">
+    {% include "manage/setup/_field.html" with f=form.no_shows %}
+    {% include "manage/setup/_field.html" with f=form.window_days %}
+    {% include "manage/setup/_field.html" with f=form.restrict_days %}
+    {% include "manage/setup/_field.html" with f=form.label hint="Shown to the person, e.g. 7-day pause." %}
+  </div>
+  <div class="row"><button class="btn btn--primary" type="submit">{% icon "check" %}{% if form.instance.pk %}Save step{% else %}Add step{% endif %}</button><button class="btn btn--ghost" type="button" data-close>Cancel</button></div>
+</form>

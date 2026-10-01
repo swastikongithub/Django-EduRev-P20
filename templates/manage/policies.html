@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Booking rules{% endblock %}
+{% block topbar_title %}Setup<small>Booking rules</small>{% endblock %}
+{% block content %}
+{% include "manage/setup/_crumbs.html" with here="Booking rules" %}
+<div class="pagehead">
+  <div>
+    <h1>Booking rules</h1>
+    <p>Rules are data, not code. A change here applies to the next booking anyone makes; bookings people already hold are kept. The most specific rule wins: a single resource, then its type, then the whole campus.</p>
+  </div>
+</div>
+
+{% if not campus %}
+<div class="notice cfg-gap-b">{% icon "info" %}<div><strong>You manage your department's quotas.</strong>Campus-wide rules are set by facility managers and administrators. You can see them here to explain them to your department.</div></div>
+{% endif %}
+
+<nav class="seg cfg-tabs" aria-label="Rule sections">
+  {% for key, label, ic in tabs %}<a href="?tab={{ key }}"{% if key == tab %} aria-current="page"{% endif %}>{% icon ic 16 %}{{ label }}</a>{% endfor %}
+</nav>
+
+{% with "manage/setup/policies_"|add:tab|add:".html" as part %}{% include part %}{% endwith %}
+
+{% include "manage/setup/_confirm.html" with confirm_yes="Yes, remove it" %}
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/setup.js' %}" defer></script>{% endblock %}

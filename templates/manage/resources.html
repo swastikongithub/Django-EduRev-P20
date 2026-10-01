@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Resources{% endblock %}
+{% block topbar_title %}Resources<small>Catalogue and door signs</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div>
+    <h1>Resources</h1>
+    <p>{% if can_create %}Every room, lab, court and piece of equipment people can book. Edit details, take something out of service, or print its door QR.{% else %}The resources you look after. Edit their details, mark them out of service, or print a door QR so people can check in.{% endif %}</p>
+  </div>
+  {% if can_create %}
+  <div class="row row--wrap">
+    <a class="btn" href="{% url 'manage:resources' %}?import=1">{% icon "file-up" %}Import from CSV</a>
+    <a class="btn btn--primary" href="{% url 'manage:resource_new' %}">{% icon "plus" %}New resource</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="grid grid-3 cfg-kpis">
+  <div class="panel kpi"><span class="kpi__label">{% icon "building-2" 15 %}{% if can_create %}In the catalogue{% else %}Yours{% endif %}</span><span class="kpi__value">{{ totals.total }}</span></div>
+  <a class="panel kpi cfg-kpi-link" href="?status=out_of_service"><span class="kpi__label">{% icon "wrench" 15 %}Out of service</span><span class="kpi__value">{{ totals.out }}</span></a>
+  <a class="panel kpi cfg-kpi-link" href="?status=unbookable"><span class="kpi__label">{% icon "lock" 15 %}Not bookable online</span><span class="kpi__value">{{ totals.unbookable }}</span></a>
+</div>
+
+<form class="cfg-filters" method="get" data-autosubmit role="search" aria-label="Filter resources">
+  <label class="inputgroup cfg-filters__q">{% icon "search" %}<span class="sr-only">Search by name or code</span>
+    <input class="input" type="search" name="q" value="{{ filters.q }}" placeholder="Name or code, e.g. 34-301" data-no-autosubmit>
+  </label>
+  <label class="sr-only" for="f-type">Type</label>
+  <select class="select" id="f-type" name="type"><option value="">All types</option>{% for t in types %}<option value="{{ t.code }}"{% if filters.type == t.code %} selected{% endif %}>{{ t.plural|default:t.name }}</option>{% endfor %}</select>
+  <label class="sr-only" for="f-building">Block</label>
+  <select class="select" id="f-building" name="building"><option value="">All blocks</option>{% for b in buildings %}<option value="{{ b.code }}"{% if filters.building == b.code %} selected{% endif %}>{{ b.name }}</option>{% endfor %}</select>
+  <label class="sr-only" for="f-status">Status</label>
+  <select class="select" id="f-status" name="status"><option value="">Any status</option>{% for v, l in statuses %}<option value="{{ v }}"{% if filters.status == v %} selected{% endif %}>{{ l }}</option>{% endfor %}<option value="unbookable"{% if filters.status == "unbookable" %} selected{% endif %}>Not bookable online</option></select>
+  <button class="btn" type="submit">Filter</button>
+  {% if filtered %}<a class="btn btn--ghost" href="{% url 'manage:resources' %}">Clear</a>{% endif %}
+</form>
+
+{% if page.object_list %}
+<div class="tablewrap">
+  <table class="table cfg-table">
+    <caption class="sr-only">Resources, page {{ page.number }} of {{ page.paginator.num_pages }}</caption>
+    <thead><tr><th scope="col"><span class="sr-only">Photo</span></th><th scope="col">Resource</th><th scope="col">Type</th><th scope="col">Block</th><th scope="col" class="num">Capacity</th><th scope="col">Status</th><th scope="col">Custodians</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody>
+    {% for r in page %}
+      <tr>
+        <td class="cfg-thumbcell"><span class="cfg-thumb">{% resource_photo r "sm" %}</span></td>
+        <td>
+          {% if r.editable %}<a class="rowlink" href="{% url 'manage:resource_edit' r.pk %}">{{ r.name }}</a>{% else %}<strong>{{ r.name }}</strong>{% endif %}
+          <div class="xsmall faint tnum">{{ r.code }}{% if r.department %}, {{ r.department.code }}{% endif %}</div>
+        </td>
+        <td class="nowrap">{{ r.type.name }}</td>
+        <td class="nowrap">{{ r.building.name|default:"—" }}</td>
+        <td class="num">{{ r.capacity }}</td>
+        <td>
+          {% if r.status == "active" %}<span class="badge badge--success">{% icon "circle-check" %}Active</span>{% elif r.status == "out_of_service" %}<span class="badge badge--warn" title="{{ r.status_note }}">{% icon "wrench" %}Out of service</span>{% else %}<span class="badge badge--plain">{% icon "circle-pause" %}Retired</span>{% endif %}
+          {% if not r.is_bookable %}<div class="xsmall faint">Not bookable online</div>{% endif %}
+        </td>
+        <td class="small">{% for c in r.custodians.all %}{{ c.user.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="faint">Facilities office</span>{% endfor %}</td>
+        <td>
+          <div class="row cfg-rowactions">
+            {% if r.editable %}<a class="btn btn--sm" href="{% url 'manage:resource_edit' r.pk %}">{% icon "pencil" %}Edit</a>{% endif %}
+            <a class="btn btn--sm btn--ghost" href="{% url 'manage:door_qr' r.pk %}" aria-label="Door QR for {{ r.name }}">{% icon "qr-code" %}Door QR</a>
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if page.paginator.num_pages > 1 %}
+<nav class="pager" aria-label="Pages">
+  {% if page.has_previous %}<a class="btn btn--sm" href="?{{ querystring }}{% if querystring %}&amp;{% endif %}page={{ page.previous_page_number }}">{% icon "chevron-left" %}Previous</a>{% endif %}
+  <span class="small muted tnum">Page {{ page.number }} of {{ page.paginator.num_pages }}, {{ page.paginator.count }} resources</span>
+  {% if page.has_next %}<a class="btn btn--sm" href="?{{ querystring }}{% if querystring %}&amp;{% endif %}page={{ page.next_page_number }}">Next{% icon "chevron-right" %}</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+<div class="panel empty">
+  <div class="empty__icon">{% icon "building-2" %}</div>
+  {% if filtered %}
+  <h3>Nothing matches those filters</h3>
+  <p>Try a shorter search, or clear the filters to see every resource.</p>
+  <a class="btn" href="{% url 'manage:resources' %}">Clear filters</a>
+  {% elif can_create %}
+  <h3>The catalogue is empty</h3>
+  <p>Add resources one by one, or import a whole block from a spreadsheet saved as CSV.</p>
+  <a class="btn btn--primary" href="{% url 'manage:resources' %}?import=1">{% icon "file-up" %}Import from CSV</a>
+  {% else %}
+  <h3>No resources are assigned to you yet</h3>
+  <p>Ask the facility manager to add you as a custodian of the rooms, labs or equipment you look after.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

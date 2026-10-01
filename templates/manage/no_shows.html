@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}No-shows{% endblock %}
+{% block topbar_title %}No-shows<small>{{ scope_label }}</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div>
+    <h1>No-shows</h1>
+    <p>Bookings released because nobody checked in within the grace period. Forgive the ones that weren't the person's fault: they stop counting, and any pause they caused is lifted.</p>
+  </div>
+  <a class="btn" href="{% url 'manage:board' %}">{% icon "rows-3" %}Live board</a>
+</div>
+
+<section class="kpis" aria-label="This week">
+  <div class="panel kpi">
+    <span class="kpi__label">{% icon "ban" 15 %}No-shows, last 7 days</span>
+    <span class="kpi__value">{{ week_count }}</span>
+    <span class="kpi__delta{% if delta > 0 %} down{% elif delta < 0 %} up{% endif %}">{% if delta > 0 %}{{ delta }} more than the week before{% elif delta < 0 %}{% widthratio delta -1 1 %} fewer than the week before{% else %}Same as the week before{% endif %}</span>
+  </div>
+  <div class="panel kpi">
+    <span class="kpi__label">{% icon "gauge" 15 %}No-show rate</span>
+    <span class="kpi__value">{% if rate is not None %}{{ rate|pct }}{% else %}–{% endif %}</span>
+    <span class="kpi__delta">{% if needed %}of {{ needed }} booking{{ needed|pluralize }} that needed check-in{% else %}No bookings needed check-in this week{% endif %}</span>
+  </div>
+  <div class="panel kpi">
+    <span class="kpi__label">{% icon "rotate-ccw" 15 %}Time handed back</span>
+    <span class="kpi__value">{% if released %}{{ released|duration }}{% else %}0 <small>min</small>{% endif %}</span>
+    <span class="kpi__delta">released to others by auto-release</span>
+  </div>
+  <div class="panel kpi">
+    <span class="kpi__label">{% icon "lock" 15 %}Paused right now</span>
+    <span class="kpi__value">{{ restrictions|length }}</span>
+    <span class="kpi__delta">{% if restrictions %}{{ restrictions|length|pluralize:"person,people" }} can't make new bookings{% else %}Everyone can book{% endif %}</span>
+  </div>
+</section>
+
+<div class="split split--wide-side console-split">
+  <section class="stack" aria-labelledby="ns-h" style="--gap: var(--s4)">
+    <div class="section-head section-head--tools">
+      <h2 id="ns-h">Recent no-shows</h2>
+      <div class="row row--wrap">
+        <nav class="seg" aria-label="Period">
+          {% for d in ranges %}<a href="?days={{ d }}&amp;show={{ show }}"{% if d == days %} aria-current="page"{% endif %}>{{ d }} days</a>{% endfor %}
+        </nav>
+        <nav class="seg" aria-label="Show">
+          <a href="?days={{ days }}&amp;show=all"{% if show == "all" %} aria-current="page"{% endif %}>All</a>
+          <a href="?days={{ days }}&amp;show=counted"{% if show == "counted" %} aria-current="page"{% endif %}>Counted</a>
+          <a href="?days={{ days }}&amp;show=forgiven"{% if show == "forgiven" %} aria-current="page"{% endif %}>Forgiven</a>
+        </nav>
+      </div>
+    </div>
+
+    {% if rows %}
+    <div class="tablewrap">
+      <table class="table console-table">
+        <caption class="sr-only">No-shows in the last {{ days }} days</caption>
+        <thead><tr><th scope="col">Person</th><th scope="col">Resource</th><th scope="col">Booking</th><th scope="col" class="num">Released</th><th scope="col">Record</th><th scope="col"><span class="sr-only">Status and action</span></th></tr></thead>
+        <tbody>
+          {% for ns, count, is_paused in rows %}
+          <tr>
+            <td>
+              <div class="cellperson">{% initials_avatar ns.user "sm" %}<div><strong class="small">{{ ns.user.display_name }}</strong><span class="xsmall faint tnum">{% if ns.user.vid %}VID {{ ns.user.vid }}{% else %}{{ ns.user.get_role_display }}{% endif %}</span></div></div>
+            </td>
+            <td><a class="rowlink" href="{{ ns.resource.get_absolute_url }}">{{ ns.resource.name }}</a>{% if ns.resource.building %}<div class="xsmall faint">{{ ns.resource.building.name }}</div>{% endif %}</td>
+            <td class="nowrap"><a class="tnum" href="{{ ns.booking.get_absolute_url }}">{{ ns.booking.start|dayname }}, {{ ns.booking.start|hm }}</a><div class="xsmall faint">Released {{ ns.detected_at|hm }}</div></td>
+            <td class="num nowrap">{{ ns.released_minutes|duration }}</td>
+            <td class="nowrap">
+              {% if count >= 3 %}<span class="badge badge--danger">{{ count }} in 30 days</span>{% elif count %}<span class="badge badge--warn">{{ count }} in 30 days</span>{% else %}<span class="badge badge--plain">None counted</span>{% endif %}
+              {% if is_paused %}<div class="xsmall ember">Booking paused</div>{% endif %}
+            </td>
+            <td class="cellaction">
+              {% if ns.forgiven %}
+                <span class="badge badge--success" title="{{ ns.forgiven_reason }}">{% icon "undo-2" %}Forgiven</span>
+                <div class="xsmall faint">{% if ns.forgiven_by %}by {{ ns.forgiven_by.display_name }}{% endif %}</div>
+              {% else %}
+                <button class="btn btn--sm" type="button" data-open="forgive-{{ ns.pk }}">{% icon "undo-2" %}Forgive</button>
+                <dialog id="forgive-{{ ns.pk }}" class="sheet" aria-labelledby="forgive-{{ ns.pk }}-h">
+                  <div class="sheet__head"><h2 id="forgive-{{ ns.pk }}-h" class="h-sm">Forgive {{ ns.user.first_name|default:ns.user.display_name }}'s no-show</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+                  <form class="sheet__body stack" method="post" action="{% url 'manage:no_show_forgive' ns.pk %}">
+                    {% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
+                    <p class="small muted">{{ ns.resource.name }}, {{ ns.booking.start|dayname }} {{ ns.booking.start|hm }}–{{ ns.booking.end|hm }}. It stops counting towards their record{% if is_paused %}, and their booking pause is lifted if this was what triggered it{% endif %}.</p>
+                    <div class="field">
+                      <label for="forgive-{{ ns.pk }}-r">Reason</label>
+                      <input class="input" id="forgive-{{ ns.pk }}-r" name="reason" required maxlength="240" autofocus placeholder="e.g. The room was locked when they arrived">
+                      <span class="hint">Kept in the audit log. {{ ns.user.first_name|default:"They" }} won't see it.</span>
+                    </div>
+                    <div class="row"><button class="btn btn--primary" type="submit">Forgive no-show</button><button class="btn btn--ghost" type="button" data-close>Cancel</button></div>
+                  </form>
+                </dialog>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page.has_other_pages %}<nav class="pager" aria-label="Pages">{% if page.has_previous %}<a class="btn btn--sm" href="?days={{ days }}&amp;show={{ show }}&amp;page={{ page.previous_page_number }}">Previous</a>{% endif %}<span class="small muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>{% if page.has_next %}<a class="btn btn--sm" href="?days={{ days }}&amp;show={{ show }}&amp;page={{ page.next_page_number }}">Next</a>{% endif %}</nav>{% endif %}
+    {% else %}
+    <div class="panel empty">
+      <div class="empty__icon">{% icon "circle-check" %}</div>
+      {% if show == "forgiven" %}<h3>Nothing forgiven in the last {{ days }} days</h3><p>Forgiven no-shows are listed here with who forgave them and why.</p>
+      {% elif show == "counted" %}<h3>No counted no-shows in the last {{ days }} days</h3><p>Everyone who booked {% if campus_wide %}on campus{% else %}your resources{% endif %} either checked in or cancelled in time.</p>
+      {% else %}<h3>No no-shows in the last {{ days }} days</h3><p>When a booking isn't checked into within its grace period, it's released automatically and appears here.</p>{% endif %}
+      {% if days != 90 %}<a class="btn" href="?days=90&amp;show={{ show }}">Look back 90 days</a>{% endif %}
+    </div>
+    {% endif %}
+  </section>
+
+  <aside class="sticky-side" aria-labelledby="rs-h">
+    <section class="panel panel--flagged">
+      <span class="flag flag--ink">{% icon "lock" %}<span id="rs-h">Paused from booking</span></span>
+      {% if restrictions %}
+      <ul class="list">
+        {% for r in restrictions %}
+        <li class="restrow">
+          <div class="cellperson">{% initials_avatar r.user "sm" %}<div><strong class="small">{{ r.user.display_name }}</strong><span class="xsmall faint tnum">{% if r.user.vid %}VID {{ r.user.vid }}{% else %}{{ r.user.get_role_display }}{% endif %}</span></div></div>
+          <p class="small">{{ r.reason }}</p>
+          <div class="row row--between row--wrap">
+            <span class="xsmall muted">{% if r.tier_label %}<span class="badge badge--plain">{{ r.tier_label }}</span> {% endif %}Until <strong class="tnum">{{ r.ends_at|dayname }} {{ r.ends_at|hm }}</strong></span>
+            <form method="post" action="{% url 'manage:restriction_lift' r.pk %}" data-confirm="Lift the pause on {{ r.user.display_name }}? They can book again straight away. Their no-shows still count unless you forgive them.">
+              {% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
+              <button class="btn btn--sm" type="submit">{% icon "lock" %}Lift pause</button>
+            </form>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="small muted">Nobody{% if not campus_wide %} who uses your resources{% endif %} is paused. Pauses start automatically when someone reaches a no-show tier, and end on their own.</p>
+      {% endif %}
+    </section>
+  </aside>
+</div>
+
+<dialog id="confirm-dialog" class="sheet" aria-labelledby="confirm-h">
+  <div class="sheet__head"><h2 id="confirm-h" class="h-sm">Lift this pause?</h2></div>
+  <div class="sheet__body stack"><p data-confirm-text></p><div class="row"><button class="btn btn--ink" type="button" data-confirm-yes>Yes, lift it</button><button class="btn btn--ghost" type="button" data-close>Keep it</button></div></div>
+</dialog>
+{% endblock %}

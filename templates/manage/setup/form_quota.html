@@ -1,0 +1,18 @@
+<form method="post" action="{% url 'manage:policies' %}" class="stack" style="--gap: var(--s4)" data-switches novalidate>{% csrf_token %}
+  <input type="hidden" name="action" value="quota.save">{% if form.instance.pk %}<input type="hidden" name="pk" value="{{ form.instance.pk }}">{% endif %}
+  {% include "manage/setup/_sheet_errors.html" %}
+  {% include "manage/setup/_field.html" with f=form.name %}
+  {% if not form.department_only %}
+  <div class="field"><span class="label">Who it limits</span><div class="seg" role="radiogroup" aria-label="Who it limits">{% for c in form.target %}<label>{{ c.tag }}{{ c.choice_label }}</label>{% endfor %}</div></div>
+  {% endif %}
+  <div class="form-grid">
+    {% if not form.department_only %}<div data-show-when="target=role">{% include "manage/setup/_field.html" with f=form.role hint="Counts each person's own bookings." %}</div>{% endif %}
+    <div data-show-when="target=department">{% include "manage/setup/_field.html" with f=form.department hint="Counts every booking made for the department's members, together." %}</div>
+    {% include "manage/setup/_field.html" with f=form.resource_type %}
+    {% include "manage/setup/_field.html" with f=form.period %}
+    {% include "manage/setup/_field.html" with f=form.max_hours %}
+    {% include "manage/setup/_field.html" with f=form.max_bookings %}
+  </div>
+  <label class="checkrow">{{ form.active }}<span><strong>Active</strong><br><span class="xsmall faint">Turn off to pause the limit without losing it.</span></span></label>
+  <div class="row"><button class="btn btn--primary" type="submit">{% icon "check" %}{% if form.instance.pk %}Save quota{% else %}Add quota{% endif %}</button><button class="btn btn--ghost" type="button" data-close>Cancel</button></div>
+</form>

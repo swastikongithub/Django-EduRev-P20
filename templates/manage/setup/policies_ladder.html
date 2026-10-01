@@ -1,0 +1,37 @@
+<div class="section-head cfg-sechead">
+  <p class="small muted">What happens when people don't turn up. Each unforgiven no-show counts, and the highest step someone reaches decides. Custodians can forgive a no-show that was a mistake.</p>
+  {% if can_edit %}<button class="btn btn--primary" type="button" data-open="new-sheet">{% icon "plus" %}Add a step</button>{% endif %}
+</div>
+{% if tiers %}
+<ol class="ladder cfg-ladder" aria-label="No-show ladder">
+  {% for t in tiers %}<li class="ladder__step{% if t.restrict_days %} is-reached{% endif %}"><span class="ladder__n tnum">{{ t.no_shows }}</span><span class="small">{% if t.restrict_days %}{{ t.restrict_days }}-day pause{% else %}Warning{% endif %}</span><span class="xsmall faint">within {{ t.window_days }} days</span></li>{% endfor %}
+</ol>
+<ul class="cfg-rulelist">
+  {% for t in tiers %}
+  <li class="panel cfg-rule">
+    <div><strong>{{ t.label }}</strong><p class="small muted">{{ t.summary }}</p></div>
+    {% if can_edit %}<div class="row cfg-rowactions"><a class="btn btn--sm" href="?tab=ladder&amp;edit={{ t.pk }}">{% icon "pencil" %}Edit</a>
+      <form method="post" action="{% url 'manage:policies' %}" data-confirm="Remove the step at {{ t.no_shows }} no-shows? Restrictions already in force are kept.">{% csrf_token %}<input type="hidden" name="action" value="tier.delete"><input type="hidden" name="pk" value="{{ t.pk }}"><button class="btn btn--sm btn--ghost" type="submit" aria-label="Remove {{ t.label }}">{% icon "trash-2" %}</button></form></div>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="panel empty empty--compact">
+  <div class="empty__icon">{% icon "shield-check" %}</div>
+  <h3>No ladder set</h3>
+  <p>No-shows are recorded but never pause anyone. A common start: a warning at 2, and a 7-day pause at 3 within 30 days.</p>
+</div>
+{% endif %}
+
+{% if can_edit %}
+<dialog id="new-sheet" class="sheet cfg-sheet" aria-labelledby="new-h"{% if autoopen == "new-sheet" %} data-autoopen{% endif %}>
+  <div class="sheet__head"><h2 id="new-h" class="h-sm">Add a ladder step</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <div class="sheet__body">{% include "manage/setup/form_tier.html" with form=new_form %}</div>
+</dialog>
+{% if edit_form %}
+<dialog id="edit-sheet" class="sheet cfg-sheet" aria-labelledby="edit-h"{% if autoopen == "edit-sheet" %} data-autoopen{% endif %}>
+  <div class="sheet__head"><h2 id="edit-h" class="h-sm">Edit ladder step</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <div class="sheet__body">{% include "manage/setup/form_tier.html" with form=edit_form %}</div>
+</dialog>
+{% endif %}
+{% endif %}

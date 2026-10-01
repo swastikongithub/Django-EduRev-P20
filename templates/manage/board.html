@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Live board{% endblock %}
+{% block topbar_title %}Live board<small>{{ scope_label }}</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div>
+    <h1>Live booking board</h1>
+    <p>Every resource you look after on one timeline, with who is in, who is due and who has missed check-in.{% if is_today %} It refreshes itself every minute.{% endif %}</p>
+  </div>
+  <nav class="daynav" aria-label="Choose a day">
+    <a class="btn btn--icon" href="{{ prev_url }}" aria-label="Previous day">{% icon "chevron-left" %}</a>
+    <a class="btn{% if is_today %} is-current{% endif %}" href="{{ today_url }}"{% if is_today %} aria-current="date"{% endif %}>Today</a>
+    <a class="btn btn--icon" href="{{ next_url }}" aria-label="Next day">{% icon "chevron-right" %}</a>
+  </nav>
+</div>
+
+<form class="filterbar boardfilters" method="get" action="{% url 'manage:board' %}" data-autosubmit role="search" aria-label="Filter the board">
+  <div class="inputgroup boardfilters__q">{% icon "search" %}
+    <label class="sr-only" for="bf-q">Search resources</label>
+    <input class="input" id="bf-q" type="search" name="q" value="{{ q }}" placeholder="Name, code or room" data-no-autosubmit>
+  </div>
+  <label class="sr-only" for="bf-type">Type</label>
+  <select class="select" id="bf-type" name="type">
+    <option value="">All types</option>
+    {% for t in types %}<option value="{{ t.code }}"{% if t.code == t_code %} selected{% endif %}>{{ t.plural|default:t.name }}</option>{% endfor %}
+  </select>
+  {% if buildings|length > 1 or b_code %}
+  <label class="sr-only" for="bf-building">Building</label>
+  <select class="select" id="bf-building" name="building">
+    <option value="">All buildings</option>
+    {% for b in buildings %}<option value="{{ b.code }}"{% if b.code == b_code %} selected{% endif %}>{{ b.name }}</option>{% endfor %}
+  </select>
+  {% endif %}
+  <label class="sr-only" for="bf-date">Day</label>
+  <input class="input boardfilters__date" id="bf-date" type="date" name="date" value="{{ day|date:'Y-m-d' }}">
+  <button class="btn" type="submit">{% icon "filter" %}Show</button>
+  {% if q or t_code or b_code %}<a class="btn btn--ghost" href="{{ clear_url }}">Clear</a>{% endif %}
+</form>
+
+{% include "manage/_board_body.html" %}
+
+<dialog id="confirm-dialog" class="sheet" aria-labelledby="confirm-h">
+  <div class="sheet__head"><h2 id="confirm-h" class="h-sm">Check out now?</h2></div>
+  <div class="sheet__body stack"><p data-confirm-text></p><div class="row"><button class="btn btn--ink" type="button" data-confirm-yes>Yes, check out</button><button class="btn btn--ghost" type="button" data-close>Not yet</button></div></div>
+</dialog>
+{% endblock %}

@@ -1,0 +1,66 @@
+<div class="stack" style="--gap: var(--s6)">
+  <section class="panel panel--flagged" aria-labelledby="campus-h">
+    <span class="flag flag--ink">{% icon "building" %}<span id="campus-h">Campus default</span></span>
+    {% if campus_policy %}
+      <p class="cfg-sentence">{{ campus_policy.summary }}</p>
+      {% if can_edit %}<div class="row cfg-gap"><a class="btn btn--sm" href="?tab=booking&amp;edit={{ campus_policy.pk }}">{% icon "pencil" %}Edit campus default</a></div>{% endif %}
+    {% else %}
+      <p class="cfg-sentence">Not set, so the built-in default applies: book in 30-minute steps, 30 min to 3 h at a time, up to 30 days out. Check in from 15 min before; unclaimed bookings are released 15 min after the start.</p>
+      {% if can_edit %}<div class="row cfg-gap"><button class="btn btn--sm" type="button" data-open="new-sheet" data-prefill='{"scope": "campus"}'>{% icon "plus" %}Set a campus default</button></div>{% endif %}
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="types-h">
+    <div class="section-head cfg-sechead"><h2 id="types-h" class="h-sm">By resource type</h2>{% if can_edit %}<button class="btn btn--primary" type="button" data-open="new-sheet">{% icon "plus" %}New rule</button>{% endif %}</div>
+    <div class="tablewrap">
+      <table class="table cfg-table">
+        <thead><tr><th scope="col">Type</th><th scope="col">What applies</th><th scope="col" class="num">Resources</th>{% if can_edit %}<th scope="col"><span class="sr-only">Actions</span></th>{% endif %}</tr></thead>
+        <tbody>
+        {% for t in types %}
+          <tr>
+            <td class="nowrap"><span class="row" style="--gap:8px">{% icon t.icon 16 %}<strong>{{ t.plural|default:t.name }}</strong></span></td>
+            <td class="cfg-summarycell">{% if t.policy %}{{ t.policy.summary }}{% else %}<span class="faint">Uses the campus default.</span>{% endif %}</td>
+            <td class="num">{{ t.n }}</td>
+            {% if can_edit %}<td class="nowrap">{% if t.policy %}<a class="btn btn--sm" href="?tab=booking&amp;edit={{ t.policy.pk }}">{% icon "pencil" %}Edit</a>{% else %}<button class="btn btn--sm btn--ghost" type="button" data-open="new-sheet" data-prefill='{"scope": "type", "resource_type": "{{ t.pk }}"}'>{% icon "plus" %}Own rule</button>{% endif %}</td>{% endif %}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="res-h">
+    <div class="section-head cfg-sechead"><h2 id="res-h" class="h-sm">Single-resource overrides</h2></div>
+    {% if resource_policies %}
+    <ul class="cfg-rulelist">
+      {% for p in resource_policies %}
+      <li class="panel cfg-rule">
+        <div><strong>{{ p.resource.name }}</strong> <span class="xsmall faint tnum">{{ p.resource.code }}</span><p class="small muted">{{ p.summary }}</p></div>
+        {% if can_edit %}<a class="btn btn--sm" href="?tab=booking&amp;edit={{ p.pk }}">{% icon "pencil" %}Edit</a>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="small muted">None. Give one resource its own rules from its edit page, or with New rule and "Single resource".</p>
+    {% endif %}
+  </section>
+</div>
+
+{% if can_edit %}
+<dialog id="new-sheet" class="sheet cfg-sheet" aria-labelledby="new-h"{% if autoopen == "new-sheet" %} data-autoopen{% endif %}>
+  <div class="sheet__head"><h2 id="new-h" class="h-sm">New booking rule</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <div class="sheet__body">{% include "manage/setup/form_policy.html" with form=new_form %}</div>
+</dialog>
+{% if edit_form %}
+<dialog id="edit-sheet" class="sheet cfg-sheet" aria-labelledby="edit-h"{% if autoopen == "edit-sheet" %} data-autoopen{% endif %}>
+  <div class="sheet__head"><h2 id="edit-h" class="h-sm">Edit booking rule</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <div class="sheet__body stack">
+    {% include "manage/setup/form_policy.html" with form=edit_form %}
+    <form method="post" action="{% url 'manage:policies' %}" class="cfg-dangerzone" data-confirm="Remove this rule? Its resources fall back to the next broader rule from the next booking.">{% csrf_token %}
+      <input type="hidden" name="action" value="policy.delete"><input type="hidden" name="pk" value="{{ edit_form.instance.pk }}">
+      <button class="btn btn--danger btn--sm" type="submit">{% icon "trash-2" %}Remove this rule</button>
+    </form>
+  </div>
+</dialog>
+{% endif %}
+{% endif %}

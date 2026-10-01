@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Setup{% endblock %}
+{% block topbar_title %}Setup<small>How LPU Reserve behaves</small>{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div>
+    <h1>Setup</h1>
+    <p>Everything that decides who can book what, when, and who approves it. Changes here take effect on the next booking, with no deployment, and every change is recorded in the audit log.</p>
+  </div>
+</div>
+
+{% if cards %}
+<ul class="hub" role="list">
+  {% for c in cards %}
+  <li>
+    <a class="hubcard" href="{{ c.url }}">
+      <span class="hubcard__icon">{% icon c.icon 22 %}</span>
+      <span class="hubcard__body">
+        <span class="hubcard__title">{{ c.title }}</span>
+        <span class="hubcard__text">{{ c.text }}</span>
+        <span class="hubcard__status is-{{ c.tone }}">{% if c.tone == "ok" %}{% icon "circle-check" 14 %}{% else %}{% icon "triangle-alert" 14 %}{% endif %}{{ c.status }}</span>
+      </span>
+      {% icon "chevron-right" 18 "hubcard__chev" %}
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="panel empty">
+  <div class="empty__icon">{% icon "sliders-horizontal" %}</div>
+  <h3>Nothing to set up with your role</h3>
+  <p>Setup is for facility managers, heads of department and administrators. Ask an administrator if you need access.</p>
+</div>
+{% endif %}
+{% endblock %}

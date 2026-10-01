@@ -1,0 +1,65 @@
+<div class="section-head cfg-sechead">
+  <p class="small muted">Outside these hours a resource can't be booked. A type with its own hours ignores the campus hours; a resource with its own hours ignores both.</p>
+  {% if can_edit %}<button class="btn btn--primary" type="button" data-open="new-sheet">{% icon "plus" %}Add hours</button>{% endif %}
+</div>
+<div class="stack" style="--gap: var(--s4)">
+  {% for b in blocks %}
+  <section class="panel cfg-hoursblock" aria-label="Opening hours for {{ b.title }}">
+    <div class="panel__head">
+      <div><h3>{{ b.title }}</h3>{% if b.note %}<p class="xsmall faint">{{ b.note }}</p>{% endif %}</div>
+      {% if can_edit %}<button class="btn btn--sm btn--ghost" type="button" data-open="new-sheet" data-prefill-scope="{{ b.scope }}" data-prefill-target="{{ b.target }}">{% icon "plus" %}Add{% if not b.rows %} own{% endif %} hours</button>{% endif %}
+    </div>
+    {% if b.rows %}
+      <div class="weekgrid">
+        <div class="weekgrid__row weekgrid__row--ticks" aria-hidden="true"><span class="weekgrid__day"></span><div class="weekgrid__ticks">{% for t in hour_ticks %}<span style="left: {{ t.left }}%">{{ t.h }}</span>{% endfor %}</div><div class="weekgrid__spans"></div></div>
+        {% for row in b.rows %}
+        <div class="weekgrid__row">
+          <span class="weekgrid__day">{{ row.day }}</span>
+          <div class="weekgrid__track" aria-hidden="true">{% for bar in row.bars %}<span class="weekgrid__bar" style="left: {{ bar.left }}%; width: {{ bar.width }}%"></span>{% endfor %}</div>
+          <div class="weekgrid__spans">
+            {% for bar in row.bars %}
+              {% if can_edit %}
+              <form method="post" action="{% url 'manage:policies' %}" class="cfg-span" data-confirm="Remove {{ bar.rule.get_weekday_display }} {{ bar.rule.opens|time:'H:i' }}–{{ bar.rule.closes|time:'H:i' }} for {{ b.title }}?">{% csrf_token %}
+                <input type="hidden" name="action" value="hours.remove"><input type="hidden" name="pk" value="{{ bar.rule.pk }}">
+                <span class="tnum">{{ bar.rule.opens|time:"H:i" }}–{{ bar.rule.closes|time:"H:i" }}</span>
+                <button type="submit" aria-label="Remove {{ row.day }} {{ bar.rule.opens|time:'H:i' }}–{{ bar.rule.closes|time:'H:i' }}">{% icon "x" 14 %}</button>
+              </form>
+              {% else %}<span class="cfg-span tnum">{{ bar.rule.opens|time:"H:i" }}–{{ bar.rule.closes|time:"H:i" }}</span>{% endif %}
+            {% empty %}<span class="xsmall faint">Closed</span>{% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="small muted">{{ b.fallback }}</p>
+      {% if b.fallback_rows %}
+      <div class="weekgrid weekgrid--ghost" aria-hidden="true">
+        {% for row in b.fallback_rows %}<div class="weekgrid__row"><span class="weekgrid__day">{{ row.day }}</span><div class="weekgrid__track">{% for bar in row.bars %}<span class="weekgrid__bar" style="left: {{ bar.left }}%; width: {{ bar.width }}%"></span>{% endfor %}</div><div class="weekgrid__spans"></div></div>{% endfor %}
+      </div>
+      {% endif %}
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+
+{% if can_edit %}
+<dialog id="new-sheet" class="sheet cfg-sheet" aria-labelledby="new-h"{% if autoopen == "new-sheet" %} data-autoopen{% endif %}>
+  <div class="sheet__head"><h2 id="new-h" class="h-sm">Add opening hours</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <div class="sheet__body">
+    <form method="post" action="{% url 'manage:policies' %}" class="stack" style="--gap: var(--s4)" data-switches novalidate>{% csrf_token %}
+      <input type="hidden" name="action" value="hours.add">
+      {% with form=new_form %}
+      {% include "manage/setup/_sheet_errors.html" %}
+      <div class="form-grid">{% include "manage/setup/_scope_fields.html" %}</div>
+      <div class="field"><span class="label">Days</span><div class="chips" role="group" aria-label="Days">{% for c in form.weekdays %}<label class="chip">{{ c.tag }}{{ c.choice_label|slice:":3" }}</label>{% endfor %}</div>{% if form.weekdays.errors %}<span class="error">{{ form.weekdays.errors.0 }}</span>{% endif %}</div>
+      <div class="form-grid">
+        {% include "manage/setup/_field.html" with f=form.opens %}
+        {% include "manage/setup/_field.html" with f=form.closes %}
+      </div>
+      <p class="xsmall faint">Need a lunch break? Add two intervals for the same days, for example 08:00–13:00 and 14:00–20:00.</p>
+      {% endwith %}
+      <div class="row"><button class="btn btn--primary" type="submit">{% icon "check" %}Add hours</button><button class="btn btn--ghost" type="button" data-close>Cancel</button></div>
+    </form>
+  </div>
+</dialog>
+{% endif %}

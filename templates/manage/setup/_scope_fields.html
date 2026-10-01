@@ -1,0 +1,3 @@
+{% include "manage/setup/_field.html" with f=form.scope %}
+<div class="cfg-scopefield" data-show-when="scope=type">{% include "manage/setup/_field.html" with f=form.resource_type req=1 %}</div>
+<div class="cfg-scopefield" data-show-when="scope=resource">{% include "manage/setup/_field.html" with f=form.resource req=1 %}</div>

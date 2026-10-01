@@ -239,3 +239,21 @@ def sweep_windows(now=None) -> int:
         _reopen_if_needed(w.resource)
         finished += 1
     return started + finished
+
+
+def impact(resource, start, end) -> dict:
+    """
+    What scheduling [start, end) on `resource` would do, without doing it: the holding bookings
+    it would cancel, and the hard claims (timetabled classes, other maintenance) that would make
+    `schedule()` refuse. Read-only; the real call re-checks everything under lock.
+    """
+    from apps.bookings.models import HOLDING_STATUSES, Booking
+    from apps.bookings.services import conflicts_for
+
+    bookings = list(
+        Booking.objects.filter(resource=resource, status__in=HOLDING_STATUSES, period__overlap=trange(start, end))
+        .select_related("booked_for")
+        .order_by("period")
+    )
+    blockers = [c for c in conflicts_for(resource, start, end) if c.kind != SlotKind.BOOKING]
+    return {"bookings": bookings, "blockers": blockers}

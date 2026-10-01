@@ -1,0 +1,95 @@
+<div id="board-body" class="boardbody"{% if is_today %} hx-get="{{ refresh_url }}" hx-trigger="every 60s" hx-swap="outerHTML"{% endif %}>
+  <section class="panel panel--flush board" aria-labelledby="board-h">
+    <header class="board__bar">
+      <h2 id="board-h" class="h-sm">{{ day|dayname }}{% if day|dayname|length < 10 %} <small class="faint">{{ day|date:"j F" }}</small>{% endif %}</h2>
+      {% if is_today %}<span class="board__live xsmall" role="status"><span class="live-dot" aria-hidden="true"></span>Live, updated {{ now|hm }}</span>{% endif %}
+      <span class="small muted board__count">{{ total }} resource{{ total|pluralize }}{% if total != scope_total %} of {{ scope_total }}{% endif %}</span>
+    </header>
+
+    {% if rows %}
+    <div class="board__grid">
+      <div class="board__scale" aria-hidden="true">
+        <span class="board__corner">Resource</span>
+        <div class="board__ticks">
+          {% for t in ticks %}<span{% if forloop.last %} class="is-last"{% endif %} style="left:{{ t.left|stringformat:'.3f' }}%">{{ t.h }}</span>{% endfor %}
+          {% if now_pct is not None %}<span class="board__nowtag" style="left:{{ now_pct|stringformat:'.3f' }}%">{{ now|hm }}</span>{% endif %}
+        </div>
+      </div>
+      <ol class="board__rows">
+        {% for row in rows %}
+        <li class="board__row">
+          <div class="board__label">
+            <a class="board__name truncate" href="{{ row.r.get_absolute_url }}?date={{ day|date:'Y-m-d' }}">{{ row.r.name }}</a>
+            <span class="xsmall faint truncate">{{ row.r.code }}{% if row.r.building %}, {{ row.r.building.name }}{% endif %}, {{ row.r.capacity }} {% if row.r.type.category == "equipment" %}unit{{ row.r.capacity|pluralize }}{% else %}seat{{ row.r.capacity|pluralize }}{% endif %}</span>
+          </div>
+          <div class="board__state">{% if row.status %}<span class="badge badge--{{ row.status.tone }}">{% icon row.status.icon %}{{ row.status.text }}</span>{% endif %}</div>
+          <div class="board__track">{% daystrip row.sched start_hour=7 end_hour=22 %}</div>
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+    <footer class="board__foot">
+      <div class="legend" aria-label="Legend">
+        <span class="legend__item"><span class="swatch swatch--booked"></span>Booked</span>
+        <span class="legend__item"><span class="swatch swatch--pending"></span>Pending approval</span>
+        <span class="legend__item"><span class="swatch swatch--class"></span>Timetabled class</span>
+        <span class="legend__item"><span class="swatch swatch--maintenance"></span>Maintenance</span>
+        <span class="legend__item"><span class="swatch swatch--blackout"></span>Blackout</span>
+        <span class="legend__item"><span class="swatch swatch--closed"></span>Closed</span>
+        <span class="legend__item"><span class="swatch swatch--free"></span>Free</span>
+      </div>
+      {% if page.has_other_pages %}
+      <nav class="pager board__pager" aria-label="More resources">
+        {% if page_prev %}<a class="btn btn--sm" href="{{ page_prev }}">Previous {{ page.paginator.per_page }}</a>{% endif %}
+        <span class="small muted">Rows {{ page.start_index }}–{{ page.end_index }} of {{ total }}</span>
+        {% if page_next %}<a class="btn btn--sm" href="{{ page_next }}">Next {{ page.paginator.per_page }}</a>{% endif %}
+      </nav>
+      <p class="xsmall faint">The board shows {{ page.paginator.per_page }} resources at a time so it stays quick. Filter by type or building to bring the ones you want together.</p>
+      {% endif %}
+    </footer>
+    {% else %}
+    <div class="empty">
+      <div class="empty__icon">{% icon "rows-3" %}</div>
+      {% if q or t_code or b_code %}
+        <h3>No resources match</h3>
+        <p>Nothing in your scope fits{% if q %} &ldquo;{{ q }}&rdquo;{% endif %} with these filters.</p>
+        <a class="btn" href="{{ clear_url }}">Clear filters</a>
+      {% else %}
+        <h3>No resources to show yet</h3>
+        <p>The board lists the resources you look after. Once you're named custodian of a room, lab or piece of equipment, it appears here.</p>
+        <a class="btn" href="{% url 'catalogue:find' %}">Browse the catalogue</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+
+  <aside class="boardside stack" aria-label="Bookings needing attention">
+    {% if is_today %}
+    <section class="panel panel--flagged">
+      <span class="flag flag--ink">{% icon "zap" %}In use now</span>
+      {% if in_progress %}
+      <ul class="list livelist">{% for b, s in in_progress %}{% include "manage/_live_row.html" %}{% endfor %}</ul>
+      {% else %}
+      <p class="small muted">Nobody is checked in anywhere on this board right now.</p>
+      {% endif %}
+    </section>
+    <section class="panel">
+      <div class="panel__head"><h3>Starting soon</h3><span class="xsmall faint">Next 90 minutes</span></div>
+      {% if soon %}
+      <ul class="list livelist">{% for b, s in soon %}{% include "manage/_live_row.html" %}{% endfor %}</ul>
+      {% else %}
+      <p class="small muted">Nothing starts in the next hour and a half. Bookings appear here as their check-in window approaches.</p>
+      {% endif %}
+    </section>
+    {% else %}
+    <section class="panel">
+      <div class="panel__head"><h3>Bookings {% if is_past %}on{% else %}for{% endif %} {{ day|dayname }}</h3><span class="badge">{{ day_list|length }}</span></div>
+      {% if day_list %}
+      <ul class="list livelist">{% for b, s in day_list %}{% include "manage/_live_row.html" %}{% endfor %}</ul>
+      {% else %}
+      <p class="small muted">No bookings on this day for the resources shown. Classes and maintenance still appear on the board.</p>
+      {% endif %}
+    </section>
+    {% endif %}
+  </aside>
+</div>

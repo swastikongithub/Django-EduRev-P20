@@ -1,0 +1,22 @@
+<form method="post" action="{% url 'manage:policies' %}" class="stack" style="--gap: var(--s4)" data-switches novalidate>{% csrf_token %}
+  <input type="hidden" name="action" value="policy.save">{% if form.instance.pk %}<input type="hidden" name="pk" value="{{ form.instance.pk }}">{% endif %}
+  {% include "manage/setup/_sheet_errors.html" %}
+  <div class="form-grid">
+    {% include "manage/setup/_scope_fields.html" %}
+    {% include "manage/setup/_field.html" with f=form.slot_minutes hint="Start and end times snap to these." %}
+    {% include "manage/setup/_field.html" with f=form.lead_time_minutes %}
+    {% include "manage/setup/_field.html" with f=form.min_duration_minutes %}
+    {% include "manage/setup/_field.html" with f=form.max_duration_minutes hint="Facility managers and admins can book longer." %}
+    {% include "manage/setup/_field.html" with f=form.max_advance_days %}
+  </div>
+  <fieldset class="cfg-fieldset">
+    <legend>Check-in</legend>
+    <label class="checkrow">{{ form.requires_checkin }}<span><strong>Require check-in</strong><br><span class="xsmall faint">Bookings nobody checks into are released for others.</span></span></label>
+    <div class="form-grid">
+      {% include "manage/setup/_field.html" with f=form.checkin_opens_minutes %}
+      {% include "manage/setup/_field.html" with f=form.checkin_grace_minutes hint="Minutes after the start time." %}
+    </div>
+  </fieldset>
+  <label class="checkrow">{{ form.enforce_capacity }}<span><strong>Refuse bookings above capacity</strong><br><span class="xsmall faint">Switch off for spaces where capacity is only a guide.</span></span></label>
+  <div class="row"><button class="btn btn--primary" type="submit">{% icon "check" %}{% if form.instance.pk %}Save rule{% else %}Add rule{% endif %}</button><button class="btn btn--ghost" type="button" data-close>Cancel</button></div>
+</form>

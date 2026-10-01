@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+{% block title %}Insights{% endblock %}
+{% block topbar_title %}Insights<small>Utilisation and reporting</small>{% endblock %}
+{% block page_class %}page--insights{% endblock %}
+{% block content %}
+<div class="pagehead ins-pagehead">
+  <div>
+    <h1>Insights</h1>
+    {% if no_department %}
+    <p>Department reports follow the department on your account.</p>
+    {% else %}
+    <p>How {{ scope_label }} used its rooms, labs, courts and kit, {{ f.scope.start|date:"j M" }} to {{ f.scope.end|date:"j M Y" }}{% if f.resource_type %}, {{ f.resource_type.plural|default:f.resource_type.name|lower }} only{% endif %}.</p>
+    {% endif %}
+  </div>
+  {% if not no_department and not f.campus %}<span class="badge badge--plain">{% icon "lock" %}{{ f.department.name }} only</span>{% endif %}
+</div>
+
+{% if no_department %}
+<div class="panel empty">
+  <div class="empty__icon">{% icon "building-2" %}</div>
+  <h3>Your account isn't linked to a department</h3>
+  <p>Department heads see their own department's figures. Ask the facility office to set your department, then come back here.</p>
+  <a class="btn" href="{% url 'core:home' %}">Back home</a>
+</div>
+{% else %}
+
+<form class="ins-filters" method="get" action="{% url 'analytics:dashboard' %}" aria-label="Report filters">
+  <div class="ins-filters__period">
+    <span class="label" id="period-l">Period</span>
+    <nav class="seg" aria-labelledby="period-l">
+      {% for key, label, href, on in preset_links %}<a href="?{{ href }}"{% if on %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+    </nav>
+  </div>
+  <input type="hidden" name="period" value="{{ f.period }}">
+  <input type="hidden" name="by" value="{{ f.group }}">
+  <div class="field ins-filters__date">
+    <label for="f-start">From</label>
+    <input class="input" type="date" id="f-start" name="start" value="{{ f.scope.start|date:'Y-m-d' }}">
+  </div>
+  <div class="field ins-filters__date">
+    <label for="f-end">To</label>
+    <input class="input" type="date" id="f-end" name="end" value="{{ f.scope.end|date:'Y-m-d' }}">
+  </div>
+  {% if f.campus %}
+  <div class="field">
+    <label for="f-dept">Department</label>
+    <select class="select" id="f-dept" name="department">
+      <option value="">All departments</option>
+      {% for d in f.departments %}<option value="{{ d.code }}"{% if f.department and d.pk == f.department.pk %} selected{% endif %}>{{ d.name }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endif %}
+  <div class="field">
+    <label for="f-type">Resource type</label>
+    <select class="select" id="f-type" name="type">
+      <option value="">All types</option>
+      {% for t in f.types %}<option value="{{ t.code }}"{% if f.resource_type and t.pk == f.resource_type.pk %} selected{% endif %}>{{ t.plural|default:t.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <button class="btn btn--ink ins-filters__go" type="submit">Update report</button>
+</form>
+{% for e in f.errors %}<div class="notice notice--warn ins-notice" role="status">{% icon "triangle-alert" %}<div><strong>Custom range not applied</strong>{{ e }}</div></div>{% endfor %}
+<p class="xsmall faint ins-asof">Whole days to yesterday; snapshots are rolled up nightly at 01:15. Queue and quota figures as of {{ computed_at|date:"H:i" }}.</p>
+
+{# 1. KPIs #}
+<section class="ins-kpis" aria-labelledby="kpi-h">
+  <h2 id="kpi-h" class="sr-only">Headline figures</h2>
+  {% for k in kpis %}
+  <div class="panel kpi ins-kpi">
+    <span class="kpi__label">{% icon k.icon 15 %}{{ k.label }}</span>
+    <span class="kpi__value">{{ k.value }}{% if k.unit %}<small> {{ k.unit }}</small>{% endif %}</span>
+    <span class="kpi__hint">{{ k.hint }}</span>
+    <span class="kpi__delta{% if k.delta.tone %} {{ k.delta.tone }}{% endif %}">{% if k.delta.dir == "up" %}{% icon "chevron-up" 13 %}{% elif k.delta.dir == "down" %}{% icon "chevron-down" 13 %}{% endif %}{{ k.delta.text }}</span>
+  </div>
+  {% endfor %}
+</section>
+{% if kpi_takeaway %}<p class="ins-lede">{{ kpi_takeaway }}</p>{% endif %}
+
+<div class="ins-grid">
+
+{# 2. Trend #}
+<section class="panel ins-section ins-span" aria-labelledby="trend-h">
+  {% include "insights/_head.html" with hid="trend-h" title="Utilisation trend" take=trend.takeaway report="trend" %}
+  {% if trend.empty %}
+    {% include "insights/_empty.html" with icon="chart-column" heading="No activity in this period" text="Nothing was booked or timetabled for this scope. Try a longer period or clear the type filter." %}
+  {% else %}
+  <div class="legend ins-legend" aria-hidden="true">
+    <span class="legend__item"><span class="vzkey vzkey--bar"></span>Booked hours, {{ trend.booked|floatformat:"0g" }} h</span>
+    <span class="legend__item"><span class="vzkey vzkey--line2"></span>Used hours, {{ trend.used|floatformat:"0g" }} h</span>
+    {% if trend.has_closed %}<span class="legend__item"><span class="swatch swatch--closed"></span>Closed</span>{% endif %}
+  </div>
+  <figure class="ins-figure">
+    <figcaption class="ins-figcap">Hours per day</figcaption>
+    {{ trend.hours_svg }}
+    <figcaption class="ins-figcap ins-figcap--gap">Utilisation per day</figcaption>
+    {{ trend.util_svg }}
+  </figure>
+  <div class="sr-only"><table>
+    <caption>Daily booked hours, used hours and utilisation</caption>
+    <thead><tr><th scope="col">Day</th><th scope="col">Booked h</th><th scope="col">Used h</th><th scope="col">Utilisation %</th></tr></thead>
+    <tbody>{% for d in trend.rows %}<tr><th scope="row">{{ d.date|date:"D j M" }}</th><td>{{ d.booked_hours }}</td><td>{{ d.used_hours }}</td><td>{{ d.utilisation_pct }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+</section>
+
+{# 5. Idle capacity — the money report #}
+<section class="panel panel--flagged ins-section ins-span ins-idle" aria-labelledby="idle-h">
+  <span class="flag">{% icon "flame" %}<span>Idle capacity</span></span>
+  {% include "insights/_head.html" with hid="idle-h" title="Expensive resources nobody is using" take=idle.takeaway report="idle" %}
+  {% if idle.empty %}
+    {% include "insights/_empty.html" with icon="hourglass" heading="No idle capacity to rank" text="There are no utilisation snapshots for this scope yet. Snapshots are built nightly; check back tomorrow or pick a longer period." %}
+  {% else %}
+  {% if idle.headline %}
+  <div class="ins-callout">
+    <span class="ins-callout__icon">{% icon "triangle-alert" %}</span>
+    <p><strong>{{ idle.hero.name }}</strong> {{ idle.headline }}</p>
+  </div>
+  {% endif %}
+  <div class="tablewrap ins-tablewrap">
+    <table class="table ins-table">
+      <caption class="sr-only">Resources ranked by idle hours weighted by acquisition cost</caption>
+      <thead><tr><th scope="col">Resource</th><th scope="col">Type</th><th scope="col" class="num">Cost</th><th scope="col" class="num">Idle h</th><th scope="col" class="num">Utilisation</th><th scope="col" class="ins-col-bar">{% if idle.by_cost %}Idle cost (hours × cost){% else %}Idle hours{% endif %}</th></tr></thead>
+      <tbody>
+      {% for r in idle.rows %}
+        <tr>
+          <td class="ins-cell-name"><span class="strong">{{ r.name }}</span><span class="xsmall faint ins-sub">{{ r.code }}{% if r.department %}, {{ r.department }}{% endif %}</span></td>
+          <td class="small ins-cell-type">{{ r.type }}</td>
+          <td class="num" data-label="Cost">{% if r.acquisition_cost %}{{ r.acquisition_cost|inr }}{% else %}<span class="faint">Not recorded</span>{% endif %}</td>
+          <td class="num" data-label="Idle h">{{ r.idle_hours|floatformat:"-1g" }}<span class="faint"> / {{ r.open_hours|floatformat:"0g" }}</span></td>
+          <td class="num" data-label="Utilised">{{ r.utilisation_pct|floatformat:"-1" }}&nbsp;%</td>
+          <td class="ins-col-bar"><span class="ibar{% if r.lead %} is-lead{% endif %}" aria-hidden="true"><span style="width: {{ r.bar|floatformat:'1u' }}%"></span></span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+
+{# 3. Utilisation by type / by department or building #}
+<section class="panel ins-section" aria-labelledby="type-h">
+  {% include "insights/_head.html" with hid="type-h" title="Utilisation by resource type" take=by_type.takeaway report="types" %}
+  {% if by_type.empty %}
+    {% include "insights/_empty.html" with icon="layers" heading="No resource types to compare" text="No snapshots match these filters. Clear the type filter or choose a longer period." %}
+  {% else %}
+    {% include "insights/_bars.html" with bars=by_type.bars %}
+  {% endif %}
+</section>
+
+<section class="panel ins-section" aria-labelledby="group-h">
+  {% if by_group.noun == "department" %}{% include "insights/_head.html" with hid="group-h" title="Utilisation by department" take=by_group.takeaway report="groups" %}{% else %}{% include "insights/_head.html" with hid="group-h" title="Utilisation by building" take=by_group.takeaway report="groups" %}{% endif %}
+  <nav class="seg seg--sm ins-groupseg" aria-label="Group by">
+    {% for key, label, href, on in group_links %}<a href="?{{ href }}"{% if on %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+  </nav>
+  {% if by_group.empty %}
+    {% include "insights/_empty.html" with icon="building-2" heading="Nothing to group yet" text="No snapshots match these filters. Choose a longer period." %}
+  {% else %}
+    {% include "insights/_bars.html" with bars=by_group.bars %}
+    {% if by_group.more %}<p class="xsmall faint ins-more">{{ by_group.more }} more in the CSV.</p>{% endif %}
+  {% endif %}
+</section>
+
+{# 4. Heat map #}
+<section class="panel ins-section ins-span" aria-labelledby="heat-h">
+  {% include "insights/_head.html" with hid="heat-h" title="When resources are busy" take=heat.takeaway report="heatmap" %}
+  {% if heat.empty %}
+    {% include "insights/_empty.html" with icon="grid-3x3" heading="No busy hours recorded" text="Nothing was booked or timetabled in this period. Try a longer period." %}
+  {% else %}
+  <p class="xsmall faint ins-note">Average number of resources taken by a class or booking in each hour, by weekday.</p>
+  <div class="heat" aria-hidden="true">
+    <span class="heat__corner"></span>
+    {% for h in heat.hours %}<span class="heat__hour{% if forloop.counter0|divisibleby:3 %} is-tick{% endif %}">{{ h }}</span>{% endfor %}
+    {% for row in heat.rows %}
+      <span class="heat__day">{{ row.label }}</span>
+      {% for c in row.cells %}<span class="heat__cell hm-{{ c.level }}" title="{{ c.title }}"></span>{% endfor %}
+    {% endfor %}
+  </div>
+  <div class="heat-legend" aria-hidden="true">
+    <span class="xsmall faint">Fewer</span>
+    <span class="heat-legend__cell hm-0" title="None busy"></span>
+    {% for l in heat.legend %}<span class="heat-legend__cell hm-{{ l.level }}" title="{{ l.label }} resources busy"></span>{% endfor %}
+    <span class="xsmall faint">More busy</span>
+  </div>
+  <div class="sr-only"><table>
+    <caption>Average resources busy by weekday and hour</caption>
+    <thead><tr><th scope="col">Day</th>{% for h in heat.hours %}<th scope="col">{{ h }}:00</th>{% endfor %}</tr></thead>
+    <tbody>{% for row in heat.rows %}<tr><th scope="row">{{ row.label }}</th>{% for c in row.cells %}<td>{{ c.value|floatformat:1 }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+</section>
+
+</div>
+
+<div class="ins-cols">
+<div class="ins-col">
+{# 6. Demand vs supply #}
+<section class="panel ins-section" aria-labelledby="demand-h">
+  {% include "insights/_head.html" with hid="demand-h" title="Demand against supply" take=demand.takeaway report="demand" %}
+  {% if demand.empty %}
+    {% include "insights/_empty.html" with icon="users" heading="No requests in this period" text="Nobody booked or tried to book in this scope. Try a longer period." %}
+  {% else %}
+  <div class="legend ins-legend" aria-hidden="true">
+    <span class="legend__item"><span class="vzkey vzkey--muted"></span>Booked</span>
+    <span class="legend__item"><span class="vzkey vzkey--bar"></span>Turned away</span>
+  </div>
+  <ul class="dbars" role="list">
+    {% for r in demand.rows %}
+    <li class="dbar" title="{{ r.display }}: {{ r.bookings }} booked, {{ r.denied_attempts }} turned away, {{ r.utilisation_pct }}&nbsp;% utilised">
+      <span class="dbar__label truncate">{{ r.display }}{% if r.needs_capacity %} <span class="badge badge--warn">{% icon "triangle-alert" %}Needs capacity</span>{% endif %}</span>
+      <span class="dbar__value tnum">{% if r.denied_attempts %}{{ r.denied_attempts|floatformat:"0g" }} of {{ r.demand|floatformat:"0g" }} requests turned away, {{ r.denial_rate_pct|floatformat:"-1" }}&nbsp;%{% else %}{{ r.bookings|floatformat:"0g" }} booked, none turned away{% endif %}</span>
+      <span class="dbar__track" aria-hidden="true"><span class="dbar__served" style="width: {{ r.served_w|floatformat:'2u' }}%"></span>{% if r.denied_attempts %}<span class="dbar__denied" style="width: {{ r.denied_w|floatformat:'2u' }}%"></span>{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+
+{# 8. Approval turnaround #}
+<section class="panel ins-section" aria-labelledby="appr-h">
+  {% include "insights/_head.html" with hid="appr-h" title="Approval turnaround" take=approvals.takeaway report="approvals" %}
+  {% if approvals.empty %}
+    {% include "insights/_empty.html" with icon="list-checks" heading="No approvals in this period" text="Nothing that needed approval was decided, and nothing is waiting." %}
+  {% else %}
+  <dl class="ins-tiles">
+    <div><dt>Average wait</dt><dd>{% if approvals.avg_hours is not None %}{{ approvals.avg_hours|floatformat:"-1" }}<small> h</small>{% else %}–{% endif %}</dd></div>
+    <div><dt>Decided</dt><dd>{{ approvals.decided }}</dd></div>
+    <div><dt>Waiting now</dt><dd>{{ approvals.pending_now }}</dd></div>
+    <div class="{% if approvals.overdue_now %}is-alert{% endif %}"><dt>Overdue now</dt><dd>{{ approvals.overdue_now }}{% if approvals.overdue_now %} <span class="badge badge--danger">{% icon "circle-alert" %}Act now</span>{% endif %}</dd></div>
+  </dl>
+  {% if approvals.types %}
+  <ul class="hbars hbars--plain" role="list">
+    {% for t in approvals.types %}
+    <li class="hbar" title="{{ t.display }}: {{ t.avg_hours }} h on average over {{ t.decided }} decisions">
+      <span class="hbar__label truncate">{{ t.display }}</span>
+      <span class="hbar__value tnum">{{ t.avg_hours|floatformat:"-1" }} h</span>
+      <span class="hbar__track" aria-hidden="true"><span class="hbar__fill" style="width: {{ t.bar|floatformat:'1u' }}%"></span></span>
+      <span class="hbar__sub">{{ t.decided }} decision{{ t.decided|pluralize }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% endif %}
+</section>
+
+{# 10. Departmental quotas #}
+<section class="panel ins-section" aria-labelledby="quota-h">
+  {% include "insights/_head.html" with hid="quota-h" title="Departmental quota use" take=quotas.takeaway report="quotas" %}
+  {% if quotas.empty %}
+    {% include "insights/_empty.html" with icon="gauge" heading="No departmental quotas" text="No active quota is shared by a department in this scope. Quotas are set under Policies." %}
+  {% else %}
+  <ul class="quotas ins-quotas">
+    {% for q in quotas.rows %}
+    <li>
+      <div class="row row--between"><span class="small strong">{{ q.label }}</span><span class="small strong tnum">{{ q.pct }}&nbsp;%</span></div>
+      <div class="meter {{ q.level }}" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ q.pct }}" aria-label="{{ q.department }}, {{ q.name }}"><span style="width: {{ q.pct }}%"></span></div>
+      <span class="xsmall faint tnum">{% if q.max_hours %}{{ q.hours_used|floatformat:"-1" }} of {{ q.max_hours|floatformat:"-1" }} h{% endif %}{% if q.max_hours and q.max_bookings %}, {% endif %}{% if q.max_bookings %}{{ q.bookings_used }} of {{ q.max_bookings }} bookings{% endif %}{% if q.resource_type %}, {{ q.resource_type|lower }}{% endif %}, {% if q.ended %}period ended {% else %}resets {% endif %}{{ q.window_end|date:"j M" }}{% if q.pct >= 90 %} <span class="badge badge--danger">{% icon "circle-alert" %}Nearly used up</span>{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+</div>
+<div class="ins-col">
+{# 7. No-shows #}
+<section class="panel ins-section" aria-labelledby="ns-h">
+  {% include "insights/_head.html" with hid="ns-h" title="No-shows" take=no_shows.takeaway report="no-shows-resources" %}
+  {% if no_shows.empty %}
+    {% include "insights/_empty.html" with icon="ban" heading="No bookings to measure" text="No-show rates appear once bookings start in this period." %}
+  {% else %}
+  <div class="ins-stat">
+    <span class="ins-stat__value">{{ no_shows.overall.rate_pct|floatformat:"-1" }}<small> %</small></span>
+    <span class="small muted">{{ no_shows.overall.no_shows|floatformat:"0g" }} no-shows in {{ no_shows.overall.bookings|floatformat:"0g" }} bookings</span>
+  </div>
+  <div class="ins-two">
+    <div>
+      <h3 class="ins-h3">Resources</h3>
+      {% if no_shows.resources %}
+      <table class="table ins-mini">
+        <thead><tr><th scope="col">Resource</th><th scope="col" class="num">No-shows</th><th scope="col" class="num">Rate</th></tr></thead>
+        <tbody>{% for r in no_shows.resources %}<tr><td>{{ r.name }}</td><td class="num">{{ r.no_shows }}</td><td class="num">{{ r.rate_pct|floatformat:"-1" }}&nbsp;%</td></tr>{% endfor %}</tbody>
+      </table>
+      {% else %}<p class="small muted">No resource had a no-show.</p>{% endif %}
+    </div>
+    {% if f.see_people %}
+    <div>
+      <div class="row row--between"><h3 class="ins-h3">People</h3><a class="xsmall" href="{% url 'analytics:export' 'no-shows-people' %}?{{ qs }}" download>CSV<span class="sr-only"> of people with no-shows</span></a></div>
+      {% if no_shows.users %}
+      <table class="table ins-mini">
+        <thead><tr><th scope="col">Name</th><th scope="col" class="num">No-shows</th><th scope="col" class="num">Rate</th></tr></thead>
+        <tbody>{% for u in no_shows.users %}<tr><td>{{ u.name }}{% if u.vid %}<span class="xsmall faint ins-sub tnum">VID {{ u.vid }}</span>{% endif %}</td><td class="num">{{ u.no_shows }}</td><td class="num">{{ u.rate_pct|floatformat:"-1" }}&nbsp;%</td></tr>{% endfor %}</tbody>
+      </table>
+      {% else %}<p class="small muted">Nobody missed a booking.</p>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+
+{# 9. Maintenance downtime #}
+<section class="panel ins-section" aria-labelledby="maint-h">
+  {% include "insights/_head.html" with hid="maint-h" title="Maintenance downtime" take=maintenance.takeaway report="maintenance" %}
+  {% if maintenance.empty %}
+    {% include "insights/_empty.html" with icon="wrench" heading="No maintenance in this period" text="No maintenance windows overlapped these dates. Downtime shows here once work is scheduled." %}
+  {% else %}
+  <ul class="hbars hbars--maint" role="list">
+    {% for t in maintenance.types %}
+    <li class="hbar" title="{{ t.display }}: {{ t.hours }} h of maintenance, {{ t.lost_open_hours }} bookable hours lost">
+      <span class="hbar__label truncate">{{ t.display }}</span>
+      <span class="hbar__value tnum">{{ t.hours|floatformat:"-1g" }} h</span>
+      <span class="hbar__track" aria-hidden="true"><span class="hbar__fill" style="width: {{ t.bar|floatformat:'1u' }}%"></span></span>
+      <span class="hbar__sub">{{ t.windows }} window{{ t.windows|pluralize }}, {{ t.lost_open_hours|floatformat:"-1g" }} bookable h lost</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% if maintenance.resources %}
+  <h3 class="ins-h3">Longest downtime</h3>
+  <table class="table ins-mini">
+    <thead><tr><th scope="col">Resource</th><th scope="col" class="num">Down</th><th scope="col" class="num">Lost</th></tr></thead>
+    <tbody>{% for r in maintenance.resources %}<tr><td>{{ r.name }}<span class="xsmall faint ins-sub">{{ r.type }}</span></td><td class="num">{{ r.hours|floatformat:"-1g" }} h</td><td class="num">{{ r.lost_open_hours|floatformat:"-1g" }} h</td></tr>{% endfor %}</tbody>
+  </table>
+  {% endif %}
+  {% endif %}
+</section>
+
+</div>
+
+</div>
+
+<p class="xsmall faint ins-foot"><a href="{% url 'analytics:export' 'overview' %}?{{ qs }}" download>Download the headline figures as CSV</a>. Utilisation counts classes and bookings against the time a resource could be used; idle hours are open hours nobody booked.</p>
+{% endif %}
+{% endblock %}

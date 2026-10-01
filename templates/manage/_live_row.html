@@ -1,0 +1,32 @@
+{# One booking in a live list: time, who, check-in state, and the custodian action. Expects b, s, here. #}
+<li class="liverow">
+  <a class="liverow__time tnum" href="{{ b.get_absolute_url }}"><strong>{{ b.start|hm }}</strong><span>{{ b.end|hm }}</span></a>
+  <div class="liverow__text">
+    <a class="liverow__res truncate" href="{{ b.get_absolute_url }}">{{ b.resource.name }}</a>
+    <span class="xsmall muted truncate">{% if b.group_label %}{{ b.group_label }}, {% endif %}{{ b.booked_for.display_name }}{% if b.booked_for.vid %} <span class="tnum">({{ b.booked_for.vid }})</span>{% endif %}</span>
+    {% if s.state == "open" %}
+      <span class="liverow__state is-open"><span class="live-dot" aria-hidden="true"></span>Check-in open, closes <time class="tnum" datetime="{{ s.closes|date:'c' }}">{{ s.closes|hm }}</time></span>
+    {% elif s.state == "not_yet" %}
+      <span class="liverow__state">{% icon "clock" 13 %}Check-in opens {{ s.opens|hm }}</span>
+    {% elif s.state == "missed" %}
+      <span class="liverow__state is-missed">{% icon "ban" 13 %}Missed check-in, being released</span>
+    {% elif s.state == "in_use" %}
+      <span class="liverow__state is-live">{% icon "zap" 13 %}Checked in{% if b.checked_in_at %} at {{ b.checked_in_at|hm }}{% endif %}</span>
+    {% elif s.state == "pending" %}
+      <span class="liverow__state is-pending">{% icon "hourglass" 13 %}Awaiting approval</span>
+    {% elif s.state == "not_required" %}
+      <span class="liverow__state">{% icon "check" 13 %}No check-in needed</span>
+    {% else %}
+      <span class="liverow__state">{% status_badge b %}</span>
+    {% endif %}
+  </div>
+  <div class="liverow__act">
+    {% if s.state == "open" %}
+    <form method="post" action="{% url 'checkins:check_in' b.reference %}">{% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
+      <button class="btn btn--sm btn--ink" type="submit" aria-label="Check in {{ b.booked_for.display_name }} at {{ b.resource.name }}">{% icon "user-round-check" %}Check in</button></form>
+    {% elif s.state == "in_use" %}
+    <form method="post" action="{% url 'checkins:check_out' b.reference %}" data-confirm="Check out {{ b.booked_for.display_name }} from {{ b.resource.name }} now? Any time left goes back to campus.">{% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
+      <button class="btn btn--sm" type="submit" aria-label="Check out {{ b.booked_for.display_name }} from {{ b.resource.name }}">{% icon "log-out" %}Check out</button></form>
+    {% endif %}
+  </div>
+</li>

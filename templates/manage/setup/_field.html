@@ -1,0 +1,5 @@
+<div class="field{% if span %} span-2{% endif %}">
+  <label for="{{ f.id_for_label }}">{{ label|default:f.label }}{% if not f.field.required and not f.field.disabled and not req %} <span class="optional">optional</span>{% endif %}</label>
+  {{ f }}
+  {% if f.errors %}<span class="error" id="{{ f.auto_id }}-err">{{ f.errors.0 }}</span>{% elif hint %}<span class="hint">{{ hint }}</span>{% elif f.help_text %}<span class="hint">{{ f.help_text }}</span>{% endif %}
+</div>

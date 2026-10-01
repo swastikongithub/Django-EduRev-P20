@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Door QR, {{ r.code }}{% endblock %}
+{% block body_class %}doorqr-page{% endblock %}
+{% block shell %}
+<div class="doorqr">
+  <div class="doorqr__bar" role="toolbar" aria-label="Door sign actions">
+    <a class="btn btn--ghost" href="{% url 'manage:resources' %}">{% icon "arrow-left" %}Back to resources</a>
+    <p class="small muted doorqr__tip">Prints on A5. Laminate it and fix it at eye level beside the door.</p>
+    <button class="btn btn--primary" type="button" data-print>{% icon "qr-code" %}Print the sign</button>
+  </div>
+
+  <main id="main" class="doorsign" tabindex="-1" aria-label="Door sign preview">
+    <header class="doorsign__head">
+      <span class="brandmark brandmark--sm">{% include "components/brandmark.html" %}</span>
+      <span class="doorsign__brand">LPU Reserve</span>
+      <span class="doorsign__type">{{ r.type.name }}</span>
+    </header>
+    <h1 class="doorsign__name">{{ r.name }}</h1>
+    <p class="doorsign__code tnum">{{ r.code }}{% if r.building %} &nbsp;|&nbsp; {{ r.building.name }}{% endif %}{% if r.room %}, room {{ r.room }}{% endif %}</p>
+    <div class="doorsign__qr">{{ qr }}</div>
+    <p class="doorsign__cta">Scan to check in</p>
+    <p class="doorsign__how">Open your phone camera, or Scan in LPU Reserve, within the check-in window of your booking. Unclaimed bookings are released to others.</p>
+    <footer class="doorsign__foot">
+      <div>
+        <span class="doorsign__label">Looked after by</span>
+        {% for c in contacts %}<span class="doorsign__contact">{{ c.user.display_name }}{% if c.user.phone %}, {{ c.user.phone }}{% elif c.user.email %}, {{ c.user.email }}{% endif %}</span>{% empty %}<span class="doorsign__contact">Facilities office</span>{% endfor %}
+      </div>
+      <div class="doorsign__url">{{ url }}</div>
+    </footer>
+  </main>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/setup.js' %}" defer></script>{% endblock %}

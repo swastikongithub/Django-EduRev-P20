@@ -1,0 +1,102 @@
+{% if done %}
+{% with b=done.booking r=done.resource %}
+<article class="panel apcard apcard--done tone-{{ done.tone }}" role="status">
+  <span class="apcard__doneicon" aria-hidden="true">{% if done.tone == "success" %}{% icon "circle-check" %}{% elif done.tone == "danger" %}{% icon "circle-x" %}{% else %}{% icon "info" %}{% endif %}</span>
+  <div class="apcard__donetext">
+    <strong>{{ done.sentence }}</strong>
+    <span class="small muted">{{ r.name }}, {{ b.start|dayname }} {{ b.start|hm }}–{{ b.end|hm }}</span>
+  </div>
+  <a class="btn btn--sm btn--ghost" href="{{ b.get_absolute_url }}">View booking</a>
+</article>
+{% endwith %}
+{% else %}
+{% with a=c.a b=c.b r=c.r who=c.b.booked_for %}
+<article class="panel apcard{% if c.sla.overdue %} is-overdue{% endif %}" id="approval-{{ a.pk }}" aria-labelledby="ap-{{ a.pk }}-h">
+  <header class="apcard__head">
+    <div class="apcard__who">
+      {% initials_avatar who %}
+      <div class="apcard__whotext">
+        <strong>{{ who.display_name }}</strong>
+        <span class="xsmall muted">{% if who.vid %}VID <span class="tnum">{{ who.vid }}</span>, {% endif %}{{ who.get_role_display }}{% if who.department %}, {{ who.department.code }}{% endif %}{% if b.requester_id != b.booked_for_id %}. Requested by {{ b.requester.display_name }}{% endif %}</span>
+      </div>
+    </div>
+    <div class="apcard__flags">
+      {% if c.restricted %}<span class="badge badge--danger">{% icon "ban" %}Booking paused</span>{% endif %}
+      {% if c.no_shows %}<span class="badge badge--warn" title="Missed check-ins in the last 30 days that were not forgiven">{% icon "triangle-alert" %}{{ c.no_shows }} no-show{{ c.no_shows|pluralize }} in 30 days</span>{% else %}<span class="badge badge--plain" title="No unforgiven missed check-ins in the last 30 days">{% icon "badge-check" %}No recent no-shows</span>{% endif %}
+      {% if c.sla %}
+        {% if c.sla.overdue %}<span class="badge badge--danger">{% icon "timer" %}Overdue by {{ c.sla.minutes|duration }}</span>
+        {% elif c.sla.soon %}<span class="badge badge--pending">{% icon "hourglass" %}Due in {{ c.sla.minutes|duration }}</span>
+        {% else %}<span class="badge badge--plain">{% icon "hourglass" %}Due {{ a.due_at|dayname }} {{ a.due_at|hm }}</span>{% endif %}
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="apcard__body">
+    <a class="apcard__media" href="{{ r.get_absolute_url }}" tabindex="-1" aria-hidden="true">{% resource_photo r "sm" %}</a>
+    <div class="apcard__what">
+      <h3 id="ap-{{ a.pk }}-h" class="apcard__title"><a href="{{ r.get_absolute_url }}">{{ r.name }}</a></h3>
+      <span class="small muted">{{ r.type.name }}{% if r.location_label %}, {{ r.location_label }}{% endif %}</span>
+    </div>
+    <div class="apcard__fact">
+      <span class="xsmall faint">When</span>
+      <strong class="tnum">{{ b.start|hm }}–{{ b.end|hm }}</strong>
+      <span class="small muted">{{ b.start|dayname }}, {{ b.duration_minutes|duration }}</span>
+    </div>
+    <div class="apcard__fact">
+      {% if r.capacity > 1 %}
+      <span class="xsmall faint">People</span>
+      <strong class="tnum{% if c.over_capacity %} apcard__over{% endif %}">{{ b.attendees }} <small>of {{ r.capacity }}</small></strong>
+      <span class="meter{% if c.over_capacity %} is-high{% elif c.fill > 0.85 %} is-mid{% endif %}" role="img" aria-label="{{ b.attendees }} of {{ r.capacity }} {% if r.type.category == 'equipment' %}units{% else %}seats{% endif %}"><span style="width:{% widthratio c.fill 1 100 %}%"></span></span>
+      {% else %}
+      <span class="xsmall faint">For</span>
+      <strong class="tnum">{{ b.attendees }} {{ b.attendees|pluralize:"person,people" }}</strong>
+      <span class="small muted">Single unit</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if b.title or b.group_label or b.notes %}
+  <div class="apcard__purpose">
+    <strong class="small">{{ b.title }}</strong>{% if b.group_label %}<span class="badge badge--plain">{% icon "users" %}{{ b.group_label }}</span>{% endif %}
+    {% if b.notes %}<p class="small muted">{{ b.notes|truncatechars:280 }}</p>{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="apcard__day">
+    <div class="row row--between"><span class="xsmall faint">That day in {{ r.name }}</span><span class="xsmall faint">Requested slot outlined</span></div>
+    <div class="apstrip">
+      {% daystrip c.schedule start_hour=7 end_hour=22 compact=False %}
+      <span class="apstrip__mark" style="left:{{ c.mark.left|stringformat:'.3f' }}%;width:{{ c.mark.width|stringformat:'.3f' }}%" aria-hidden="true"></span>
+    </div>
+  </div>
+
+  {% if error %}<div class="notice notice--danger" role="alert">{% icon "circle-alert" %}<div><strong>Not decided yet</strong>{{ error }}</div></div>{% endif %}
+
+  <footer class="apcard__foot">
+    <span class="small muted">Step {{ c.step }} of {{ c.steps }}{% if a.workflow %}, {{ a.workflow.name }}{% endif %}</span>
+    <div class="apcard__actions">
+      <a class="btn btn--ghost btn--sm" href="{{ b.get_absolute_url }}">Details</a>
+      <button class="btn btn--danger" type="button" data-open="reject-{{ a.pk }}">{% icon "x" %}Reject</button>
+      <form method="post" action="{% url 'manage:approval_decide' a.pk %}" hx-post="{% url 'manage:approval_decide' a.pk %}" hx-target="#approval-{{ a.pk }}" hx-swap="outerHTML">
+        {% csrf_token %}<input type="hidden" name="action" value="approve"><input type="hidden" name="next" value="{{ here }}">
+        <button class="btn btn--success" type="submit">{% icon "check" %}Approve</button>
+      </form>
+    </div>
+  </footer>
+
+  <dialog id="reject-{{ a.pk }}" class="sheet" aria-labelledby="reject-{{ a.pk }}-h">
+    <div class="sheet__head"><h2 id="reject-{{ a.pk }}-h" class="h-sm">Reject {{ who.first_name|default:who.display_name }}'s request</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+    <form class="sheet__body stack" method="post" action="{% url 'manage:approval_decide' a.pk %}" hx-post="{% url 'manage:approval_decide' a.pk %}" hx-target="#approval-{{ a.pk }}" hx-swap="outerHTML">
+      {% csrf_token %}<input type="hidden" name="action" value="reject"><input type="hidden" name="next" value="{{ here }}">
+      <p class="small muted">{{ r.name }}, {{ b.start|dayname }} {{ b.start|hm }}–{{ b.end|hm }}. The slot is released straight away and {{ who.first_name|default:"the requester" }} sees your reason.</p>
+      <div class="field">
+        <label for="reject-{{ a.pk }}-c">Reason</label>
+        <textarea class="textarea" id="reject-{{ a.pk }}-c" name="comment" required maxlength="500" autofocus placeholder="e.g. The hall is set up for the placement drive that day. Seminar Hall 2 is free."></textarea>
+        <span class="hint">Say what would work instead, if anything does.</span>
+      </div>
+      <div class="row"><button class="btn btn--danger-solid" type="submit">Reject request</button><button class="btn btn--ghost" type="button" data-close>Keep it</button></div>
+    </form>
+  </dialog>
+</article>
+{% endwith %}
+{% endif %}

@@ -1,0 +1,51 @@
+<div class="section-head cfg-sechead">
+  <p class="small muted">{% if department %}Shared limits on how much {{ department.name }} books. Every booking made for a member of the department counts toward them.{% else %}Ceilings on hours or number of bookings. Role quotas count each person separately; department quotas are shared by everyone in the department.{% endif %}</p>
+  {% if can_edit %}<button class="btn btn--primary" type="button" data-open="new-sheet">{% icon "plus" %}New quota</button>{% endif %}
+</div>
+
+{% if quotas %}
+<ul class="cfg-quotas">
+  {% for q in quotas %}
+  <li class="panel cfg-quota{% if not q.active %} is-off{% endif %}">
+    <div class="cfg-quota__main">
+      <div class="row row--wrap" style="--gap:8px"><strong>{{ q.name }}</strong>{% if q.active %}<span class="badge badge--success">{% icon "circle-check" %}Active</span>{% else %}<span class="badge badge--plain">{% icon "circle-pause" %}Off</span>{% endif %}{% if q.department %}<span class="badge badge--info">{{ q.department.code }}</span>{% endif %}</div>
+      <p class="small muted">{{ q.summary }}</p>
+      {% if q.department %}
+        <div class="cfg-quota__use">
+          <div class="row row--between xsmall"><span class="faint">Used so far {{ q.get_period_display|cut:"per " }}</span><span class="tnum strong">{% if q.max_hours %}{{ q.hours_used }} of {{ q.max_hours }} h{% endif %}{% if q.max_hours and q.max_bookings %} &nbsp;|&nbsp; {% endif %}{% if q.max_bookings %}{{ q.bookings_used }} of {{ q.max_bookings }} bookings{% endif %}</span></div>
+          <div class="meter{% if q.pct >= 90 %} is-high{% elif q.pct >= 70 %} is-mid{% endif %}" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ q.pct }}" aria-label="{{ q.name }} used"><span style="width: {{ q.pct }}%"></span></div>
+        </div>
+      {% else %}
+        <p class="xsmall faint">Applies to {{ q.people }} active {{ q.get_role_display|lower }} account{{ q.people|pluralize }}, each on their own.</p>
+      {% endif %}
+    </div>
+    {% if can_edit %}
+    <div class="row cfg-rowactions">
+      <form method="post" action="{% url 'manage:policies' %}">{% csrf_token %}<input type="hidden" name="action" value="quota.toggle"><input type="hidden" name="pk" value="{{ q.pk }}"><button class="btn btn--sm" type="submit">{% if q.active %}{% icon "circle-pause" %}Turn off{% else %}{% icon "zap" %}Turn on{% endif %}</button></form>
+      <a class="btn btn--sm" href="?tab=quotas&amp;edit={{ q.pk }}">{% icon "pencil" %}Edit</a>
+      <form method="post" action="{% url 'manage:policies' %}" data-confirm="Delete the {{ q.name }} quota? Nobody is limited by it from the next booking.">{% csrf_token %}<input type="hidden" name="action" value="quota.delete"><input type="hidden" name="pk" value="{{ q.pk }}"><button class="btn btn--sm btn--ghost" type="submit" aria-label="Delete {{ q.name }}">{% icon "trash-2" %}</button></form>
+    </div>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="panel empty empty--compact">
+  <div class="empty__icon">{% icon "gauge" %}</div>
+  <h3>No quotas yet</h3>
+  <p>{% if department %}Add a weekly limit to share lab or seminar hall hours fairly across your department.{% else %}Without quotas, anyone can book as much as the booking rules allow.{% endif %}</p>
+</div>
+{% endif %}
+
+{% if can_edit %}
+<dialog id="new-sheet" class="sheet cfg-sheet" aria-labelledby="new-h"{% if autoopen == "new-sheet" %} data-autoopen{% endif %}>
+  <div class="sheet__head"><h2 id="new-h" class="h-sm">New quota</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <div class="sheet__body">{% include "manage/setup/form_quota.html" with form=new_form %}</div>
+</dialog>
+{% if edit_form %}
+<dialog id="edit-sheet" class="sheet cfg-sheet" aria-labelledby="edit-h"{% if autoopen == "edit-sheet" %} data-autoopen{% endif %}>
+  <div class="sheet__head"><h2 id="edit-h" class="h-sm">Edit quota</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <div class="sheet__body">{% include "manage/setup/form_quota.html" with form=edit_form %}</div>
+</dialog>
+{% endif %}
+{% endif %}

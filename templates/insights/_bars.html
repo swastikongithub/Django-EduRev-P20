@@ -1,0 +1,10 @@
+<ul class="hbars" role="list">
+  {% for b in bars %}
+  <li class="hbar" title="{{ b.title }}">
+    <span class="hbar__label truncate">{{ b.label }}</span>
+    <span class="hbar__value tnum">{{ b.value }}</span>
+    <span class="hbar__track" aria-hidden="true"><span class="hbar__fill" style="width: {{ b.pct|floatformat:'1u' }}%"></span></span>
+    <span class="hbar__sub">{{ b.sub }}</span>
+  </li>
+  {% endfor %}
+</ul>
