@@ -10,8 +10,8 @@ Two students open the same lab at the same minute and both click **Book 10:00–
 implementation is:
 
 ```python
-if not Booking.objects.filter(resource=lab, period__overlap=wanted).exists():   # (1) check
-    Booking.objects.create(resource=lab, period=wanted)                           # (2) act
+if not Booking.objects.filter(resource=lab, period__overlap=wanted).exists():  # (1) check
+    Booking.objects.create(resource=lab, period=wanted)  # (2) act
 ```
 
 Both requests can run step (1) before either runs step (2). Both see "free", both insert, and the
@@ -60,8 +60,9 @@ constraint, so every claim on a resource's time is written into one ledger, `Boo
 has its own unconditional constraint:
 
 ```python
-ExclusionConstraint(name="slot_no_overlap",
-                    expressions=[("resource", RangeOperators.EQUAL), ("period", RangeOperators.OVERLAPS)])
+ExclusionConstraint(
+    name="slot_no_overlap", expressions=[("resource", RangeOperators.EQUAL), ("period", RangeOperators.OVERLAPS)]
+)
 ```
 
 | Claim | `kind` | Written by | Released when |

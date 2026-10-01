@@ -60,11 +60,12 @@
   --line-strong: var(--ink-300);
   --text: var(--ink-900);
   --text-2: var(--ink-600);
-  --text-3: var(--ink-500);
+  --text-3: #55678a;            /* ≥ 4.5:1 on canvas and white */
   --link: var(--blue-700);
   --focus: #1b6fd1;
   --rail: var(--saffron-500);
-  --rail-ink: #ffffff;
+  --rail-ink: var(--ink-900);   /* navy on LPU orange: 6.2:1 (white would be 2.6:1) */
+  --on-saffron: var(--ink-900);
 
   /* Booking states */
   --st-free: var(--surface);
@@ -140,13 +141,25 @@
     --line-strong: #2f4566;
     --text: #e8eef7;
     --text-2: #a9b8cf;
-    --text-3: #8497b4;
+    --text-3: #9aadc8;
     --link: #7cc0f0;
     --ember: #ffa45c;
     --ember-strong: #ffb97f;
     --focus: #6fb3ff;
     --rail: #1a2a45;
     --rail-ink: #ffd8b5;
+  --on-saffron: #1b1206;
+  --green-700: #7ee2b0;
+  --red-700: #ff9c93;
+  --blue-700: #8fcaf5;
+  --amber-700: #f5c96b;
+  --indigo-700: #c9c7ff;
+    --on-saffron: #1b1206;
+    --green-700: #7ee2b0;
+    --red-700: #ff9c93;
+    --blue-700: #8fcaf5;
+    --amber-700: #f5c96b;
+    --indigo-700: #c9c7ff;
     --st-free: #132036;
     --st-free-line: #22344f;
     --st-booked: #3a4f72;
@@ -187,13 +200,19 @@
   --line-strong: #2f4566;
   --text: #e8eef7;
   --text-2: #a9b8cf;
-  --text-3: #8497b4;
+  --text-3: #9aadc8;
   --link: #7cc0f0;
   --ember: #ffa45c;
   --ember-strong: #ffb97f;
   --focus: #6fb3ff;
   --rail: #1a2a45;
   --rail-ink: #ffd8b5;
+  --on-saffron: #1b1206;
+  --green-700: #7ee2b0;
+  --red-700: #ff9c93;
+  --blue-700: #8fcaf5;
+  --amber-700: #f5c96b;
+  --indigo-700: #c9c7ff;
   --st-free: #132036;
   --st-free-line: #22344f;
   --st-booked: #3a4f72;

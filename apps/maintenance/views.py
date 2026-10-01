@@ -23,9 +23,19 @@ def report(request, slug):
         messages.error(request, "Describe what's wrong in a few words.")
         return redirect(resource.get_absolute_url())
     try:
-        services.report_breakdown(resource, request.user, summary=summary, details=request.POST.get("details", "")[:2000],
-                                  severity=severity, request=request)
-        messages.success(request, "Thanks — the custodian has been told." + (" It's marked out of service until checked." if severity == Severity.CRITICAL else ""))
+        services.report_breakdown(
+            resource,
+            request.user,
+            summary=summary,
+            details=request.POST.get("details", "")[:2000],
+            severity=severity,
+            request=request,
+        )
+        messages.success(
+            request,
+            "Thanks — the custodian has been told."
+            + (" It's marked out of service until checked." if severity == Severity.CRITICAL else ""),
+        )
     except DomainError as exc:
         messages.error(request, exc.message)
     return redirect(resource.get_absolute_url())

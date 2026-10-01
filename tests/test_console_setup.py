@@ -31,8 +31,17 @@ from .conftest import at
 
 pytestmark = pytest.mark.django_db
 
-CONSOLE = ["manage:setup", "manage:resources", "manage:resource_new", "manage:policies", "manage:workflows",
-           "manage:timetable", "manage:users", "manage:audit", "manage:ops"]
+CONSOLE = [
+    "manage:setup",
+    "manage:resources",
+    "manage:resource_new",
+    "manage:policies",
+    "manage:workflows",
+    "manage:timetable",
+    "manage:users",
+    "manage:audit",
+    "manage:ops",
+]
 
 
 @pytest.fixture
@@ -61,9 +70,18 @@ def _png(size=(32, 24), noise=False) -> bytes:
 
 
 def _resource_post(r, **extra):
-    data = {"name": r.name, "code": r.code, "type": r.type_id, "capacity": r.capacity, "status": r.status,
-            "is_bookable": "on", "building": r.building_id or "", "department": r.department_id or "",
-            "attr_key": [""], "attr_value": [""]}
+    data = {
+        "name": r.name,
+        "code": r.code,
+        "type": r.type_id,
+        "capacity": r.capacity,
+        "status": r.status,
+        "is_bookable": "on",
+        "building": r.building_id or "",
+        "department": r.department_id or "",
+        "attr_key": [""],
+        "attr_value": [""],
+    }
     data.update(extra)
     return data
 
@@ -84,8 +102,19 @@ def test_students_are_refused_everywhere(client, student, room, name):
     assert client.get(reverse(name)).status_code == 403
 
 
-@pytest.mark.parametrize("name", ["manage:setup", "manage:resource_new", "manage:policies", "manage:workflows",
-                                  "manage:timetable", "manage:users", "manage:audit", "manage:ops"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "manage:setup",
+        "manage:resource_new",
+        "manage:policies",
+        "manage:workflows",
+        "manage:timetable",
+        "manage:users",
+        "manage:audit",
+        "manage:ops",
+    ],
+)
 def test_custodians_cannot_reach_configuration(client, custodian, room, name):
     client.force_login(custodian)
     assert client.get(reverse(name)).status_code == 403
@@ -120,9 +149,12 @@ def test_custodian_edits_own_resource_but_not_others(client, custodian, room, ro
     room2.refresh_from_db()
     assert room2.name == "Room 34-302"
 
-    resp = client.post(reverse("manage:resource_edit", args=[room.pk]),
-                       _resource_post(room, name="Room 34-301 (renovated)", code="HACK-1",
-                                      attr_key=["Seating"], attr_value=["Tiered"]))
+    resp = client.post(
+        reverse("manage:resource_edit", args=[room.pk]),
+        _resource_post(
+            room, name="Room 34-301 (renovated)", code="HACK-1", attr_key=["Seating"], attr_value=["Tiered"]
+        ),
+    )
     assert resp.status_code == 302
     room.refresh_from_db()
     assert room.name == "Room 34-301 (renovated)"
@@ -183,9 +215,21 @@ def test_photo_upload_rejects_oversized_file(client, facility_manager, room, med
 
 def test_create_resource_as_facility_manager(client, facility_manager, room_type, block34, custodian):
     client.force_login(facility_manager)
-    resp = client.post(reverse("manage:resource_new"), {
-        "name": "Room 34-410", "code": "34-410", "type": room_type.pk, "capacity": 40, "status": "active",
-        "is_bookable": "on", "building": block34.pk, "custodians": [custodian.pk], "attr_key": [""], "attr_value": [""]})
+    resp = client.post(
+        reverse("manage:resource_new"),
+        {
+            "name": "Room 34-410",
+            "code": "34-410",
+            "type": room_type.pk,
+            "capacity": 40,
+            "status": "active",
+            "is_bookable": "on",
+            "building": block34.pk,
+            "custodians": [custodian.pk],
+            "attr_key": [""],
+            "attr_value": [""],
+        },
+    )
     assert resp.status_code == 302
     r = Resource.objects.get(code="34-410")
     assert r.custodians.filter(user=custodian).exists()
@@ -205,7 +249,9 @@ def test_csv_import_preview_then_confirm_creates_all(client, facility_manager, r
     Feature.objects.create(institution=lpu, name="Projector")
     client.force_login(facility_manager)
     url = reverse("manage:resources")
-    resp = client.post(url, {"action": "import_preview", "file": SimpleUploadedFile("r.csv", IMPORT_OK.encode(), "text/csv")})
+    resp = client.post(
+        url, {"action": "import_preview", "file": SimpleUploadedFile("r.csv", IMPORT_OK.encode(), "text/csv")}
+    )
     assert resp.status_code == 200
     assert b"All 2 rows look right" in resp.content
     assert not Resource.objects.filter(code__startswith="34-50").exists()  # preview writes nothing
@@ -222,7 +268,9 @@ def test_csv_import_with_bad_rows_imports_nothing(client, facility_manager, room
     Feature.objects.create(institution=lpu, name="Projector")
     client.force_login(facility_manager)
     url = reverse("manage:resources")
-    resp = client.post(url, {"action": "import_preview", "file": SimpleUploadedFile("r.csv", IMPORT_BAD.encode(), "text/csv")})
+    resp = client.post(
+        url, {"action": "import_preview", "file": SimpleUploadedFile("r.csv", IMPORT_BAD.encode(), "text/csv")}
+    )
     body = resp.content.decode()
     assert "1 of 3 rows needs fixing" in body
     assert "Type &#x27;spaceship&#x27; doesn&#x27;t exist" in body
@@ -246,10 +294,23 @@ def test_booking_policy_override_is_audited_and_applies(client, facility_manager
     from apps.rules.services import policy_for
 
     client.force_login(facility_manager)
-    resp = client.post(reverse("manage:policies"), {
-        "action": "policy.save", "scope": "resource", "resource": room.pk, "slot_minutes": 30,
-        "lead_time_minutes": 60, "min_duration_minutes": 60, "max_duration_minutes": 120, "max_advance_days": 14,
-        "requires_checkin": "on", "checkin_opens_minutes": 10, "checkin_grace_minutes": 10, "enforce_capacity": "on"})
+    resp = client.post(
+        reverse("manage:policies"),
+        {
+            "action": "policy.save",
+            "scope": "resource",
+            "resource": room.pk,
+            "slot_minutes": 30,
+            "lead_time_minutes": 60,
+            "min_duration_minutes": 60,
+            "max_duration_minutes": 120,
+            "max_advance_days": 14,
+            "requires_checkin": "on",
+            "checkin_opens_minutes": 10,
+            "checkin_grace_minutes": 10,
+            "enforce_capacity": "on",
+        },
+    )
     assert resp.status_code == 302
     assert policy_for(room).max_duration_minutes == 120
     assert AuditLog.objects.filter(action="rules.policy.create").exists()
@@ -257,10 +318,21 @@ def test_booking_policy_override_is_audited_and_applies(client, facility_manager
 
 def test_policy_validation_speaks_in_sentences(client, facility_manager, room_type):
     client.force_login(facility_manager)
-    resp = client.post(reverse("manage:policies"), {
-        "action": "policy.save", "scope": "type", "resource_type": room_type.pk, "slot_minutes": 30,
-        "lead_time_minutes": 0, "min_duration_minutes": 45, "max_duration_minutes": 30, "max_advance_days": 14,
-        "checkin_opens_minutes": 10, "checkin_grace_minutes": 10})
+    resp = client.post(
+        reverse("manage:policies"),
+        {
+            "action": "policy.save",
+            "scope": "type",
+            "resource_type": room_type.pk,
+            "slot_minutes": 30,
+            "lead_time_minutes": 0,
+            "min_duration_minutes": 45,
+            "max_duration_minutes": 30,
+            "max_advance_days": 14,
+            "checkin_opens_minutes": 10,
+            "checkin_grace_minutes": 10,
+        },
+    )
     body = resp.content.decode()
     assert resp.status_code == 200
     assert "The longest booking can&#x27;t be shorter than the shortest one." in body
@@ -269,12 +341,30 @@ def test_policy_validation_speaks_in_sentences(client, facility_manager, room_ty
 
 def test_hours_add_refuses_overlap(client, facility_manager, room_type):
     client.force_login(facility_manager)
-    resp = client.post(reverse("manage:policies"), {"action": "hours.add", "scope": "type", "resource_type": room_type.pk,
-                                                    "weekdays": ["0"], "opens": "19:00", "closes": "21:00"})
+    resp = client.post(
+        reverse("manage:policies"),
+        {
+            "action": "hours.add",
+            "scope": "type",
+            "resource_type": room_type.pk,
+            "weekdays": ["0"],
+            "opens": "19:00",
+            "closes": "21:00",
+        },
+    )
     assert resp.status_code == 200
     assert b"already has 08:00" in resp.content
-    resp = client.post(reverse("manage:policies"), {"action": "hours.add", "scope": "type", "resource_type": room_type.pk,
-                                                    "weekdays": ["6"], "opens": "09:00", "closes": "13:00"})
+    resp = client.post(
+        reverse("manage:policies"),
+        {
+            "action": "hours.add",
+            "scope": "type",
+            "resource_type": room_type.pk,
+            "weekdays": ["6"],
+            "opens": "09:00",
+            "closes": "13:00",
+        },
+    )
     assert resp.status_code == 302
     assert AvailabilityRule.objects.filter(resource_type=room_type, weekday=6).exists()
 
@@ -282,9 +372,18 @@ def test_hours_add_refuses_overlap(client, facility_manager, room_type):
 def test_blackout_create(client, facility_manager, room):
     client.force_login(facility_manager)
     start = timezone.localtime() + timedelta(days=3)
-    resp = client.post(reverse("manage:policies"), {
-        "action": "blackout.save", "title": "Convocation", "kind": "event", "scope": "campus",
-        "starts": start.strftime("%Y-%m-%dT09:00"), "ends": start.strftime("%Y-%m-%dT18:00"), "exempt_roles": ["faculty"]})
+    resp = client.post(
+        reverse("manage:policies"),
+        {
+            "action": "blackout.save",
+            "title": "Convocation",
+            "kind": "event",
+            "scope": "campus",
+            "starts": start.strftime("%Y-%m-%dT09:00"),
+            "ends": start.strftime("%Y-%m-%dT18:00"),
+            "exempt_roles": ["faculty"],
+        },
+    )
     assert resp.status_code == 302
     b = Blackout.objects.get(title="Convocation")
     assert b.exempt_roles == ["faculty"] and b.scope == Scope.CAMPUS
@@ -298,7 +397,9 @@ def test_dept_head_manages_only_own_department_quota(client, hod, cse, ece, lpu)
     body = client.get(url + "?tab=quotas").content.decode()
     assert "ECE lab hours" not in body
 
-    resp = client.post(url, {"action": "quota.save", "pk": theirs.pk, "name": "Taken over", "period": "week", "max_hours": 99})
+    resp = client.post(
+        url, {"action": "quota.save", "pk": theirs.pk, "name": "Taken over", "period": "week", "max_hours": 99}
+    )
     assert resp.status_code == 404
     assert client.post(url, {"action": "quota.toggle", "pk": theirs.pk}).status_code == 404
     assert client.post(url, {"action": "quota.delete", "pk": theirs.pk}).status_code == 404
@@ -306,15 +407,30 @@ def test_dept_head_manages_only_own_department_quota(client, hod, cse, ece, lpu)
     assert theirs.name == "ECE lab hours" and theirs.active
 
     # Creating a quota always lands on their own department, whatever is posted.
-    resp = client.post(url, {"action": "quota.save", "name": "CSE seminar hours", "target": "role", "role": "student",
-                             "department": ece.pk, "period": "week", "max_hours": 12, "active": "on"})
+    resp = client.post(
+        url,
+        {
+            "action": "quota.save",
+            "name": "CSE seminar hours",
+            "target": "role",
+            "role": "student",
+            "department": ece.pk,
+            "period": "week",
+            "max_hours": 12,
+            "active": "on",
+        },
+    )
     assert resp.status_code == 302
     q = Quota.objects.get(name="CSE seminar hours")
     assert q.department_id == cse.pk and q.role == ""
 
     # Campus-wide rules are read-only for heads of department.
-    assert client.post(url, {"action": "tier.save", "no_shows": 9, "window_days": 30, "restrict_days": 1,
-                             "label": "x"}).status_code == 403
+    assert (
+        client.post(
+            url, {"action": "tier.save", "no_shows": 9, "window_days": 30, "restrict_days": 1, "label": "x"}
+        ).status_code
+        == 403
+    )
 
 
 # ── Workflows ───────────────────────────────────────────────────────────────
@@ -322,10 +438,22 @@ def test_dept_head_manages_only_own_department_quota(client, hod, cse, ece, lpu)
 
 def test_workflow_builder_applies_to_the_next_booking(client, facility_manager, student, room, room_type, monday, now):
     client.force_login(facility_manager)
-    resp = client.post(reverse("manage:workflows"), {
-        "action": "save", "name": "Long student classroom bookings", "applies": "type", "resource_type": room_type.pk,
-        "requester_roles": ["student"], "min_duration_minutes": 120, "priority": 100, "active": "on",
-        "step_role": ["custodian", "dept_head"], "step_user": ["", ""], "step_sla": ["12", "24"]})
+    resp = client.post(
+        reverse("manage:workflows"),
+        {
+            "action": "save",
+            "name": "Long student classroom bookings",
+            "applies": "type",
+            "resource_type": room_type.pk,
+            "requester_roles": ["student"],
+            "min_duration_minutes": 120,
+            "priority": 100,
+            "active": "on",
+            "step_role": ["custodian", "dept_head"],
+            "step_user": ["", ""],
+            "step_sla": ["12", "24"],
+        },
+    )
     assert resp.status_code == 302
     w = ApprovalWorkflow.objects.get(name="Long student classroom bookings")
     assert [s.approver_role for s in w.steps.all()] == ["custodian", "dept_head"]
@@ -334,8 +462,16 @@ def test_workflow_builder_applies_to_the_next_booking(client, facility_manager, 
     # No code change, no restart: the engine picks it for the very next request...
     assert resolve_workflow(room, student, 30, 120) == w
     assert resolve_workflow(room, student, 30, 60) is None
-    b = bookings.create_booking(requester=student, resource=room, start=at(monday, 10), end=at(monday, 12),
-                                title="Mock interviews", attendees=30, notify=False, now=now)
+    b = bookings.create_booking(
+        requester=student,
+        resource=room,
+        start=at(monday, 10),
+        end=at(monday, 12),
+        title="Mock interviews",
+        attendees=30,
+        notify=False,
+        now=now,
+    )
     assert b.status == BookingStatus.PENDING
     chain = list(b.approvals.order_by("step_order").values_list("approver_role", "decision"))
     assert chain == [("custodian", Decision.PENDING), ("dept_head", Decision.WAITING)]
@@ -343,8 +479,18 @@ def test_workflow_builder_applies_to_the_next_booking(client, facility_manager, 
 
 def test_workflow_needs_steps_or_auto_approve(client, facility_manager, room_type):
     client.force_login(facility_manager)
-    resp = client.post(reverse("manage:workflows"), {"action": "save", "name": "Empty", "applies": "any", "priority": 100,
-                                                     "step_role": [""], "step_user": [""], "step_sla": ["24"]})
+    resp = client.post(
+        reverse("manage:workflows"),
+        {
+            "action": "save",
+            "name": "Empty",
+            "applies": "any",
+            "priority": 100,
+            "step_role": [""],
+            "step_user": [""],
+            "step_sla": ["24"],
+        },
+    )
     assert resp.status_code == 200
     assert b"Add at least one approver" in resp.content
     assert not ApprovalWorkflow.objects.filter(name="Empty").exists()
@@ -354,8 +500,11 @@ def test_workflow_tester_partial_and_dept_head_read_only(client, hod, facility_m
     w = ApprovalWorkflow.objects.create(institution=lpu, name="Big groups", resource_type=room_type, min_attendees=50)
     w.steps.create(order=1, approver_role="facility_manager", sla_hours=24)
     client.force_login(facility_manager)
-    resp = client.get(reverse("manage:workflows"), {"test": 1, "resource": room.pk, "role": "faculty", "attendees": 55,
-                                                    "minutes": 60}, HTTP_HX_REQUEST="true")
+    resp = client.get(
+        reverse("manage:workflows"),
+        {"test": 1, "resource": room.pk, "role": "faculty", "attendees": 55, "minutes": 60},
+        HTTP_HX_REQUEST="true",
+    )
     body = resp.content.decode()
     assert "Held for approval" in body and "Big groups" in body and "<html" not in body
     client.force_login(hod)
@@ -365,22 +514,31 @@ def test_workflow_tester_partial_and_dept_head_read_only(client, hod, facility_m
 
 # ── Timetable ───────────────────────────────────────────────────────────────
 
-TIMETABLE = "room_code,day,start,end,course_code,course_title,section,faculty,kind\n" \
-            "34-301,Mon,09:00,10:00,CSE326,Internet Programming,K23KF,Dr A,Lecture\n" \
-            "34-301,Wed,14:00,15:00,CSE310,Java,K23KG,Dr B,Lecture\n"
+TIMETABLE = (
+    "room_code,day,start,end,course_code,course_title,section,faculty,kind\n"
+    "34-301,Mon,09:00,10:00,CSE326,Internet Programming,K23KF,Dr A,Lecture\n"
+    "34-301,Wed,14:00,15:00,CSE310,Java,K23KG,Dr B,Lecture\n"
+)
 
 
 @pytest.fixture
 def term(lpu):
     today = timezone.localdate()
-    return AcademicTerm.objects.create(institution=lpu, code="26271", name="Autumn 2026", starts=today - timedelta(days=7),
-                                       ends=today + timedelta(days=35))
+    return AcademicTerm.objects.create(
+        institution=lpu,
+        code="26271",
+        name="Autumn 2026",
+        starts=today - timedelta(days=7),
+        ends=today + timedelta(days=35),
+    )
 
 
 def test_timetable_upload_check_stage_publish(client, facility_manager, room, term):
     client.force_login(facility_manager)
     url = reverse("manage:timetable")
-    resp = client.post(url, {"action": "check", "term": term.pk, "file": SimpleUploadedFile("t.csv", TIMETABLE.encode(), "text/csv")})
+    resp = client.post(
+        url, {"action": "check", "term": term.pk, "file": SimpleUploadedFile("t.csv", TIMETABLE.encode(), "text/csv")}
+    )
     assert b"All 2 classes in 1 room look right" in resp.content
     resp = client.post(url, {"action": "stage", "term": term.pk, "csv_text": TIMETABLE})
     assert resp.status_code == 302
@@ -405,7 +563,7 @@ def test_timetable_check_highlights_bad_rows_and_stages_nothing(client, facility
     body = resp.content.decode()
     assert "Unknown room &#x27;99-999&#x27;" in body
     assert "Clashes with row" in body
-    assert "Save as draft" not in body
+    assert 'value="stage"' not in body
     resp = client.post(reverse("manage:timetable"), {"action": "stage", "term": term.pk, "csv_text": bad})
     assert resp.status_code == 200
     assert not TimetablePublication.objects.filter(term=term).exists()
@@ -490,11 +648,14 @@ def test_audit_requires_capability(client, hod):
 
 
 def test_ops_run_now_releases_overdue_booking(client, facility_manager, student, room, monday, now):
-    b = bookings.create_booking(requester=student, resource=room, start=at(monday, 10), end=at(monday, 11),
-                                title="Study", notify=False, now=now)
+    b = bookings.create_booking(
+        requester=student, resource=room, start=at(monday, 10), end=at(monday, 11), title="Study", notify=False, now=now
+    )
     real_now = timezone.now()
     # Pretend the booking started an hour ago and nobody checked in.
-    Booking.objects.filter(pk=b.pk).update(period=trange(real_now - timedelta(hours=1), real_now + timedelta(minutes=30)))
+    Booking.objects.filter(pk=b.pk).update(
+        period=trange(real_now - timedelta(hours=1), real_now + timedelta(minutes=30))
+    )
     client.force_login(facility_manager)
     resp = client.post(reverse("manage:ops"), {"task": "checkins.sweep_no_shows"})
     assert resp.status_code == 302

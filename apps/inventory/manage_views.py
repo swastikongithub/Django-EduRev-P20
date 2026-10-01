@@ -68,16 +68,18 @@ def index(request):
     for i in items:
         r = recent.get(i.pk, {})
         ratio = (i.quantity_available / i.quantity_total) if i.quantity_total else (0 if i.is_low else 1)
-        rows.append({
-            "i": i,
-            "ratio": max(0.0, min(1.0, ratio)),
-            "tone": "is-high" if i.is_low else ("is-mid" if i.quantity_available <= i.reorder_level * 2 else ""),
-            "issued": r.get(IssuanceStatus.ISSUED, 0),
-            "returned": r.get(IssuanceStatus.RETURNED, 0),
-            "consumed": r.get(IssuanceStatus.CONSUMED, 0),
-            "lost": r.get(IssuanceStatus.LOST, 0),
-            "out": i.quantity_total - i.quantity_available if i.kind == ItemKind.ACCESSORY else 0,
-        })
+        rows.append(
+            {
+                "i": i,
+                "ratio": max(0.0, min(1.0, ratio)),
+                "tone": "is-high" if i.is_low else ("is-mid" if i.quantity_available <= i.reorder_level * 2 else ""),
+                "issued": r.get(IssuanceStatus.ISSUED, 0),
+                "returned": r.get(IssuanceStatus.RETURNED, 0),
+                "consumed": r.get(IssuanceStatus.CONSUMED, 0),
+                "lost": r.get(IssuanceStatus.LOST, 0),
+                "out": i.quantity_total - i.quantity_available if i.kind == ItemKind.ACCESSORY else 0,
+            }
+        )
 
     totals = base.aggregate(
         n=Count("id"),
@@ -99,7 +101,8 @@ def index(request):
         "out_now": out_now,
         "consumed_week": Issuance.objects.filter(
             item__in=base, status=IssuanceStatus.CONSUMED, issued_at__gte=since
-        ).aggregate(n=Sum("quantity"))["n"] or 0,
+        ).aggregate(n=Sum("quantity"))["n"]
+        or 0,
         "activity": activity,
         "low_only": low_only,
         "kind": kind,

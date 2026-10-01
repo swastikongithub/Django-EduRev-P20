@@ -40,30 +40,70 @@ class Sweep:
 
 
 SWEEPS = [
-    Sweep("checkins.sweep_no_shows", "apps.checkins.tasks", "sweep_no_shows", "Release no-shows",
-          "Frees confirmed bookings nobody checked into within the grace period, and applies the no-show ladder.",
-          "Released {n} booking{s} that nobody checked into."),
-    Sweep("checkins.sweep_completed", "apps.checkins.tasks", "sweep_completed", "Complete finished bookings",
-          "Checks out bookings whose time is over, so the history and utilisation stay accurate.",
-          "Marked {n} finished booking{s} as completed."),
-    Sweep("approvals.sweep_expired", "apps.approvals.tasks", "sweep_expired", "Expire stale requests",
-          "Releases pending requests that reached their start time without a decision.",
-          "Expired {n} request{s} that weren't decided in time."),
-    Sweep("notifications.send_reminders", "apps.notifications.tasks", "send_reminders", "Send reminders",
-          "Reminds people 30 minutes before a confirmed booking starts.",
-          "Sent {n} reminder{s}."),
-    Sweep("notifications.send_checkin_nudges", "apps.notifications.tasks", "send_checkin_nudges", "Check-in nudges",
-          "Tells people their check-in window is open once a booking starts.",
-          "Sent {n} check-in nudge{s}."),
-    Sweep("maintenance.sweep_windows", "apps.maintenance.tasks", "sweep_windows", "Maintenance transitions",
-          "Starts and finishes scheduled maintenance windows on time.",
-          "Moved {n} maintenance window{s} along."),
-    Sweep("checkins.sweep_restrictions", "apps.checkins.tasks", "sweep_restrictions", "Lapsed restrictions",
-          "Reports booking pauses that ended in the last hour.",
-          "{n} booking pause{s} ended in the last hour."),
-    Sweep("analytics.build_snapshots", "apps.analytics.tasks", "build_snapshots", "Utilisation snapshot",
-          "Rolls up yesterday's bookings into the utilisation figures on Insights.",
-          "Rebuilt yesterday's utilisation ({n} row{s})."),
+    Sweep(
+        "checkins.sweep_no_shows",
+        "apps.checkins.tasks",
+        "sweep_no_shows",
+        "Release no-shows",
+        "Frees confirmed bookings nobody checked into within the grace period, and applies the no-show ladder.",
+        "Released {n} booking{s} that nobody checked into.",
+    ),
+    Sweep(
+        "checkins.sweep_completed",
+        "apps.checkins.tasks",
+        "sweep_completed",
+        "Complete finished bookings",
+        "Checks out bookings whose time is over, so the history and utilisation stay accurate.",
+        "Marked {n} finished booking{s} as completed.",
+    ),
+    Sweep(
+        "approvals.sweep_expired",
+        "apps.approvals.tasks",
+        "sweep_expired",
+        "Expire stale requests",
+        "Releases pending requests that reached their start time without a decision.",
+        "Expired {n} request{s} that weren't decided in time.",
+    ),
+    Sweep(
+        "notifications.send_reminders",
+        "apps.notifications.tasks",
+        "send_reminders",
+        "Send reminders",
+        "Reminds people 30 minutes before a confirmed booking starts.",
+        "Sent {n} reminder{s}.",
+    ),
+    Sweep(
+        "notifications.send_checkin_nudges",
+        "apps.notifications.tasks",
+        "send_checkin_nudges",
+        "Check-in nudges",
+        "Tells people their check-in window is open once a booking starts.",
+        "Sent {n} check-in nudge{s}.",
+    ),
+    Sweep(
+        "maintenance.sweep_windows",
+        "apps.maintenance.tasks",
+        "sweep_windows",
+        "Maintenance transitions",
+        "Starts and finishes scheduled maintenance windows on time.",
+        "Moved {n} maintenance window{s} along.",
+    ),
+    Sweep(
+        "checkins.sweep_restrictions",
+        "apps.checkins.tasks",
+        "sweep_restrictions",
+        "Lapsed restrictions",
+        "Reports booking pauses that ended in the last hour.",
+        "{n} booking pause{s} ended in the last hour.",
+    ),
+    Sweep(
+        "analytics.build_snapshots",
+        "apps.analytics.tasks",
+        "build_snapshots",
+        "Utilisation snapshot",
+        "Rolls up yesterday's bookings into the utilisation figures on Insights.",
+        "Rebuilt yesterday's utilisation ({n} row{s}).",
+    ),
 ]
 SWEEP_BY_TASK = {s.task: s for s in SWEEPS}
 
@@ -108,11 +148,18 @@ def sweep_status(now=None) -> list[dict]:
         last = latest.get(s.task)
         age = (now - last.started_at).total_seconds() if last else None
         stalled = bool(interval) and (age is None or age > 3 * interval)
-        rows.append({
-            "sweep": s, "interval": interval, "every": _every(interval) if interval else "not scheduled",
-            "last": last, "age": age, "stalled": stalled, "failed": bool(last and not last.ok),
-            "day": stats.get(s.task, {"runs": 0, "failed": 0, "affected": 0}),
-        })
+        rows.append(
+            {
+                "sweep": s,
+                "interval": interval,
+                "every": _every(interval) if interval else "not scheduled",
+                "last": last,
+                "age": age,
+                "stalled": stalled,
+                "failed": bool(last and not last.ok),
+                "day": stats.get(s.task, {"runs": 0, "failed": 0, "affected": 0}),
+            }
+        )
     return rows
 
 
@@ -120,17 +167,31 @@ def celery_mode() -> dict:
     eager = bool(getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False))
     broker = getattr(settings, "CELERY_BROKER_URL", "") or ""
     parts = urlsplit(broker)
-    shown = f"{parts.scheme}://{parts.hostname or ''}{':' + str(parts.port) if parts.port else ''}" if parts.scheme else ""
+    shown = (
+        f"{parts.scheme}://{parts.hostname or ''}{':' + str(parts.port) if parts.port else ''}" if parts.scheme else ""
+    )
     if eager:
-        return {"label": "Eager", "tone": "warn", "broker": shown,
-                "text": "Tasks run inline inside the web request. Fine for demos and tests; the beat schedule doesn't run, "
-                        "so use Run now below."}
+        return {
+            "label": "Eager",
+            "tone": "warn",
+            "broker": shown,
+            "text": "Tasks run inline inside the web request. Fine for demos and tests; the beat schedule doesn't run, "
+            "so use Run now below.",
+        }
     if parts.scheme == "memory":
-        return {"label": "In-memory broker", "tone": "warn", "broker": shown,
-                "text": "No Redis broker is configured, so no worker or beat process can pick up work. Use Run now, "
-                        "or set REDIS_URL."}
-    return {"label": "Broker", "tone": "ok", "broker": shown,
-            "text": "Tasks go through the broker to Celery workers; Celery Beat runs the sweeps on schedule."}
+        return {
+            "label": "In-memory broker",
+            "tone": "warn",
+            "broker": shown,
+            "text": "No Redis broker is configured, so no worker or beat process can pick up work. Use Run now, "
+            "or set REDIS_URL.",
+        }
+    return {
+        "label": "Broker",
+        "tone": "ok",
+        "broker": shown,
+        "text": "Tasks go through the broker to Celery workers; Celery Beat runs the sweeps on schedule.",
+    }
 
 
 def run_now(task_name: str) -> int:
@@ -155,12 +216,24 @@ def ops(request):
             n = run_now(name)
         except Exception as exc:  # noqa: BLE001 - shown to the operator, details are in the SweepRun row
             messages.error(request, f"{s.label} failed: {type(exc).__name__}. The error is recorded below.")
-            record(request.user, "ops.run_sweep", request.user, after={"task": name, "ok": False}, request=request,
-                   label=s.label)
+            record(
+                request.user,
+                "ops.run_sweep",
+                request.user,
+                after={"task": name, "ok": False},
+                request=request,
+                label=s.label,
+            )
         else:
             messages.success(request, s.result.format(n=n, s="" if n == 1 else "s"))
-            record(request.user, "ops.run_sweep", request.user, after={"task": name, "ok": True, "affected": n},
-                   request=request, label=s.label)
+            record(
+                request.user,
+                "ops.run_sweep",
+                request.user,
+                after={"task": name, "ok": True, "affected": n},
+                request=request,
+                label=s.label,
+            )
         return redirect("manage:ops")
 
     checks = {"database": check_database()}
@@ -170,12 +243,16 @@ def ops(request):
     recent = list(SweepRun.objects.all()[:25])
     for run in recent:
         run.took = (run.finished_at - run.started_at).total_seconds() if run.finished_at else None
-    return render(request, "manage/ops.html", {
-        "checks": checks,
-        "celery": celery_mode(),
-        "rows": rows,
-        "stalled": [r for r in rows if r["stalled"]],
-        "recent": recent,
-        "labels": {s.task: s.label for s in SWEEPS},
-        "demo": settings.DEMO_MODE,
-    })
+    return render(
+        request,
+        "manage/ops.html",
+        {
+            "checks": checks,
+            "celery": celery_mode(),
+            "rows": rows,
+            "stalled": [r for r in rows if r["stalled"]],
+            "recent": recent,
+            "labels": {s.task: s.label for s in SWEEPS},
+            "demo": settings.DEMO_MODE,
+        },
+    )

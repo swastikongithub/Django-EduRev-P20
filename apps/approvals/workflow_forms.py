@@ -21,8 +21,13 @@ from .services import resolve_workflow
 
 MAX_STEPS = 6
 ROLE_PLURAL_CAP = {
-    Role.STUDENT: "Students", Role.FACULTY: "Faculty", Role.STAFF: "Staff", Role.CUSTODIAN: "Custodians",
-    Role.DEPT_HEAD: "Heads of department", Role.FACILITY_MANAGER: "Facility managers", Role.ADMIN: "Administrators",
+    Role.STUDENT: "Students",
+    Role.FACULTY: "Faculty",
+    Role.STAFF: "Staff",
+    Role.CUSTODIAN: "Custodians",
+    Role.DEPT_HEAD: "Heads of department",
+    Role.FACILITY_MANAGER: "Facility managers",
+    Role.ADMIN: "Administrators",
 }
 
 
@@ -73,23 +78,47 @@ def describe_workflow(w, steps=None) -> str:
 class WorkflowForm(StyledFormMixin, forms.ModelForm):
     APPLIES = [("any", "Anything"), ("type", "A resource type"), ("resource", "One resource")]
     applies = forms.ChoiceField(choices=APPLIES, widget=forms.RadioSelect, label="Applies to", initial="type")
-    requester_roles = forms.MultipleChoiceField(choices=Role.choices, required=False, widget=forms.CheckboxSelectMultiple,
-                                                label="When the person booking is")
+    requester_roles = forms.MultipleChoiceField(
+        choices=Role.choices, required=False, widget=forms.CheckboxSelectMultiple, label="When the person booking is"
+    )
 
     class Meta:
         model = ApprovalWorkflow
-        fields = ["name", "description", "resource_type", "resource", "requester_roles", "min_attendees",
-                  "min_duration_minutes", "auto_approve", "priority", "active"]
-        labels = {"name": "Name", "description": "Note for other admins", "resource_type": "Type",
-                  "resource": "Resource", "min_attendees": "Only when at least this many people",
-                  "min_duration_minutes": "Only when at least this long (min)", "auto_approve": "Confirm instantly",
-                  "priority": "Priority", "active": "Active"}
-        help_texts = {"priority": "When two workflows are equally specific, the higher number wins.",
-                      "min_attendees": "Leave empty to apply to any group size.",
-                      "min_duration_minutes": "Leave empty to apply to any length, e.g. 120 for two hours or more."}
-        widgets = {"min_attendees": forms.NumberInput(attrs={"min": 1, "inputmode": "numeric", "placeholder": "Any number"}),
-                   "min_duration_minutes": forms.NumberInput(attrs={"min": 1, "inputmode": "numeric", "placeholder": "Any length"}),
-                   "priority": forms.NumberInput(attrs={"min": 0, "inputmode": "numeric"})}
+        fields = [
+            "name",
+            "description",
+            "resource_type",
+            "resource",
+            "requester_roles",
+            "min_attendees",
+            "min_duration_minutes",
+            "auto_approve",
+            "priority",
+            "active",
+        ]
+        labels = {
+            "name": "Name",
+            "description": "Note for other admins",
+            "resource_type": "Type",
+            "resource": "Resource",
+            "min_attendees": "Only when at least this many people",
+            "min_duration_minutes": "Only when at least this long (min)",
+            "auto_approve": "Confirm instantly",
+            "priority": "Priority",
+            "active": "Active",
+        }
+        help_texts = {
+            "priority": "When two workflows are equally specific, the higher number wins.",
+            "min_attendees": "Leave empty to apply to any group size.",
+            "min_duration_minutes": "Leave empty to apply to any length, e.g. 120 for two hours or more.",
+        }
+        widgets = {
+            "min_attendees": forms.NumberInput(attrs={"min": 1, "inputmode": "numeric", "placeholder": "Any number"}),
+            "min_duration_minutes": forms.NumberInput(
+                attrs={"min": 1, "inputmode": "numeric", "placeholder": "Any length"}
+            ),
+            "priority": forms.NumberInput(attrs={"min": 0, "inputmode": "numeric"}),
+        }
         error_messages = {"name": {"required": "Give the workflow a name, e.g. Seminar halls for students."}}
 
     def __init__(self, *args, institution_id, **kwargs):
@@ -101,8 +130,9 @@ class WorkflowForm(StyledFormMixin, forms.ModelForm):
         self.fields["resource_type"].empty_label = "Choose a type"
         self.fields["resource"].empty_label = "Choose a resource"
         if self.instance.pk and not self.is_bound:
-            self.initial["applies"] = ("resource" if self.instance.resource_id else
-                                       "type" if self.instance.resource_type_id else "any")
+            self.initial["applies"] = (
+                "resource" if self.instance.resource_id else "type" if self.instance.resource_type_id else "any"
+            )
         self.style()
 
     def clean(self):
@@ -166,8 +196,21 @@ def parse_steps(post, institution_id) -> tuple[list[StepInput], list[str], list[
 
 
 def workflow_snapshot(w) -> dict:
-    data = snapshot(w, fields=["name", "description", "resource_type", "resource", "requester_roles", "min_attendees",
-                               "min_duration_minutes", "auto_approve", "priority", "active"])
+    data = snapshot(
+        w,
+        fields=[
+            "name",
+            "description",
+            "resource_type",
+            "resource",
+            "requester_roles",
+            "min_attendees",
+            "min_duration_minutes",
+            "auto_approve",
+            "priority",
+            "active",
+        ],
+    )
     data["steps"] = [f"{s.order}. {step_label(s)} ({s.sla_hours} h)" for s in w.steps.select_related("approver_user")]
     return data
 
@@ -181,13 +224,26 @@ def save_workflow(form: WorkflowForm, steps: list[StepInput], *, actor, request=
         w.save()
         w.steps.all().delete()
         if not w.auto_approve:
-            ApprovalStep.objects.bulk_create([
-                ApprovalStep(workflow=w, order=i, approver_role=s.approver_role, approver_user=s.approver_user,
-                             sla_hours=s.sla_hours)
-                for i, s in enumerate(steps, start=1)
-            ])
-        record(actor, "workflow.create" if creating else "workflow.update", w, before=before,
-               after=workflow_snapshot(w), request=request)
+            ApprovalStep.objects.bulk_create(
+                [
+                    ApprovalStep(
+                        workflow=w,
+                        order=i,
+                        approver_role=s.approver_role,
+                        approver_user=s.approver_user,
+                        sla_hours=s.sla_hours,
+                    )
+                    for i, s in enumerate(steps, start=1)
+                ]
+            )
+        record(
+            actor,
+            "workflow.create" if creating else "workflow.update",
+            w,
+            before=before,
+            after=workflow_snapshot(w),
+            request=request,
+        )
     return w
 
 
@@ -210,7 +266,11 @@ def who_is_asked(step, resource) -> list[str]:
     elif role == ApproverRole.CUSTODIAN:
         qs = qs.filter(custodianships__resource_id=resource.pk)
     elif role == ApproverRole.DEPT_HEAD:
-        qs = qs.filter(role=Role.DEPT_HEAD, department_id=resource.department_id) if resource.department_id else qs.none()
+        qs = (
+            qs.filter(role=Role.DEPT_HEAD, department_id=resource.department_id)
+            if resource.department_id
+            else qs.none()
+        )
     elif role == ApproverRole.FACILITY_MANAGER:
         qs = qs.filter(role=Role.FACILITY_MANAGER)
     else:
@@ -222,8 +282,11 @@ def explain(resource, role: str, attendees: int, minutes: int) -> dict:
     """What resolve_workflow() picks for this request, plus why each other candidate didn't apply."""
     probe = User(role=role, institution_id=resource.institution_id)
     chosen = resolve_workflow(resource, probe, attendees, minutes)
-    candidates = (ApprovalWorkflow.objects.filter(institution_id=resource.institution_id)
-                  .select_related("resource_type", "resource").prefetch_related("steps__approver_user"))
+    candidates = (
+        ApprovalWorkflow.objects.filter(institution_id=resource.institution_id)
+        .select_related("resource_type", "resource")
+        .prefetch_related("steps__approver_user")
+    )
     rows = []
     for w in candidates:
         if w.resource_id and w.resource_id != resource.pk:
@@ -242,8 +305,15 @@ def explain(resource, role: str, attendees: int, minutes: int) -> dict:
         if not why and not w.auto_approve and not w.steps.all():
             why.append("it has no approval steps")
         steps = list(w.steps.all())
-        rows.append({"w": w, "chosen": chosen is not None and w.pk == chosen.pk, "why": why,
-                     "summary": describe_workflow(w, steps), "specificity": w.specificity})
+        rows.append(
+            {
+                "w": w,
+                "chosen": chosen is not None and w.pk == chosen.pk,
+                "why": why,
+                "summary": describe_workflow(w, steps),
+                "specificity": w.specificity,
+            }
+        )
     rows.sort(key=lambda r: (not r["chosen"], -r["specificity"], -r["w"].priority))
     outranked = [r for r in rows if not r["chosen"] and not r["why"]]
     for r in outranked:
@@ -251,6 +321,13 @@ def explain(resource, role: str, attendees: int, minutes: int) -> dict:
     steps = list(chosen.steps.select_related("approver_user")) if chosen else []
     for s in steps:
         s.asked = who_is_asked(s, resource)
-    return {"chosen": chosen, "steps": steps,
-            "rows": rows, "resource": resource, "role": role, "attendees": attendees, "minutes": minutes,
-            "role_label": Role(role).label}
+    return {
+        "chosen": chosen,
+        "steps": steps,
+        "rows": rows,
+        "resource": resource,
+        "role": role,
+        "attendees": attendees,
+        "minutes": minutes,
+        "role_label": Role(role).label,
+    }

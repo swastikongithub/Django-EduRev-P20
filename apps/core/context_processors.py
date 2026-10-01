@@ -38,7 +38,9 @@ def _nav(user, counts):
     ]
     manage = []
     if has_cap(user, "approve_bookings"):
-        manage.append(("Approvals", "list-checks", "manage:approvals", ("/manage/approvals",), counts.get("approvals", 0)))
+        manage.append(
+            ("Approvals", "list-checks", "manage:approvals", ("/manage/approvals",), counts.get("approvals", 0))
+        )
     if has_cap(user, "manage_resources") or has_cap(user, "approve_bookings"):
         manage.append(("Board", "rows-3", "manage:board", ("/manage/board",), 0))
         manage.append(("Resources", "building-2", "manage:resources", ("/manage/resources",), 0))
@@ -49,10 +51,24 @@ def _nav(user, counts):
     if has_cap(user, "view_department_analytics") or has_cap(user, "view_campus_analytics"):
         manage.append(("Insights", "chart-column", "analytics:dashboard", ("/insights",), 0))
     if has_cap(user, "configure_policy") or has_cap(user, "manage_timetable") or has_cap(user, "manage_users"):
-        manage.append(("Setup", "sliders-horizontal", "manage:setup", ("/manage/setup", "/manage/policies",
-                                                                         "/manage/workflows", "/manage/timetable",
-                                                                         "/manage/users", "/manage/audit",
-                                                                         "/manage/no-shows", "/manage/ops"), 0))
+        manage.append(
+            (
+                "Setup",
+                "sliders-horizontal",
+                "manage:setup",
+                (
+                    "/manage/setup",
+                    "/manage/policies",
+                    "/manage/workflows",
+                    "/manage/timetable",
+                    "/manage/users",
+                    "/manage/audit",
+                    "/manage/no-shows",
+                    "/manage/ops",
+                ),
+                0,
+            )
+        )
 
     def build(items):
         out = []

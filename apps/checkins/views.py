@@ -53,14 +53,23 @@ def pass_landing(request, token):
         except DomainError as exc:
             messages.error(request, exc.message)
         return redirect(b.get_absolute_url() if is_owner else request.path)
-    return render(request, "checkins/landing.html", {
-        "b": b, "is_owner": is_owner, "is_manager": is_manager, "state": services.checkin_state(b),
-    })
+    return render(
+        request,
+        "checkins/landing.html",
+        {
+            "b": b,
+            "is_owner": is_owner,
+            "is_manager": is_manager,
+            "state": services.checkin_state(b),
+        },
+    )
 
 
 @login_required
 def here(request, code):
-    resource = get_object_or_404(Resource.objects.select_related("building", "type"), institution_id=request.user.institution_id, code=code)
+    resource = get_object_or_404(
+        Resource.objects.select_related("building", "type"), institution_id=request.user.institution_id, code=code
+    )
     booking = None
     error = None
     if request.method == "POST":
@@ -75,16 +84,24 @@ def here(request, code):
 
     now = timezone.now()
     mine = (
-        Booking.objects.filter(resource=resource, booked_for=request.user, status__in=["approved", "checked_in"],
-                               period__endswith__gt=now)
+        Booking.objects.filter(
+            resource=resource, booked_for=request.user, status__in=["approved", "checked_in"], period__endswith__gt=now
+        )
         .order_by("period")
         .first()
     )
-    return render(request, "checkins/here.html", {
-        "r": resource, "mine": mine, "state": services.checkin_state(mine, now) if mine else None, "error": error,
-        "today": availability.day(resource, timezone.localdate(), request.user, now=now),
-        "posted": request.method == "POST",
-    })
+    return render(
+        request,
+        "checkins/here.html",
+        {
+            "r": resource,
+            "mine": mine,
+            "state": services.checkin_state(mine, now) if mine else None,
+            "error": error,
+            "today": availability.day(resource, timezone.localdate(), request.user, now=now),
+            "posted": request.method == "POST",
+        },
+    )
 
 
 @login_required
@@ -92,7 +109,14 @@ def here(request, code):
 def check_in(request, reference):
     b = get_object_or_404(visible_bookings(request.user), reference=reference)
     try:
-        services.check_in(b, request.user, method=CheckInMethod.APP if request.user.pk in (b.booked_for_id, b.requester_id) else CheckInMethod.CUSTODIAN, request=request)
+        services.check_in(
+            b,
+            request.user,
+            method=CheckInMethod.APP
+            if request.user.pk in (b.booked_for_id, b.requester_id)
+            else CheckInMethod.CUSTODIAN,
+            request=request,
+        )
         messages.success(request, f"Checked in to {b.resource.name}.")
     except DomainError as exc:
         messages.error(request, exc.message)

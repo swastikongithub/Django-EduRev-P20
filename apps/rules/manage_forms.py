@@ -21,8 +21,13 @@ from apps.core.timeutil import trange
 from .models import AvailabilityRule, Blackout, BookingPolicy, Quota, RestrictionTier, Scope, Weekday
 
 ROLE_PLURAL = {
-    Role.STUDENT: "students", Role.FACULTY: "faculty", Role.STAFF: "staff", Role.CUSTODIAN: "custodians",
-    Role.DEPT_HEAD: "heads of department", Role.FACILITY_MANAGER: "facility managers", Role.ADMIN: "administrators",
+    Role.STUDENT: "students",
+    Role.FACULTY: "faculty",
+    Role.STAFF: "staff",
+    Role.CUSTODIAN: "custodians",
+    Role.DEPT_HEAD: "heads of department",
+    Role.FACILITY_MANAGER: "facility managers",
+    Role.ADMIN: "administrators",
 }
 WEEKDAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -61,15 +66,19 @@ def scope_phrase(obj) -> str:
 
 
 def describe_policy(p: BookingPolicy) -> str:
-    bits = [f"Book in {p.slot_minutes}-minute steps, {minutes_label(p.min_duration_minutes)} to "
-            f"{minutes_label(p.max_duration_minutes)} at a time"]
+    bits = [
+        f"Book in {p.slot_minutes}-minute steps, {minutes_label(p.min_duration_minutes)} to "
+        f"{minutes_label(p.max_duration_minutes)} at a time"
+    ]
     if p.lead_time_minutes:
         bits.append(f"at least {minutes_label(p.lead_time_minutes)} ahead")
     bits.append(f"up to {p.max_advance_days} days out")
     s = ", ".join(bits) + "."
     if p.requires_checkin:
-        s += (f" Check in from {p.checkin_opens_minutes} min before the start; unclaimed bookings are released "
-              f"{p.checkin_grace_minutes} min after it.")
+        s += (
+            f" Check in from {p.checkin_opens_minutes} min before the start; unclaimed bookings are released "
+            f"{p.checkin_grace_minutes} min after it."
+        )
     else:
         s += " No check-in needed."
     if not p.enforce_capacity:
@@ -78,8 +87,13 @@ def describe_policy(p: BookingPolicy) -> str:
 
 
 def describe_quota(q: Quota) -> str:
-    who = (f"{q.department.code} department, shared by all its members" if q.department_id
-           else f"each {Role(q.role).label.lower()}" if q.role else "everyone")
+    who = (
+        f"{q.department.code} department, shared by all its members"
+        if q.department_id
+        else f"each {Role(q.role).label.lower()}"
+        if q.role
+        else "everyone"
+    )
     limits = []
     if q.max_hours is not None:
         limits.append(f"{q.max_hours:g} hour{'s' if q.max_hours != 1 else ''}")
@@ -132,11 +146,27 @@ class ScopedFormMixin:
         return data
 
 
-SLOT_CHOICES = [(5, "5 minutes"), (10, "10 minutes"), (15, "15 minutes"), (20, "20 minutes"), (30, "30 minutes"),
-                (60, "1 hour")]
-LEAD_CHOICES = [(0, "No notice needed"), (15, "15 minutes"), (30, "30 minutes"), (60, "1 hour"), (120, "2 hours"),
-                (240, "4 hours"), (720, "12 hours"), (1440, "1 day"), (2880, "2 days"), (4320, "3 days"),
-                (10080, "1 week")]
+SLOT_CHOICES = [
+    (5, "5 minutes"),
+    (10, "10 minutes"),
+    (15, "15 minutes"),
+    (20, "20 minutes"),
+    (30, "30 minutes"),
+    (60, "1 hour"),
+]
+LEAD_CHOICES = [
+    (0, "No notice needed"),
+    (15, "15 minutes"),
+    (30, "30 minutes"),
+    (60, "1 hour"),
+    (120, "2 hours"),
+    (240, "4 hours"),
+    (720, "12 hours"),
+    (1440, "1 day"),
+    (2880, "2 days"),
+    (4320, "3 days"),
+    (10080, "1 week"),
+]
 
 
 def _with_current(choices, value):
@@ -151,26 +181,53 @@ class BookingPolicyForm(StyledFormMixin, ScopedFormMixin, forms.ModelForm):
 
     class Meta:
         model = BookingPolicy
-        fields = ["scope", "resource_type", "resource", "slot_minutes", "min_duration_minutes", "max_duration_minutes",
-                  "lead_time_minutes", "max_advance_days", "requires_checkin", "checkin_opens_minutes",
-                  "checkin_grace_minutes", "enforce_capacity"]
+        fields = [
+            "scope",
+            "resource_type",
+            "resource",
+            "slot_minutes",
+            "min_duration_minutes",
+            "max_duration_minutes",
+            "lead_time_minutes",
+            "max_advance_days",
+            "requires_checkin",
+            "checkin_opens_minutes",
+            "checkin_grace_minutes",
+            "enforce_capacity",
+        ]
         labels = {
-            "scope": "Applies to", "resource_type": "Type", "resource": "Resource",
-            "min_duration_minutes": "Shortest booking (min)", "max_duration_minutes": "Longest booking (min)",
-            "max_advance_days": "Opens this many days ahead", "requires_checkin": "Require check-in",
-            "checkin_opens_minutes": "Check-in opens (min before)", "checkin_grace_minutes": "Release after (min)",
+            "scope": "Applies to",
+            "resource_type": "Type",
+            "resource": "Resource",
+            "min_duration_minutes": "Shortest booking (min)",
+            "max_duration_minutes": "Longest booking (min)",
+            "max_advance_days": "Opens this many days ahead",
+            "requires_checkin": "Require check-in",
+            "checkin_opens_minutes": "Check-in opens (min before)",
+            "checkin_grace_minutes": "Release after (min)",
             "enforce_capacity": "Refuse bookings above capacity",
         }
-        widgets = {f: forms.NumberInput(attrs={"min": 0, "inputmode": "numeric"})
-                   for f in ("min_duration_minutes", "max_duration_minutes", "max_advance_days",
-                             "checkin_opens_minutes", "checkin_grace_minutes")}
+        widgets = {
+            f: forms.NumberInput(attrs={"min": 0, "inputmode": "numeric"})
+            for f in (
+                "min_duration_minutes",
+                "max_duration_minutes",
+                "max_advance_days",
+                "checkin_opens_minutes",
+                "checkin_grace_minutes",
+            )
+        }
 
     def __init__(self, *args, institution_id, **kwargs):
         super().__init__(*args, **kwargs)
         self.institution_id = institution_id
         self.setup_scope(institution_id)
-        self.fields["slot_minutes"].choices = _with_current(SLOT_CHOICES, self.instance.slot_minutes if self.instance.pk else None)
-        self.fields["lead_time_minutes"].choices = _with_current(LEAD_CHOICES, self.instance.lead_time_minutes if self.instance.pk else None)
+        self.fields["slot_minutes"].choices = _with_current(
+            SLOT_CHOICES, self.instance.slot_minutes if self.instance.pk else None
+        )
+        self.fields["lead_time_minutes"].choices = _with_current(
+            LEAD_CHOICES, self.instance.lead_time_minutes if self.instance.pk else None
+        )
         self.style()
 
     def clean(self):
@@ -181,12 +238,18 @@ class BookingPolicyForm(StyledFormMixin, ScopedFormMixin, forms.ModelForm):
         if slot and lo is not None and hi is not None:
             for name, v in (("min_duration_minutes", lo), ("max_duration_minutes", hi)):
                 if v < slot or v % slot:
-                    self.add_error(name, f"Use whole steps: with {slot}-minute steps, {slot}, {slot * 2}, {slot * 3} and so on.")
+                    self.add_error(
+                        name, f"Use whole steps: with {slot}-minute steps, {slot}, {slot * 2}, {slot * 3} and so on."
+                    )
         if data.get("max_advance_days") == 0:
             self.add_error("max_advance_days", "Allow at least 1 day, or nobody can book ahead at all.")
         if not self.errors:
-            clash = BookingPolicy.objects.filter(institution_id=self.institution_id, scope=data.get("scope"),
-                                                 resource_type=data.get("resource_type"), resource=data.get("resource"))
+            clash = BookingPolicy.objects.filter(
+                institution_id=self.institution_id,
+                scope=data.get("scope"),
+                resource_type=data.get("resource_type"),
+                resource=data.get("resource"),
+            )
             if self.instance.pk:
                 clash = clash.exclude(pk=self.instance.pk)
             if clash.exists():
@@ -198,12 +261,23 @@ class HoursForm(StyledFormMixin, ScopedFormMixin, forms.Form):
     scope = forms.ChoiceField(choices=Scope.choices, label="Applies to")
     resource_type = forms.ModelChoiceField(queryset=ResourceType.objects.none(), label="Type")
     resource = forms.ModelChoiceField(queryset=Resource.objects.none(), label="Resource")
-    weekdays = forms.TypedMultipleChoiceField(coerce=int, choices=Weekday.choices, widget=forms.CheckboxSelectMultiple,
-                                              label="Days", error_messages={"required": "Pick at least one day."})
-    opens = forms.TimeField(widget=forms.TimeInput(attrs={"type": "time"}, format="%H:%M"), label="Opens",
-                            error_messages={"required": "Say when it opens.", "invalid": "Enter a time like 08:00."})
-    closes = forms.TimeField(widget=forms.TimeInput(attrs={"type": "time"}, format="%H:%M"), label="Closes",
-                             error_messages={"required": "Say when it closes.", "invalid": "Enter a time like 20:00."})
+    weekdays = forms.TypedMultipleChoiceField(
+        coerce=int,
+        choices=Weekday.choices,
+        widget=forms.CheckboxSelectMultiple,
+        label="Days",
+        error_messages={"required": "Pick at least one day."},
+    )
+    opens = forms.TimeField(
+        widget=forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+        label="Opens",
+        error_messages={"required": "Say when it opens.", "invalid": "Enter a time like 08:00."},
+    )
+    closes = forms.TimeField(
+        widget=forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+        label="Closes",
+        error_messages={"required": "Say when it closes.", "invalid": "Enter a time like 20:00."},
+    )
 
     def __init__(self, *args, institution_id, **kwargs):
         super().__init__(*args, **kwargs)
@@ -218,9 +292,15 @@ class HoursForm(StyledFormMixin, ScopedFormMixin, forms.Form):
             self.add_error("closes", "Closing time must be after opening time (overnight hours aren't supported).")
         if self.errors:
             return data
-        existing = AvailabilityRule.objects.filter(institution_id=self.institution_id, scope=data["scope"],
-                                                   resource_type=data.get("resource_type"), resource=data.get("resource"),
-                                                   weekday__in=data["weekdays"], opens__lt=c, closes__gt=o)
+        existing = AvailabilityRule.objects.filter(
+            institution_id=self.institution_id,
+            scope=data["scope"],
+            resource_type=data.get("resource_type"),
+            resource=data.get("resource"),
+            weekday__in=data["weekdays"],
+            opens__lt=c,
+            closes__gt=o,
+        )
         clash = existing.first()
         if clash:
             raise ValidationError(
@@ -231,23 +311,41 @@ class HoursForm(StyledFormMixin, ScopedFormMixin, forms.Form):
 
     def save(self) -> list[AvailabilityRule]:
         d = self.cleaned_data
-        return AvailabilityRule.objects.bulk_create([
-            AvailabilityRule(institution_id=self.institution_id, scope=d["scope"], resource_type=d.get("resource_type"),
-                             resource=d.get("resource"), weekday=wd, opens=d["opens"], closes=d["closes"])
-            for wd in sorted(set(d["weekdays"]))
-        ])
+        return AvailabilityRule.objects.bulk_create(
+            [
+                AvailabilityRule(
+                    institution_id=self.institution_id,
+                    scope=d["scope"],
+                    resource_type=d.get("resource_type"),
+                    resource=d.get("resource"),
+                    weekday=wd,
+                    opens=d["opens"],
+                    closes=d["closes"],
+                )
+                for wd in sorted(set(d["weekdays"]))
+            ]
+        )
 
 
 DT_WIDGET = forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M")
 
 
 class BlackoutForm(StyledFormMixin, ScopedFormMixin, forms.ModelForm):
-    starts = forms.DateTimeField(widget=DT_WIDGET, label="From", input_formats=["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M"],
-                                 error_messages={"required": "Say when it starts."})
-    ends = forms.DateTimeField(widget=DT_WIDGET, label="Until", input_formats=["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M"],
-                               error_messages={"required": "Say when it ends."})
-    exempt_roles = forms.MultipleChoiceField(choices=Role.choices, required=False, widget=forms.CheckboxSelectMultiple,
-                                             label="Still allowed to book")
+    starts = forms.DateTimeField(
+        widget=DT_WIDGET,
+        label="From",
+        input_formats=["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M"],
+        error_messages={"required": "Say when it starts."},
+    )
+    ends = forms.DateTimeField(
+        widget=DT_WIDGET,
+        label="Until",
+        input_formats=["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M"],
+        error_messages={"required": "Say when it ends."},
+    )
+    exempt_roles = forms.MultipleChoiceField(
+        choices=Role.choices, required=False, widget=forms.CheckboxSelectMultiple, label="Still allowed to book"
+    )
 
     class Meta:
         model = Blackout
@@ -293,11 +391,20 @@ class QuotaForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = Quota
         fields = ["name", "role", "department", "resource_type", "period", "max_hours", "max_bookings", "active"]
-        labels = {"name": "Name", "role": "Role", "department": "Department", "resource_type": "Only for this type",
-                  "period": "Resets", "max_hours": "Most hours", "max_bookings": "Most bookings",
-                  "active": "Active"}
-        widgets = {"max_hours": forms.NumberInput(attrs={"min": 0.5, "step": 0.5, "inputmode": "decimal"}),
-                   "max_bookings": forms.NumberInput(attrs={"min": 1, "inputmode": "numeric"})}
+        labels = {
+            "name": "Name",
+            "role": "Role",
+            "department": "Department",
+            "resource_type": "Only for this type",
+            "period": "Resets",
+            "max_hours": "Most hours",
+            "max_bookings": "Most bookings",
+            "active": "Active",
+        }
+        widgets = {
+            "max_hours": forms.NumberInput(attrs={"min": 0.5, "step": 0.5, "inputmode": "decimal"}),
+            "max_bookings": forms.NumberInput(attrs={"min": 1, "inputmode": "numeric"}),
+        }
         error_messages = {"name": {"required": "Give the quota a name, e.g. Student lab hours."}}
 
     def __init__(self, *args, user, **kwargs):
@@ -311,7 +418,9 @@ class QuotaForm(StyledFormMixin, forms.ModelForm):
         self.fields["resource_type"].empty_label = "Every type"
         self.fields["department"].empty_label = "Choose a department"
         self.fields["role"].choices = [("", "Choose a role"), *Role.choices]
-        self.fields["period"].choices = [(v, label.replace("per ", "Every ").capitalize()) for v, label in self.fields["period"].choices]
+        self.fields["period"].choices = [
+            (v, label.replace("per ", "Every ").capitalize()) for v, label in self.fields["period"].choices
+        ]
         self.department_only = not is_campus_wide(user)
         if self.department_only:
             # Heads of department manage their own department's shared quota, nothing else.
@@ -353,11 +462,17 @@ class RestrictionTierForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = RestrictionTier
         fields = ["no_shows", "window_days", "restrict_days", "label"]
-        labels = {"no_shows": "No-shows", "window_days": "Within (days)", "restrict_days": "Pause booking for (days)",
-                  "label": "Label"}
+        labels = {
+            "no_shows": "No-shows",
+            "window_days": "Within (days)",
+            "restrict_days": "Pause booking for (days)",
+            "label": "Label",
+        }
         help_texts = {"restrict_days": "0 means a warning only."}
-        widgets = {f: forms.NumberInput(attrs={"min": 0, "inputmode": "numeric"})
-                   for f in ("no_shows", "window_days", "restrict_days")}
+        widgets = {
+            f: forms.NumberInput(attrs={"min": 0, "inputmode": "numeric"})
+            for f in ("no_shows", "window_days", "restrict_days")
+        }
 
     def __init__(self, *args, institution_id, **kwargs):
         super().__init__(*args, **kwargs)

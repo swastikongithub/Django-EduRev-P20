@@ -129,7 +129,7 @@ def daystrip(schedule, start_hour=8, end_hour=21, compact=True, now=None):
     so a 2-hour class is visibly twice as long as a 1-hour booking.
     """
     if schedule is None:
-        return {"segments": [], "compact": compact}
+        return {"segments": [], "compact": compact, "label": "No schedule"}
     d: date = schedule.day
     span_start = timezone.make_aware(datetime.combine(d, datetime.min.time()), timezone.get_current_timezone())
     lo = span_start + timedelta(hours=start_hour)
@@ -169,7 +169,12 @@ def daystrip(schedule, start_hour=8, end_hour=21, compact=True, now=None):
         {"left": pos(lo + timedelta(hours=h)), "label": f"{start_hour + h}"}
         for h in range(0, end_hour - start_hour + 1, 3)
     ]
-    return {"segments": segments, "now_pos": now_pos, "hours": hours, "compact": compact}
+    busy = [s["label"] for s in segments if s["kind"] != "closed"]
+    if not schedule.intervals:
+        label = f"{d:%a %d %b}: closed"
+    else:
+        label = f"{d:%a %d %b}: " + ("; ".join(busy) if busy else "free during opening hours")
+    return {"segments": segments, "now_pos": now_pos, "hours": hours, "compact": compact, "label": label}
 
 
 @register.simple_tag

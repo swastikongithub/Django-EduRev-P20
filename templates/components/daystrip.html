@@ -1,4 +1,4 @@
-<div class="strip{% if not compact %} strip--lg{% endif %}" role="img" aria-label="{% for s in segments %}{% if s.kind != 'closed' %}{{ s.label }}; {% endif %}{% empty %}Free all day{% endfor %}">
+<div class="strip{% if not compact %} strip--lg{% endif %}" role="img" aria-label="{{ label }}">
   {% for s in segments %}<span class="strip__seg strip__seg--{{ s.kind }}" style="left:{{ s.left|stringformat:'.3f' }}%;width:{{ s.width|stringformat:'.3f' }}%" title="{{ s.label }}"></span>{% endfor %}
   {% if now_pos is not None %}<span class="strip__now" style="left:{{ now_pos|stringformat:'.3f' }}%"></span>{% endif %}
 </div>

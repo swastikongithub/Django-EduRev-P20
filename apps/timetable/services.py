@@ -326,8 +326,11 @@ def displacement_preview(pub: TimetablePublication, now=None) -> dict:
         by_resource[e.resource_id].append(e)
     span = trange(aware(first_day, time.min), aware(term.ends + timedelta(days=1), time.min))
     hits = []
-    for b in (Booking.objects.filter(resource_id__in=by_resource, status__in=HOLDING_STATUSES, period__overlap=span)
-              .select_related("resource", "booked_for").order_by("period")):
+    for b in (
+        Booking.objects.filter(resource_id__in=by_resource, status__in=HOLDING_STATUSES, period__overlap=span)
+        .select_related("resource", "booked_for")
+        .order_by("period")
+    ):
         local_s, local_e = timezone.localtime(b.start), timezone.localtime(b.end)
         for e in by_resource[b.resource_id]:
             if local_s.weekday() == e.weekday and local_s.time() < e.end_time and e.start_time < local_e.time():

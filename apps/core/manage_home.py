@@ -39,10 +39,16 @@ def _approvals(user, now, needs):
     waiting = q.count()
     overdue = q.filter(due_at__lt=now).count()
     if overdue:
-        needs.append({"tone": "danger", "icon": "timer", "url": reverse("manage:approvals") + "?overdue=1",
-                      "title": f"{overdue} request{'s are' if overdue != 1 else ' is'} past the review deadline",
-                      "text": "The requester is still waiting. Decide now or the slot expires at its start time.",
-                      "cta": "Review"})
+        needs.append(
+            {
+                "tone": "danger",
+                "icon": "timer",
+                "url": reverse("manage:approvals") + "?overdue=1",
+                "title": f"{overdue} request{'s are' if overdue != 1 else ' is'} past the review deadline",
+                "text": "The requester is still waiting. Decide now or the slot expires at its start time.",
+                "cta": "Review",
+            }
+        )
     if waiting - overdue > 0:
         nxt = q.filter(due_at__gte=now).order_by("due_at").select_related("booking__booked_for").first()
         text = "Each slot is held for the requester until you decide."
@@ -51,8 +57,16 @@ def _approvals(user, now, needs):
             when = f"{due:%H:%M}" if due.date() == timezone.localdate() else f"{due:%a %d %b}, {due:%H:%M}"
             text = f"Next due {when}, from {nxt.booking.booked_for.display_name}."
         n = waiting - overdue
-        needs.append({"tone": "pending", "icon": "list-checks", "url": reverse("manage:approvals"),
-                      "title": f"{n} request{'s' if n != 1 else ''} waiting for you", "text": text, "cta": "Open queue"})
+        needs.append(
+            {
+                "tone": "pending",
+                "icon": "list-checks",
+                "url": reverse("manage:approvals"),
+                "title": f"{n} request{'s' if n != 1 else ''} waiting for you",
+                "text": text,
+                "cta": "Open queue",
+            }
+        )
     return waiting
 
 
@@ -68,14 +82,28 @@ def _breakdowns(user, needs):
     )
     reports = list(qs[:50])
     for r in [r for r in reports if r.severity == Severity.CRITICAL][:3]:
-        needs.append({"tone": "danger", "icon": "flame", "url": reverse("manage:maintenance"),
-                      "title": f"{r.resource.name}: {r.summary}",
-                      "text": "Critical report. The resource is out of service until it's resolved.", "cta": "Handle"})
+        needs.append(
+            {
+                "tone": "danger",
+                "icon": "flame",
+                "url": reverse("manage:maintenance"),
+                "title": f"{r.resource.name}: {r.summary}",
+                "text": "Critical report. The resource is out of service until it's resolved.",
+                "cta": "Handle",
+            }
+        )
     fresh = [r for r in reports if r.status == ReportStatus.OPEN and r.severity != Severity.CRITICAL]
     if fresh:
-        needs.append({"tone": "warn", "icon": "triangle-alert", "url": reverse("manage:maintenance"),
-                      "title": f"{len(fresh)} new breakdown report{'s' if len(fresh) != 1 else ''}",
-                      "text": f"Latest: {fresh[0].summary} ({fresh[0].resource.name}).", "cta": "Acknowledge"})
+        needs.append(
+            {
+                "tone": "warn",
+                "icon": "triangle-alert",
+                "url": reverse("manage:maintenance"),
+                "title": f"{len(fresh)} new breakdown report{'s' if len(fresh) != 1 else ''}",
+                "text": f"Latest: {fresh[0].summary} ({fresh[0].resource.name}).",
+                "cta": "Acknowledge",
+            }
+        )
     return qs.count()
 
 
@@ -89,9 +117,16 @@ def _low_stock(user, needs):
     n = qs.count()
     if n:
         names = ", ".join(f"{i.name} ({i.quantity_available} {i.unit})" for i in items)
-        needs.append({"tone": "warn", "icon": "package", "url": reverse("manage:inventory") + "?low=1",
-                      "title": f"{n} item{'s' if n != 1 else ''} low on stock",
-                      "text": names + (" and more." if n > len(items) else "."), "cta": "Restock"})
+        needs.append(
+            {
+                "tone": "warn",
+                "icon": "package",
+                "url": reverse("manage:inventory") + "?low=1",
+                "title": f"{n} item{'s' if n != 1 else ''} low on stock",
+                "text": names + (" and more." if n > len(items) else "."),
+                "cta": "Restock",
+            }
+        )
     return n
 
 
@@ -116,7 +151,8 @@ def home(request):
     )
     in_use = bookings.filter(status=BookingStatus.CHECKED_IN).count()
     soon_qs = bookings.filter(
-        status__in=[BookingStatus.APPROVED, BookingStatus.PENDING], period__startswith__lt=now + SOON,
+        status__in=[BookingStatus.APPROVED, BookingStatus.PENDING],
+        period__startswith__lt=now + SOON,
         period__endswith__gt=now,
     )
     soon = list(soon_qs.select_related("resource__type", "booked_for").order_by("period")[:12])
@@ -126,35 +162,80 @@ def home(request):
     missed = [b for b in soon if states[b.pk]["state"] == "missed"]
     if waiting_checkin and can_board:
         n = len(waiting_checkin)
-        needs.append({"tone": "info", "icon": "user-round-check", "url": reverse("manage:board"),
-                      "title": f"{n} booking{'s' if n != 1 else ''} in the check-in window",
-                      "text": "If they're at the door with a pass, you can check them in from the board.",
-                      "cta": "Open board"})
+        needs.append(
+            {
+                "tone": "info",
+                "icon": "user-round-check",
+                "url": reverse("manage:board"),
+                "title": f"{n} booking{'s' if n != 1 else ''} in the check-in window",
+                "text": "If they're at the door with a pass, you can check them in from the board.",
+                "cta": "Open board",
+            }
+        )
 
     board_url = reverse("manage:board") if can_board else None
-    kpis.append({"label": "In use now", "icon": "zap", "value": in_use, "url": board_url,
-                 "note": "checked in right now"})
-    kpis.append({"label": "Starting within the hour", "icon": "clock", "value": starting, "url": board_url,
-                 "note": f"{len(missed)} missed check-in" if missed else "confirmed or awaiting approval"})
+    kpis.append(
+        {"label": "In use now", "icon": "zap", "value": in_use, "url": board_url, "note": "checked in right now"}
+    )
+    kpis.append(
+        {
+            "label": "Starting within the hour",
+            "icon": "clock",
+            "value": starting,
+            "url": board_url,
+            "note": f"{len(missed)} missed check-in" if missed else "confirmed or awaiting approval",
+        }
+    )
     if has_cap(user, "approve_bookings"):
         waiting = _approvals(user, now, needs)
-        kpis.append({"label": "Waiting for you", "icon": "list-checks", "value": waiting,
-                     "url": reverse("manage:approvals"), "note": "approval requests", "alert": waiting > 0})
+        kpis.append(
+            {
+                "label": "Waiting for you",
+                "icon": "list-checks",
+                "value": waiting,
+                "url": reverse("manage:approvals"),
+                "note": "approval requests",
+                "alert": waiting > 0,
+            }
+        )
     if has_cap(user, "manage_maintenance"):
         n = _breakdowns(user, needs)
-        kpis.append({"label": "Open breakdowns", "icon": "wrench", "value": n, "url": reverse("manage:maintenance"),
-                     "note": "reported, not yet resolved", "alert": n > 0})
+        kpis.append(
+            {
+                "label": "Open breakdowns",
+                "icon": "wrench",
+                "value": n,
+                "url": reverse("manage:maintenance"),
+                "note": "reported, not yet resolved",
+                "alert": n > 0,
+            }
+        )
         _maintenance_today(user, today, needs)
     if has_cap(user, "manage_inventory"):
         n = _low_stock(user, needs)
-        kpis.append({"label": "Low stock", "icon": "package", "value": n, "url": reverse("manage:inventory") + "?low=1",
-                     "note": "at or under reorder level", "alert": n > 0})
+        kpis.append(
+            {
+                "label": "Low stock",
+                "icon": "package",
+                "value": n,
+                "url": reverse("manage:inventory") + "?low=1",
+                "note": "at or under reorder level",
+                "alert": n > 0,
+            }
+        )
     if has_cap(user, "forgive_no_shows"):
         from apps.checkins.models import NoShow
 
         n = NoShow.objects.filter(institution_id=user.institution_id, detected_at__date=today).filter(rq).count()
-        kpis.append({"label": "No-shows today", "icon": "ban", "value": n, "url": reverse("manage:no_shows"),
-                     "note": "released after the grace period"})
+        kpis.append(
+            {
+                "label": "No-shows today",
+                "icon": "ban",
+                "value": n,
+                "url": reverse("manage:no_shows"),
+                "note": "released after the grace period",
+            }
+        )
 
     order = {"danger": 0, "warn": 1, "pending": 2, "info": 3}
     needs.sort(key=lambda x: order.get(x["tone"], 9))
@@ -165,11 +246,14 @@ def home(request):
         busy_ids = list(dict.fromkeys([b.resource_id for b in live] + [b.resource_id for b in soon]))
         picked = list(resources.filter(pk__in=busy_ids[:PREVIEW_ROWS]).select_related("type", "building"))
         if len(picked) < PREVIEW_ROWS:
-            picked += list(resources.exclude(pk__in=busy_ids).select_related("type", "building")[: PREVIEW_ROWS - len(picked)])
+            picked += list(
+                resources.exclude(pk__in=busy_ids).select_related("type", "building")[: PREVIEW_ROWS - len(picked)]
+            )
         day_bookings = defaultdict(list)
         lo = aware(today, time.min)
         for b in Booking.objects.filter(
-            resource_id__in=[r.pk for r in picked], status__in=HOLDING_STATUSES,
+            resource_id__in=[r.pk for r in picked],
+            status__in=HOLDING_STATUSES,
             period__overlap=trange(lo, lo + timedelta(days=1)),
         ).order_by("period"):
             day_bookings[b.resource_id].append(b)
@@ -201,8 +285,9 @@ def _maintenance_today(user, today, needs):
 
     lo = aware(today, time.min)
     windows = list(
-        MaintenanceWindow.objects.filter(institution_id=user.institution_id, status__in=[WindowStatus.SCHEDULED,
-                                                                                        WindowStatus.IN_PROGRESS])
+        MaintenanceWindow.objects.filter(
+            institution_id=user.institution_id, status__in=[WindowStatus.SCHEDULED, WindowStatus.IN_PROGRESS]
+        )
         .filter(resource_q(user))
         .filter(period__overlap=trange(lo, lo + timedelta(days=1)))
         .select_related("resource")
@@ -211,6 +296,13 @@ def _maintenance_today(user, today, needs):
     for w in windows:
         s, e = timezone.localtime(w.start), timezone.localtime(w.end)
         span = f"{s:%H:%M}–{e:%H:%M}" if e.date() == s.date() else f"{s:%H:%M} until {e:%a %H:%M}"
-        needs.append({"tone": "info", "icon": "wrench", "url": reverse("manage:maintenance"),
-                      "title": f"Maintenance today: {w.title}", "text": f"{w.resource.name}, {span}.",
-                      "cta": "Details"})
+        needs.append(
+            {
+                "tone": "info",
+                "icon": "wrench",
+                "url": reverse("manage:maintenance"),
+                "title": f"Maintenance today: {w.title}",
+                "text": f"{w.resource.name}, {span}.",
+                "cta": "Details",
+            }
+        )

@@ -29,7 +29,9 @@ MAX_PASTE = 1024 * 1024
 
 def _terms(inst):
     pubs = TimetablePublication.objects.select_related("published_by").order_by("-version")
-    terms = list(AcademicTerm.objects.filter(institution_id=inst).prefetch_related(Prefetch("publications", queryset=pubs)))
+    terms = list(
+        AcademicTerm.objects.filter(institution_id=inst).prefetch_related(Prefetch("publications", queryset=pubs))
+    )
     for t in terms:
         allp = list(t.publications.all())
         t.current = next((p for p in allp if p.status == PublicationStatus.PUBLISHED), None)
@@ -57,7 +59,9 @@ def timetable(request):
     ctx = {"check": None}
     if request.method == "POST":
         action = request.POST.get("action")
-        handler = {"check": _check, "stage": _stage, "publish": _publish, "discard": _discard, "term": _add_term}.get(action)
+        handler = {"check": _check, "stage": _stage, "publish": _publish, "discard": _discard, "term": _add_term}.get(
+            action
+        )
         if not handler:
             return HttpResponseBadRequest("Unknown action")
         result = handler(request)
@@ -69,17 +73,27 @@ def timetable(request):
     draft_id = request.GET.get("draft")
     draft = None
     if draft_id and draft_id.isdigit():
-        draft = TimetablePublication.objects.filter(institution_id=inst, pk=draft_id, status=PublicationStatus.DRAFT).select_related("term").first()
+        draft = (
+            TimetablePublication.objects.filter(institution_id=inst, pk=draft_id, status=PublicationStatus.DRAFT)
+            .select_related("term")
+            .first()
+        )
     if draft is None and not ctx.get("check"):
-        draft = (TimetablePublication.objects.filter(institution_id=inst, status=PublicationStatus.DRAFT)
-                 .select_related("term").order_by("-created_at").first())
+        draft = (
+            TimetablePublication.objects.filter(institution_id=inst, status=PublicationStatus.DRAFT)
+            .select_related("term")
+            .order_by("-created_at")
+            .first()
+        )
     if draft:
         ctx["draft"] = draft
         ctx["impact"] = displacement_preview(draft)
         ctx["draft_current"] = next((t.current for t in terms if t.pk == draft.term_id), None)
     published = request.GET.get("published")
     if published and published.isdigit():
-        ctx["published"] = TimetablePublication.objects.filter(institution_id=inst, pk=published).select_related("term").first()
+        ctx["published"] = (
+            TimetablePublication.objects.filter(institution_id=inst, pk=published).select_related("term").first()
+        )
     ctx.update({"terms": terms, "columns": COLUMNS, "today": date.today()})
     return render(request, "manage/timetable.html", ctx)
 
@@ -97,7 +111,9 @@ def _read_source(request) -> str:
 
 
 def _term(request):
-    return AcademicTerm.objects.filter(institution_id=request.user.institution_id, pk=request.POST.get("term") or 0).first()
+    return AcademicTerm.objects.filter(
+        institution_id=request.user.institution_id, pk=request.POST.get("term") or 0
+    ).first()
 
 
 def _check(request):
@@ -111,10 +127,20 @@ def _check(request):
     preview = preview_rows(text, request.user.institution_id)
     entries, errors = parse_rows(text, request.user.institution_id) if not preview["missing"] else ([], [])
     bad = [r for r in preview["rows"] if r["errors"]]
-    return {"check": {"term": term, "text": text, "rows": preview["rows"], "missing": preview["missing"],
-                      "bad": len(bad), "errors": errors, "ok": not errors and not preview["missing"] and bool(entries),
-                      "entries": len(entries), "rooms": len({e.resource_id for e in entries})},
-            "selected_term": term}
+    return {
+        "check": {
+            "term": term,
+            "text": text,
+            "rows": preview["rows"],
+            "missing": preview["missing"],
+            "bad": len(bad),
+            "errors": errors,
+            "ok": not errors and not preview["missing"] and bool(entries),
+            "entries": len(entries),
+            "rooms": len({e.resource_id for e in entries}),
+        },
+        "selected_term": term,
+    }
 
 
 def _stage(request):
@@ -128,16 +154,28 @@ def _stage(request):
         result["upload_error"] = "Something changed since the check (perhaps a room was renamed). Fix the rows below."
         return result
     pub = stage(term, entries, source="csv", actor=request.user, notes=f"Uploaded by {request.user.display_name}")
-    record(request.user, "timetable.stage", pub, after={"version": pub.version, "entries": len(entries)}, request=request,
-           label=f"{term.code} v{pub.version} (draft)")
-    messages.success(request, f"Saved as draft v{pub.version} with {len(entries)} classes. Nothing changes for "
-                              "bookings until you publish it.")
+    record(
+        request.user,
+        "timetable.stage",
+        pub,
+        after={"version": pub.version, "entries": len(entries)},
+        request=request,
+        label=f"{term.code} v{pub.version} (draft)",
+    )
+    messages.success(
+        request,
+        f"Saved as draft v{pub.version} with {len(entries)} classes. Nothing changes for "
+        "bookings until you publish it.",
+    )
     return redirect(f"{reverse('manage:timetable')}?draft={pub.pk}#draft")
 
 
 def _publish(request):
-    pub = get_object_or_404(TimetablePublication.objects.select_related("term"), institution_id=request.user.institution_id,
-                            pk=request.POST.get("pub"))
+    pub = get_object_or_404(
+        TimetablePublication.objects.select_related("term"),
+        institution_id=request.user.institution_id,
+        pk=request.POST.get("pub"),
+    )
     try:
         result = publish(pub, request.user, request=request)
     except DomainError as exc:
@@ -154,10 +192,20 @@ def _publish(request):
 
 
 def _discard(request):
-    pub = get_object_or_404(TimetablePublication, institution_id=request.user.institution_id, pk=request.POST.get("pub"),
-                            status=PublicationStatus.DRAFT)
-    record(request.user, "timetable.discard", pub, before={"version": pub.version, "entries": pub.entry_count},
-           request=request, label=f"{pub.term.code} v{pub.version} (draft)")
+    pub = get_object_or_404(
+        TimetablePublication,
+        institution_id=request.user.institution_id,
+        pk=request.POST.get("pub"),
+        status=PublicationStatus.DRAFT,
+    )
+    record(
+        request.user,
+        "timetable.discard",
+        pub,
+        before={"version": pub.version, "entries": pub.entry_count},
+        request=request,
+        label=f"{pub.term.code} v{pub.version} (draft)",
+    )
     pub.delete()
     messages.success(request, "Draft discarded. The published timetable is unchanged.")
     return redirect("manage:timetable")
@@ -176,9 +224,15 @@ def _add_term(request):
         return {"term_error": "The term must end after it starts."}
     if AcademicTerm.objects.filter(institution_id=request.user.institution_id, code=code).exists():
         return {"term_error": f"Term {code} already exists."}
-    term = AcademicTerm.objects.create(institution_id=request.user.institution_id, code=code[:16], name=name[:80],
-                                       starts=starts, ends=ends)
-    record(request.user, "timetable.term_create", term, after={"code": code, "starts": str(starts), "ends": str(ends)},
-           request=request)
+    term = AcademicTerm.objects.create(
+        institution_id=request.user.institution_id, code=code[:16], name=name[:80], starts=starts, ends=ends
+    )
+    record(
+        request.user,
+        "timetable.term_create",
+        term,
+        after={"code": code, "starts": str(starts), "ends": str(ends)},
+        request=request,
+    )
     messages.success(request, f"{term.name} added. Upload its timetable next.")
     return redirect("manage:timetable")
