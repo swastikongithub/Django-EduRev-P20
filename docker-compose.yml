@@ -95,10 +95,9 @@ services:
 
   beat:
     <<: *app
-    # Exactly ONE beat instance (never scale this service); schedule state lives in a volume.
-    command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule", "/var/lib/celery/celerybeat-schedule"]
-    volumes:
-      - beat-schedule:/var/lib/celery
+    # The scheduler, as in production: run_beat takes a PostgreSQL advisory lock first, so even
+    # a scaled or overlapping beat service schedules every sweep exactly once.
+    command: ["python", "manage.py", "run_beat"]
     healthcheck:
       disable: true
     depends_on:
@@ -123,4 +122,3 @@ services:
 volumes:
   pgdata:
   media:
-  beat-schedule:
