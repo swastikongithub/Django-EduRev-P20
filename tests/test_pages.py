@@ -49,7 +49,10 @@ def test_login_lockout_after_five_failures(client, student):
     student.refresh_from_db()
     assert student.is_locked
     resp = client.post(reverse("accounts:login"), {"username": student.username, "password": "x-test-password-123"})
-    assert b"locked" in resp.content
+    # Even the right password is refused, with the same answer as a wrong one (SEC-10).
+    assert resp.status_code == 200 and "_auth_user_id" not in client.session
+    wrong = client.post(reverse("accounts:login"), {"username": "nobody-here", "password": "wrong"})
+    assert resp.context["error"] == wrong.context["error"]
 
 
 def test_real_login_works(client, student):
