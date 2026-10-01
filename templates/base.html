@@ -7,7 +7,7 @@
   <meta name="description" content="Book classrooms, labs, seminar halls, sports facilities and equipment across LPU.">
   <meta name="theme-color" content="#f68121">
   <meta name="htmx-config" content='{"allowEval": false, "includeIndicatorStyles": false, "historyCacheSize": 0}'>
-  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  {% include "components/brand_head.html" %}
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
   <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
@@ -26,7 +26,7 @@
 {% block shell %}
 <div class="app">
   <aside class="rail" aria-label="Primary">
-    <a class="rail__brand" href="{% url 'core:home' %}" aria-label="LPU Reserve home"><span class="brandmark">{% include "components/brandmark.html" %}</span></a>
+    <a class="rail__brand" href="{% url 'core:home' %}" aria-label="LPU Reserve home"><span class="brandmark">{% include "components/brandmark.html" with decorative=True %}</span></a>
     <nav class="rail__group" aria-label="Booking">
       {% for item in nav_book %}<a class="rail__item" href="{{ item.url }}"{% active_any item.match %}>{% icon item.icon %}<span>{{ item.label }}</span></a>{% endfor %}
     </nav>
@@ -43,7 +43,7 @@
 
   <div class="main-col">
     <header class="topbar">
-      <a class="topbar__brand" href="{% url 'core:home' %}" aria-label="LPU Reserve home"><span class="brandmark brandmark--sm">{% include "components/brandmark.html" %}</span></a>
+      <a class="topbar__brand" href="{% url 'core:home' %}" aria-label="LPU Reserve home"><span class="brandmark brandmark--sm">{% include "components/brandmark.html" with decorative=True %}</span></a>
       <div class="topbar__title">{% block topbar_title %}LPU Reserve<small>{% translate "Campus resource booking" %}</small>{% endblock %}</div>
       {% block topbar_search %}      <form class="topbar__search" action="{% url 'catalogue:find' %}" method="get" role="search">
         <label class="cmd">{% icon "search" %}<span class="sr-only">{% translate "Search resources" %}</span>
