@@ -1,0 +1,158 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install ruff
+        run: pip install "ruff>=0.6"
+      - name: ruff check
+        run: ruff check .
+      - name: ruff format --check
+        run: ruff format --check .
+
+  test:
+    name: Tests (pytest-django + PostgreSQL 16)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: postgres://edurev:edurev@localhost:5432/edurev
+      DJANGO_SECRET_KEY: ci-only-dummy-key-not-a-secret
+      DEBUG: "0"
+      CELERY_TASK_ALWAYS_EAGER: "1"
+      REDIS_URL: ""
+      CONCURRENCY_ATTEMPTS: "500"
+    steps:
+      - uses: actions/checkout@v4
+      # GitHub service containers cannot pass server args, and the 500-attempt
+      # same-slot race needs max_connections above the default 100.
+      - name: Start PostgreSQL 16 (max_connections=700)
+        run: |
+          docker run -d --name pg -p 5432:5432 \
+            -e POSTGRES_USER=edurev -e POSTGRES_PASSWORD=edurev -e POSTGRES_DB=edurev \
+            --shm-size=256m \
+            postgres:16-alpine -c max_connections=700
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Wait for PostgreSQL
+        run: |
+          for i in $(seq 1 60); do
+            if docker exec pg pg_isready -U edurev -d edurev >/dev/null 2>&1; then
+              echo "PostgreSQL is ready"; docker exec pg psql -U edurev -d edurev -tAc "SHOW max_connections"; exit 0
+            fi
+            sleep 1
+          done
+          echo "PostgreSQL did not become ready"; docker logs pg; exit 1
+      - name: Django system check
+        run: python manage.py check
+      - name: Migration check (no missing migrations)
+        run: python manage.py makemigrations --check --dry-run
+      - name: Apply migrations
+        run: python manage.py migrate --noinput
+      - name: Collect static (manifest storage, as in production)
+        run: python manage.py collectstatic --noinput
+      - name: pytest
+        run: pytest --cov=apps --cov-report=xml --cov-report=term -q
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore
+
+  security:
+    name: Security (pip-audit + gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # gitleaks scans the full history
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install pip-audit
+        run: pip install "pip-audit>=2.7"
+      - name: pip-audit (runtime dependencies)
+        run: pip-audit -r requirements.txt
+      - name: Secret scanning (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: lpu-reserve:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test image (Django check, non-root user)
+        run: |
+          docker run --rm --entrypoint sh -e DJANGO_SECRET_KEY=ci-only-dummy-key-not-a-secret lpu-reserve:ci \
+            -c 'test "$(id -u)" != "0" && python manage.py check'
+      - name: Validate docker-compose.yml
+        run: docker compose config --quiet
+
+  deploy:
+    name: Deploy (placeholder)
+    runs-on: ubuntu-latest
+    needs: [lint, test, security, build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Deployment target not configured yet
+        run: |
+          echo "All checks passed on main. No deployment target is configured yet, so nothing was deployed."
+          echo "To enable: create a Render/Railway service from this repo's Dockerfile, store its deploy hook"
+          echo "URL as the repository secret DEPLOY_HOOK_URL, and uncomment the step below."
+      # - name: Trigger Render / Railway deploy hook
+      #   env:
+      #     DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+      #   run: curl --fail --silent --show-error -X POST "$DEPLOY_HOOK_URL"
+      #
+      # The platform must run the image with RUN_MIGRATIONS=1 on the web service only,
+      # one worker service (celery -A config worker) and exactly one beat service
+      # (celery -A config beat), with DJANGO_SECRET_KEY, DATABASE_URL, REDIS_URL,
+      # ALLOWED_HOSTS and CSRF_TRUSTED_ORIGINS set as platform secrets/env vars.
+      # Health check path: /health/ (liveness); readiness: /ready/.
