@@ -6,19 +6,18 @@
 
 ARG PYTHON_IMAGE=python:3.12-slim
 
-# ── Stage 1: build wheels (build tools live only here) ──────────────────────
+# ── Stage 1: collect wheels ─────────────────────────────────────────────────
+# Every runtime dependency (direct and transitive) publishes binary wheels for CPython 3.12
+# on manylinux x86_64 and aarch64, so no compiler or apt packages are needed. A future
+# dependency that has to be compiled fails here loudly; add build tools deliberately then.
 FROM ${PYTHON_IMAGE} AS builder
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /build
 COPY requirements.txt .
-RUN pip wheel --wheel-dir /wheels -r requirements.txt
+RUN pip wheel --prefer-binary --wheel-dir /wheels -r requirements.txt
 
 
 # ── Stage 2: runtime (no compilers, non-root) ───────────────────────────────
