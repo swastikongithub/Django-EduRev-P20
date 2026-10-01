@@ -105,7 +105,7 @@ make loadtest         # Locust: 500 users, one slot (see loadtest/README.md)
 | End-to-end | drag-to-book → QR pass; timetable never offered; phone door-QR check-in/out; auto-release; calendar in campus time whatever the device's timezone; no horizontal overflow at 360 px |
 | Accessibility | axe-core in Chromium on every student page, light and dark: no serious or critical WCAG 2.2 AA violation |
 | Security | the security review's proofs (SEC-01 to SEC-14, Phase 3 re-review), the lockout race, malformed input on every page and form as five roles |
-| CI | ruff; Django, deployment and migration checks; OpenAPI drift; the full suite on PostgreSQL 16 with 500-way concurrency and a coverage floor; browser journeys and axe; pip-audit and gitleaks; Docker build with a production smoke test; OWASP ZAP baseline ([docs/ci.md](docs/ci.md)) |
+| CI | ruff; Django, deployment and migration checks; OpenAPI drift; the full suite on PostgreSQL 16 with 500-way concurrency and a coverage floor; browser journeys and axe; pip-audit and gitleaks; Railway IaC type-check; Docker build with a production smoke test (S3 media, SMTP), a single-Beat failover check and a backup-to-restore drill; OWASP ZAP baseline ([docs/ci.md](docs/ci.md)) |
 
 ## Architecture
 
@@ -142,6 +142,9 @@ maintenance transitions, nightly analytics). Booking correctness never depends o
 | [docs/openapi.yaml](docs/openapi.yaml) | API specification (live, for signed-in users: `/api/v1/docs/`) |
 | [docs/environment.md](docs/environment.md) | Every environment variable, with production guidance |
 | [docs/runbook.md](docs/runbook.md) | Deployment, rollback, backup and tested restore, secret rotation, incident playbooks |
+| [docs/deployment-railway.md](docs/deployment-railway.md) | Production on Railway: services, every variable, migrations, the single Beat, health checks, what is still needed |
+| [docs/backup-restore.md](docs/backup-restore.md) | Nightly encrypted backups, volume backups, restoring, and the CI restore drill |
+| [docs/branding.md](docs/branding.md) | The official LPU seal: renditions, where it appears, favicon treatment |
 | [docs/security-review.md](docs/security-review.md) | Security findings SEC-01 to SEC-14, their fixes and regression tests |
 | [docs/traceability.md](docs/traceability.md) | Every P20 and CES requirement mapped to implementation and tests |
 | [docs/known-issues.md](docs/known-issues.md) | Known issues and technical debt register |
