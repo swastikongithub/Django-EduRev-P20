@@ -65,6 +65,8 @@ jobs:
             requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Install Chromium for end-to-end journeys
+        run: python -m playwright install --with-deps chromium
       - name: Wait for PostgreSQL
         run: |
           for i in $(seq 1 60); do

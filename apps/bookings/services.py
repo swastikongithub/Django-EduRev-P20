@@ -440,7 +440,26 @@ def claim_block(
     Write a timetable/maintenance claim onto the ledger, displacing ordinary bookings.
     A concurrent booking that lands between our displacement and our INSERT makes the
     INSERT fail on the constraint; we simply displace again and retry.
+
+    Runs in its own transaction (a savepoint when the caller already has one), so the
+    displacement and the claim succeed or fail together.
     """
+    with transaction.atomic():
+        return _claim_block(
+            resource,
+            start,
+            end,
+            kind=kind,
+            source_type=source_type,
+            source_id=source_id,
+            label=label,
+            displace=displace,
+            reason=reason,
+            notify=notify,
+        )
+
+
+def _claim_block(resource, start, end, *, kind, source_type, source_id, label, displace, reason, notify):
     displaced = 0
     for _attempt in range(3):
         if displace:

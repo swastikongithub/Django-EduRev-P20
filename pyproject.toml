@@ -25,4 +25,4 @@ DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py"]
 testpaths = ["tests"]
 addopts = "-ra --reuse-db"
-markers = ["concurrency: multi-connection race tests (slow)"]
+markers = ["concurrency: multi-connection race tests (slow)", "e2e: browser journeys with Playwright (needs `playwright install chromium`)"]
