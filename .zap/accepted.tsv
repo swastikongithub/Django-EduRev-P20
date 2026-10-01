@@ -1,0 +1,3 @@
+# OWASP ZAP baseline: Medium-risk alerts accepted on purpose (plugin id <TAB> reason).
+# High-risk alerts can never be accepted. scripts/ci/zap_gate.py enforces this file.
+10055	CSP style-src 'unsafe-inline': 83 inline style attributes in 31 templates carry computed values (bar widths, grid rows, spacing tokens). CSP cannot allow style attributes with nonces, and per-value hashes are impossible for dynamic values. Risk is limited to CSS injection: script-src stays 'self' with no inline script, and all template output is autoescaped. See docs/adr/0010-strict-csp-no-inline-js.md.

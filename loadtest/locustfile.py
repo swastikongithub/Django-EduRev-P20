@@ -29,6 +29,13 @@ Configuration (environment variables):
     LOCUST_BARRIER_TIMEOUT     seconds to wait for all users to log in         (default: 120)
     LOCUST_ONE_SHOT            1 = each user books once then stops              (default: 1)
     LOCUST_QUIT_WHEN_DONE      1 = stop the run once every user has attempted   (default: 1)
+    LOCUST_DISTINCT_CLIENTS    1 = each virtual user sends its own X-Forwarded-For address (default: 1).
+                               The app rate-limits sign-in per client address (20/min); 500 users
+                               from one load generator would otherwise share one bucket. The target
+                               must trust one proxy hop (TRUSTED_PROXY_HOPS=1), as it does behind
+                               the production load balancer.
+    LOCUST_FORWARDED_PROTO     "https" = act as the TLS proxy (X-Forwarded-Proto) when the target
+                               runs with SECURE_SSL_REDIRECT=1 behind a proxy  (default: unset)
 
 Run it (see loadtest/README.md):
 
@@ -72,6 +79,14 @@ ONE_SHOT = _flag("LOCUST_ONE_SHOT")
 QUIT_WHEN_DONE = _flag("LOCUST_QUIT_WHEN_DONE")
 SESSION_COOKIE = _env("LOCUST_SESSION_COOKIE", "sessionid")
 CSRF_COOKIE = _env("LOCUST_CSRF_COOKIE", "csrftoken")
+DISTINCT_CLIENTS = _flag("LOCUST_DISTINCT_CLIENTS")
+FORWARDED_PROTO = _env("LOCUST_FORWARDED_PROTO")
+_client_numbers = itertools.count(1)
+
+
+def client_address(n: int) -> str:
+    """A distinct private address per virtual user: 10.0.0.1, 10.0.0.2, ... 10.0.1.0, ..."""
+    return f"10.{(n >> 16) & 255}.{(n >> 8) & 255}.{n & 255}"
 
 
 def default_slot_start(now: datetime | None = None) -> datetime:
@@ -185,7 +200,15 @@ class SameSlotBooker(HttpUser):
     wait_time = between(1, 3)  # only used when LOCUST_ONE_SHOT=0
 
     def on_start(self):
-        self.plain_http = urlparse(self.host or "").scheme == "http"
+        target = urlparse(self.host or "")
+        self.plain_http = target.scheme == "http"
+        # Behind the TLS proxy the app sees https, and Django's CSRF check then expects an
+        # https Referer for the same host. The CSRF check itself is never relaxed.
+        self.origin = f"https://{target.netloc}" if FORWARDED_PROTO == "https" else self.host
+        if FORWARDED_PROTO:
+            self.client.headers["X-Forwarded-Proto"] = FORWARDED_PROTO
+        if DISTINCT_CLIENTS:
+            self.client.headers["X-Forwarded-For"] = client_address(next(_client_numbers))
         self.username = next(USERNAMES)
         self.logged_in = self._login()
         state["logged_in" if self.logged_in else "login_failed"] += 1
@@ -214,7 +237,7 @@ class SameSlotBooker(HttpUser):
         with self.client.post(
             LOGIN_PATH,
             data=form,
-            headers={"Referer": f"{self.host}{LOGIN_PATH}"},
+            headers={"Referer": f"{self.origin}{LOGIN_PATH}"},
             allow_redirects=False,
             name="POST login",
             catch_response=True,
@@ -241,7 +264,7 @@ class SameSlotBooker(HttpUser):
         headers = {
             "Accept": "application/json",
             "X-CSRFToken": self.client.cookies.get(CSRF_COOKIE, ""),
-            "Referer": f"{self.host}{BOOKING_PATH}",
+            "Referer": f"{self.origin}{BOOKING_PATH}",
         }
         with self.client.post(
             BOOKING_PATH, json=payload, headers=headers, name="POST booking", catch_response=True

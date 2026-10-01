@@ -140,6 +140,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+# Static files are only ever used by this site's own pages; no "Access-Control-Allow-Origin: *".
+WHITENOISE_ALLOW_ALL_ORIGINS = False
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STORAGES = {
@@ -205,7 +207,14 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 # ── REST API ────────────────────────────────────────────────────────────────
+# Reverse proxies in front of the app that append to X-Forwarded-For (Render, Railway, a load
+# balancer: 1). 0 means clients connect directly and the header is ignored (SEC-07). The audit
+# log, the sign-in rate limiter and the API throttle all derive the client address from it.
+TRUSTED_PROXY_HOPS = env.int("TRUSTED_PROXY_HOPS", default=0)
+
 REST_FRAMEWORK = {
+    # Without this DRF's throttles key anonymous callers on the raw, client-supplied header.
+    "NUM_PROXIES": TRUSTED_PROXY_HOPS,
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
@@ -244,6 +253,9 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_AGE = 60 * 60 * 10
 CSRF_COOKIE_SAMESITE = "Lax"
+# No script reads the CSRF cookie (htmx sends the token from the page via hx-headers), so it
+# need not be visible to JavaScript.
+CSRF_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
@@ -254,10 +266,13 @@ if not DEBUG:  # pragma: no cover - production hardening
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # Submitting a domain to the browsers' HSTS preload list is a domain-wide, effectively
+    # irreversible decision for whoever owns the university's domain, so it is opt-in. While it
+    # is off, Django's reminder about it (security.W021) is a known, accepted state.
+    SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=False)
+    if not SECURE_HSTS_PRELOAD:
+        SILENCED_SYSTEM_CHECKS = ["security.W021"]
 RATELIMIT_USE_CACHE = "default"
-# Reverse proxies in front of the app that append to X-Forwarded-For (Render, Railway, a load
-# balancer: 1). 0 means clients connect directly and the header is ignored (SEC-07).
-TRUSTED_PROXY_HOPS = env.int("TRUSTED_PROXY_HOPS", default=0)
 RATELIMIT_IP_META_KEY = "apps.core.http.client_ip"
 LOGIN_LOCKOUT_THRESHOLD = 5
 # CES §1.1: TOTP MFA for admin roles. Demo persona sign-in (DEMO_MODE only) skips it.

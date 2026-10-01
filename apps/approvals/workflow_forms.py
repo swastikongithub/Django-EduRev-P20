@@ -14,6 +14,7 @@ from apps.accounts.models import Role, User
 from apps.audit.services import record, snapshot
 from apps.catalogue.manage_forms import StyledFormMixin
 from apps.catalogue.models import Resource, ResourceType
+from apps.core.http import is_digits
 from apps.rules.manage_forms import minutes_label
 
 from .models import ApprovalStep, ApprovalWorkflow, ApproverRole
@@ -165,7 +166,7 @@ def parse_steps(post, institution_id) -> tuple[list[StepInput], list[str], list[
     """Ordered steps from the repeated step_* fields (order = position on the page). Blank rows are skipped."""
     roles, users, slas = post.getlist("step_role"), post.getlist("step_user"), post.getlist("step_sla")
     valid_roles = {v for v, _ in ApproverRole.choices}
-    user_ids = {u for u in users if u.isdigit()}
+    user_ids = {u for u in users if is_digits(u)}
     people = {str(u.pk): u for u in User.objects.filter(institution_id=institution_id, is_active=True, pk__in=user_ids)}
     steps, errors, echo = [], [], []
     for role, uid, sla in zip(roles, users, slas, strict=False):

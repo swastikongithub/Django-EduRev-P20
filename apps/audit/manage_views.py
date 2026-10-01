@@ -14,6 +14,7 @@ from apps.core.http import date_param
 from apps.core.manage_views import staff_required
 
 from .models import AuditLog
+from .services import record
 
 MAX_EXPORT = 50_000
 
@@ -104,6 +105,14 @@ def _export(qs):
 def audit(request):
     qs, f = filtered(request)
     if request.GET.get("format") == "csv":
+        # Exporting the trail is itself a privileged act on personal data, so it leaves a trace.
+        record(
+            request.user,
+            "audit.export",
+            request.user,
+            after={"filters": {k: v for k, v in f.items() if v}},
+            request=request,
+        )
         return _export(qs)
     page = Paginator(qs, 50).get_page(request.GET.get("page"))
     for e in page:

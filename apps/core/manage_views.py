@@ -1,8 +1,7 @@
-"""Staff console entry points shared across modules (home, setup hub, ops, placeholders)."""
+"""Staff console entry points shared across modules: the staff_required decorator."""
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.shortcuts import render
 
 from apps.accounts.permissions import has_cap
 
@@ -34,8 +33,3 @@ def staff_required(*caps):
         return inner
 
     return wrap
-
-
-@staff_required()
-def placeholder(request, *args, **kwargs):
-    return render(request, "manage/placeholder.html", {"path": request.path})

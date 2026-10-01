@@ -18,6 +18,7 @@ Booleans accept `1/0`, `true/false`, `yes/no`, `on/off`. Lists are comma-separat
 | `ALLOWED_HOSTS` | `localhost,127.0.0.1` | Host header allow-list | The public host name(s). Probes on `/health/` and `/ready/` work without it |
 | `CSRF_TRUSTED_ORIGINS` | empty | Origins allowed to POST over HTTPS | `https://reserve.example.edu` (scheme included) |
 | `SECURE_SSL_REDIRECT` | `False` | Redirect HTTP to HTTPS (only read when `DEBUG=0`) | `1` unless the proxy or platform already redirects |
+| `SECURE_HSTS_PRELOAD` | `False` | Adds `preload` to the HSTS header (only read when `DEBUG=0`). While off, Django's reminder `security.W021` is silenced | Leave off unless the university decides to submit its domain to the browsers' HSTS preload list, a domain-wide and effectively irreversible step |
 | `SITE_URL` | `http://localhost:8000` | Absolute base for links in emails, door QR codes and booking-pass QR codes | The public HTTPS URL. Changing it changes printed door QR codes; reprint them |
 | `DEMO_MODE` | `False` | Shows one-click demo persona sign-in on the login page | **Must be `0`.** Personas bypass passwords and MFA |
 | `DEFAULT_INSTITUTION_CODE` | `LPU` | Tenant used for anonymous requests and as the default `institution` on new rows | Leave as `LPU` for a single-tenant deployment |
@@ -44,13 +45,16 @@ Booleans accept `1/0`, `true/false`, `yes/no`, `on/off`. Lists are comma-separat
 |---|---|---|---|
 | `MFA_REQUIRED_ROLES` | `admin,facility_manager` | Roles that must pass TOTP after a password sign-in (superusers always) | Keep the default or add `dept_head`, `custodian` |
 | `MFA_ENFORCED` | `True` | Master switch for the above | Must be `1` |
-| `TRUSTED_PROXY_HOPS` | `0` | Number of reverse proxies in front of the app that append to `X-Forwarded-For`. The client address used by the audit log and the rate limiter is the entry that many places from the right; with `0` the header is ignored and `REMOTE_ADDR` is used | `1` behind a single platform load balancer (Render, Railway, nginx). Never higher than the real number of proxies: every extra hop lets clients choose their own address |
+| `TRUSTED_PROXY_HOPS` | `0` | Number of reverse proxies in front of the app that append to `X-Forwarded-For`. The client address used by the audit log, the sign-in rate limiter and the API throttle (DRF `NUM_PROXIES`) is the entry that many places from the right; with `0` the header is ignored and `REMOTE_ADDR` is used | `1` behind a single platform load balancer (Render, Railway, nginx). Never higher than the real number of proxies: every extra hop lets clients choose their own address |
 | `API_USER_RATE` | `600/min` | DRF throttle per signed-in user (anonymous is fixed at `60/min`) | Lower for public exposure; raise for integrations such as the load test |
 
 Fixed in code (not environment): sign-in lockout after 5 failures for 15 minutes (password and
-TOTP failures count together; a locked account gets the same answer as a wrong password); IP rate
-limits of 20/min on sign-in and MFA and 30/min on demo sign-in; single-use TOTP codes; session
-lifetime 10 hours; the live API schema (`/api/v1/schema/`, `/api/v1/docs/`) requires sign-in.
+TOTP failures count together, under a row lock so concurrent guesses cannot race past it; a locked
+account gets the same answer as a wrong password); IP rate limits of 20/min on sign-in and MFA and
+30/min on demo sign-in; single-use TOTP codes; a password-verified sign-in waits at most 10 minutes
+for its TOTP code; session lifetime 10 hours; `HttpOnly`, `SameSite=Lax` session and CSRF cookies
+(`Secure` with `DEBUG=0`); static files without a wildcard CORS header; the live API schema
+(`/api/v1/schema/`, `/api/v1/docs/`) requires sign-in.
 
 ### Email
 

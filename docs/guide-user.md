@@ -94,8 +94,8 @@ urgently; they check it and take the resource out of service if needed.
 On **Me**:
 
 - **Your limits:** how many hours or bookings you have left this week or month.
-- **Language:** English, हिन्दी or ਪੰਜਾਬੀ. Translation currently covers navigation, sign-in and
-  the home screen.
+- **Language:** English, हिन्दी or ਪੰਜਾਬੀ. English covers the whole app. Hindi and Punjabi
+  currently cover navigation, sign-in and the home screen; other screens stay in English.
 - **Appearance:** light or dark (also the theme button in the rail).
 - **Your data:** **Download my data** gives you everything LPU Reserve holds about you as a
   JSON file (DPDP Act 2023).

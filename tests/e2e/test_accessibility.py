@@ -67,8 +67,10 @@ def test_student_pages_have_no_serious_violations(page, live_server, student, ro
     sign_in(page, live_server, student)
     page.evaluate(f"localStorage.setItem('lpr-theme', '{theme}')")
     url = {"ROOM": room.get_absolute_url(), "PASS": booked_pass.get_absolute_url()}.get(path, path)
-    page.goto(live_server.url + url)
-    page.wait_for_load_state("networkidle")
+    page.goto(live_server.url + url, wait_until="load")
+    # The audit must run against the theme it claims to cover.
+    assert page.evaluate("document.documentElement.dataset.theme") == theme
+    page.evaluate("document.fonts.ready.then(() => true)")
     violations = audit(page)
     assert not violations, describe(violations)
 

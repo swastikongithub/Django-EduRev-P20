@@ -8,6 +8,23 @@
   const minutes = (a, b) => Math.round((new Date(b) - new Date(a)) / 60000);
   const fmtDur = (m) => (m >= 60 ? Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "") : m + " min");
   const coarse = window.matchMedia("(pointer: coarse)").matches;
+
+  // Bookings are in campus time (data-tz, e.g. Asia/Kolkata), whatever the viewer's device says.
+  // "Today", "Tomorrow" and the red now-line are computed in that zone, not the browser's.
+  function campusNow(tz) {
+    const parts = {};
+    try {
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: tz || undefined, year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+      }).formatToParts(new Date()).forEach((p) => { parts[p.type] = p.value; });
+    } catch (e) {
+      return campusNow(undefined); // unknown zone: fall back to the device's own
+    }
+    return { date: parts.year + "-" + parts.month + "-" + parts.day, hours: +parts.hour, minutes: +parts.minute };
+  }
+  const campusTz = () => { const c = $("[data-calendar]"); return c ? c.dataset.tz : undefined; };
+  const dayNumber = (iso) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 86400000;
   document.documentElement.classList.toggle("is-touch", coarse);
 
   let anchor = null; // first chosen cell
@@ -59,10 +76,9 @@
     if (!box) return;
     $(".selection__empty", box).hidden = true;
     $(".selection__chosen", box).hidden = false;
-    const d = new Date(day + "T00:00:00");
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const diff = Math.round((d - today) / 86400000);
-    $("[data-sel-day]", box).textContent = diff === 0 ? "Today" : diff === 1 ? "Tomorrow" : d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+    const diff = dayNumber(day) - dayNumber(campusNow(campusTz()).date);
+    const dayLabel = new Date(day + "T12:00:00Z").toLocaleDateString("en-IN", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
+    $("[data-sel-day]", box).textContent = diff === 0 ? "Today" : diff === 1 ? "Tomorrow" : dayLabel;
     $("[data-sel-time]", box).textContent = s + "–" + e;
     $("[data-sel-dur]", box).textContent = mins > 0 ? fmtDur(mins) : "";
     box.classList.remove("is-pulse"); void box.offsetWidth; box.classList.add("is-pulse");
@@ -165,8 +181,8 @@
     if (nowEl) {
       const first = parseInt(cal.dataset.firstHour, 10), hours = parseInt(cal.dataset.hours, 10);
       const place = () => {
-        const d = new Date();
-        const pos = ((d.getHours() + d.getMinutes() / 60) - first) / hours;
+        const now = campusNow(cal.dataset.tz);
+        const pos = ((now.hours + now.minutes / 60) - first) / hours;
         nowEl.hidden = pos < 0 || pos > 1;
         nowEl.style.top = (pos * 100).toFixed(2) + "%";
       };
