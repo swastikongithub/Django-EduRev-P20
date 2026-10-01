@@ -219,6 +219,8 @@ def apply_ladder(user, now=None) -> Restriction | None:
 def forgive(no_show: NoShow, actor, reason: str, *, request=None, now=None) -> NoShow:
     if not has_cap(actor, "forgive_no_shows") or not can_manage_resource(actor, no_show.resource):
         raise NotPermitted("You can't forgive no-shows for this resource.")
+    if no_show.user_id == actor.pk:
+        raise NotPermitted("Your own no-show has to be forgiven by someone else.")  # SEC-04
     now = now or timezone.now()
     with transaction.atomic():
         no_show.forgiven = True
@@ -247,6 +249,8 @@ def forgive(no_show: NoShow, actor, reason: str, *, request=None, now=None) -> N
 def lift_restriction(restriction: Restriction, actor, *, request=None):
     if not has_cap(actor, "forgive_no_shows"):
         raise NotPermitted("You can't lift restrictions.")
+    if restriction.user_id == actor.pk:
+        raise NotPermitted("Your own restriction has to be lifted by someone else.")  # SEC-04
     restriction.lifted_at = timezone.now()
     restriction.lifted_by = actor
     restriction.save(update_fields=["lifted_at", "lifted_by"])

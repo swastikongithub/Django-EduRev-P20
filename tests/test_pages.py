@@ -206,12 +206,24 @@ def test_series_page_preview_for_faculty_only(client, faculty, student, room, to
     assert resp.status_code == 200 and len(resp.context["plans"]) == 3
 
 
-def test_breakdown_report_from_resource_page(client, student, room):
+def test_breakdown_report_from_resource_page(client, student, custodian, room):
     client.force_login(student)
     resp = client.post(
-        reverse("maintenance:report", args=[room.slug]), {"summary": "Projector dead", "severity": "critical"}
+        reverse("maintenance:report", args=[room.slug]),
+        {"summary": "Projector dead", "severity": "critical"},
+        follow=True,
     )
-    assert resp.status_code == 302
+    assert b"asked to check it urgently" in resp.content
+    room.refresh_from_db()
+    assert room.status == "active"  # unconfirmed (SEC-02)
+
+    client.force_login(custodian)
+    resp = client.post(
+        reverse("maintenance:report", args=[room.slug]),
+        {"summary": "Projector dead", "severity": "critical"},
+        follow=True,
+    )
+    assert b"out of service until the repair is done" in resp.content
     room.refresh_from_db()
     assert room.status == "out_of_service"
 

@@ -122,7 +122,6 @@ def _password_login(client, user, **extra):
 # ════════════════════════════════════════════════════════════════════════════
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-01: /django-admin/login/ creates a full session without TOTP MFA")
 def test_sec01_django_admin_login_cannot_bypass_mfa(client, superadmin):
     resp = client.post(
         "/django-admin/login/", {"username": superadmin.username, "password": PW, "next": "/django-admin/"}
@@ -132,7 +131,6 @@ def test_sec01_django_admin_login_cannot_bypass_mfa(client, superadmin):
     assert client.get(reverse("manage:home")).status_code != 200
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-01: /django-admin/login/ has no lockout or rate limit")
 def test_sec01_django_admin_login_is_subject_to_lockout(client, superadmin):
     for _ in range(6):
         client.post("/django-admin/login/", {"username": superadmin.username, "password": "wrong-guess"})
@@ -140,7 +138,6 @@ def test_sec01_django_admin_login_is_subject_to_lockout(client, superadmin):
     assert superadmin.is_locked
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-02: any student can cancel everyone's bookings via a 'critical' report")
 def test_sec02_student_critical_report_cannot_displace_other_bookings(
     client, monkeypatch, make_user, student, room, friday
 ):
@@ -175,7 +172,6 @@ def test_sec03_mfa_failures_survive_password_reentry(client, admin_user):
     assert admin_user.is_locked
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-04: an approver can approve their own booking request")
 def test_sec04_approver_cannot_decide_own_request(lpu, custodian, room, room_type, monday, now):
     wf = ApprovalWorkflow.objects.create(institution=lpu, name="Custodian check", resource_type=room_type)
     ApprovalStep.objects.create(workflow=wf, order=1, approver_role=ApproverRole.CUSTODIAN)
@@ -193,7 +189,6 @@ def test_sec04_approver_cannot_decide_own_request(lpu, custodian, room, room_typ
     assert not approvals.can_decide(custodian, step)
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-04: a custodian can forgive their own no-show")
 def test_sec04_custodian_cannot_forgive_own_no_show(lpu, custodian, room, monday, now):
     own = bookings.create_booking(
         requester=custodian,
@@ -209,7 +204,6 @@ def test_sec04_custodian_cannot_forgive_own_no_show(lpu, custodian, room, monday
         checkins.forgive(ns, custodian, "It was me", now=now)
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-05: DEBUG=False silently falls back to the public dev SECRET_KEY")
 def test_sec05_production_settings_refuse_default_secret_key(monkeypatch):
     import environ
 
@@ -314,6 +308,186 @@ def test_sec13_malformed_input_is_a_4xx_not_a_500(client, room, faculty, admin_u
 @pytest.mark.parametrize("path", ["/api/v1/schema/", "/api/v1/docs/"])
 def test_sec14_api_schema_requires_authentication(client, path):
     assert client.get(path).status_code in (401, 403, 302)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Behaviour that the fixes above introduced
+# ════════════════════════════════════════════════════════════════════════════
+
+# ── SEC-01: Django admin signs in through the product's own view ────────────
+
+
+def test_sec01_django_admin_login_sends_privileged_staff_to_mfa(client, superadmin):
+    resp = client.post(
+        "/django-admin/login/", {"username": superadmin.username, "password": PW, "next": "/django-admin/"}
+    )
+    assert resp.status_code == 302 and resp.url == reverse("accounts:mfa")
+    assert client.session["mfa_next"] == "/django-admin/"
+
+
+def test_sec01_django_admin_login_page_is_the_product_sign_in(client):
+    resp = client.get("/django-admin/login/", {"next": "/django-admin/"})
+    assert resp.status_code == 200
+    assert "accounts/login.html" in [t.name for t in resp.templates]
+
+
+def test_sec01_signed_in_non_admin_gets_403_not_a_redirect_loop(client, student):
+    client.force_login(student)
+    assert client.get("/django-admin/login/", {"next": "/django-admin/"}).status_code == 403
+
+
+def test_sec01_admin_staff_already_signed_in_continue_to_admin(client, superadmin):
+    client.force_login(superadmin)
+    resp = client.get("/django-admin/login/", {"next": "/django-admin/"})
+    assert resp.status_code == 302 and resp.url == "/django-admin/"
+
+
+# ── SEC-02: only someone who manages a resource takes it out of service ─────
+
+
+def test_sec02_student_critical_report_alerts_custodian_to_confirm(student, custodian, room):
+    from apps.maintenance import services as maintenance
+    from apps.notifications.models import Kind, Notification
+
+    report = maintenance.report_breakdown(room, student, summary="Projector is smoking", severity=Severity.CRITICAL)
+    room.refresh_from_db()
+    assert room.status == "active" and report.window is None
+    assert report.awaiting_confirmation
+    n = Notification.objects.get(user=custodian, kind=Kind.BREAKDOWN)
+    assert "confirm" in n.title.lower()
+
+
+def test_sec02_custodian_confirms_and_the_resource_goes_offline(student, custodian, room, now):
+    from apps.maintenance import services as maintenance
+
+    report = maintenance.report_breakdown(room, student, summary="Projector is smoking", severity=Severity.CRITICAL)
+    maintenance.confirm_critical(report, custodian, now=now)
+    report.refresh_from_db()
+    room.refresh_from_db()
+    assert room.status == "out_of_service"
+    assert report.confirmed_by == custodian and report.window is not None
+    assert AuditLog.objects.filter(action="maintenance.confirm_critical", target_id=str(report.pk)).exists()
+    with pytest.raises(Exception, match="already been confirmed"):
+        maintenance.confirm_critical(report, custodian, now=now)
+
+
+def test_sec02_only_a_manager_of_the_resource_can_confirm(make_user, student, room, now):
+    from apps.maintenance import services as maintenance
+
+    report = maintenance.report_breakdown(room, student, summary="Smoke", severity=Severity.CRITICAL)
+    for outsider in (student, make_user(Role.CUSTODIAN), make_user(Role.FACULTY)):
+        with pytest.raises(NotPermitted):
+            maintenance.confirm_critical(report, outsider, now=now)
+    room.refresh_from_db()
+    assert room.status == "active"
+
+
+def test_sec02_custodian_own_critical_report_takes_effect_at_once(custodian, room):
+    from apps.maintenance import services as maintenance
+
+    report = maintenance.report_breakdown(room, custodian, summary="Ceiling leak", severity=Severity.CRITICAL)
+    room.refresh_from_db()
+    assert room.status == "out_of_service" and report.confirmed_by == custodian
+
+
+def test_sec02_unconfirmed_report_does_not_keep_a_resource_offline(student, custodian, room):
+    from apps.maintenance import services as maintenance
+
+    confirmed = maintenance.report_breakdown(room, custodian, summary="Ceiling leak", severity=Severity.CRITICAL)
+    maintenance.report_breakdown(room, student, summary="Also smells odd", severity=Severity.CRITICAL)
+    maintenance.resolve(confirmed, custodian, "Roof patched")
+    room.refresh_from_db()
+    assert room.status == "active"
+
+
+def test_sec02_console_confirm_action(client, student, custodian, room):
+    from apps.maintenance import services as maintenance
+
+    report = maintenance.report_breakdown(room, student, summary="Smoke", severity=Severity.CRITICAL)
+    client.force_login(custodian)
+    page = client.get(reverse("manage:maintenance"))
+    assert reverse("manage:maintenance_report", args=[report.pk, "confirm"]).encode() in page.content
+    resp = client.post(reverse("manage:maintenance_report", args=[report.pk, "confirm"]))
+    assert resp.status_code == 302
+    room.refresh_from_db()
+    assert room.status == "out_of_service"
+
+
+# ── SEC-04: separation of duties ────────────────────────────────────────────
+
+
+def test_sec04_own_requests_never_reach_the_approvers_queue(lpu, custodian, facility_manager, room, room_type, monday):
+    wf = ApprovalWorkflow.objects.create(institution=lpu, name="FM check", resource_type=room_type)
+    ApprovalStep.objects.create(workflow=wf, order=1, approver_role=ApproverRole.CUSTODIAN)
+    fm_now = at(monday - timedelta(days=3), 9)
+    own = bookings.create_booking(
+        requester=facility_manager, resource=room, start=at(monday, 10), end=at(monday, 11), title="FM", now=fm_now
+    )
+    assert own.status == BookingStatus.PENDING
+    assert own.pk not in {a.booking_id for a in approvals.queue_for(facility_manager)}  # campus-wide, still excluded
+    assert own.pk in {a.booking_id for a in approvals.queue_for(custodian)}
+    step = own.approvals.get(decision=Decision.PENDING)
+    with pytest.raises(NotPermitted):
+        approvals.decide(step, facility_manager, approve=True, now=fm_now)
+    approvals.decide(step, custodian, approve=True, now=fm_now)
+    own.refresh_from_db()
+    assert own.status == BookingStatus.APPROVED
+
+
+def test_sec04_staff_cannot_lift_their_own_restriction(lpu, facility_manager, now):
+    from apps.checkins.models import Restriction
+
+    r = Restriction.objects.create(
+        institution=lpu, user=facility_manager, starts_at=now, ends_at=now + timedelta(days=7), reason="3 no-shows"
+    )
+    with pytest.raises(NotPermitted):
+        checkins.lift_restriction(r, facility_manager)
+    r.refresh_from_db()
+    assert r.lifted_at is None
+
+
+# ── SEC-05: production settings need a real secret key ──────────────────────
+
+
+def _load_settings(monkeypatch, **env):
+    import environ
+
+    monkeypatch.setattr(environ.Env, "read_env", lambda *a, **k: None)
+    for key in ("DJANGO_SECRET_KEY", "DEBUG", "DEMO_MODE"):
+        monkeypatch.delenv(key, raising=False)
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    return runpy.run_path(str(BASE_DIR / "config" / "settings.py"))
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "replace-me-with-a-long-random-string",
+        "too-short-key",
+        "django-insecure-" + "x" * 40,
+        "dev-only-insecure-compose-key-never-use-in-production",
+    ],
+)
+def test_sec05_production_refuses_placeholder_and_weak_keys(monkeypatch, key):
+    from django.core.exceptions import ImproperlyConfigured
+
+    with pytest.raises(ImproperlyConfigured):
+        _load_settings(monkeypatch, DEBUG="0", DJANGO_SECRET_KEY=key)
+
+
+def test_sec05_production_accepts_a_real_key(monkeypatch):
+    key = "k" * 10 + uuid.uuid4().hex + uuid.uuid4().hex
+    assert _load_settings(monkeypatch, DEBUG="0", DJANGO_SECRET_KEY=key)["SECRET_KEY"] == key
+
+
+def test_sec05_public_compose_key_is_tolerated_only_on_a_demo_stack(monkeypatch):
+    key = "dev-only-insecure-compose-key-never-use-in-production"
+    assert _load_settings(monkeypatch, DEBUG="0", DEMO_MODE="1", DJANGO_SECRET_KEY=key)["SECRET_KEY"] == key
+
+
+def test_sec05_debug_keeps_the_zero_config_dev_key(monkeypatch):
+    assert _load_settings(monkeypatch, DEBUG="1")["SECRET_KEY"] == "dev-only-insecure-key-change-me"
 
 
 # ════════════════════════════════════════════════════════════════════════════

@@ -90,6 +90,25 @@ def login_view(request):
     )
 
 
+def admin_login(request, extra_context=None):
+    """
+    Replaces Django admin's own login view (`admin.site.login`).
+
+    The stock admin form calls `login()` after a password check alone, which would skip the
+    lockout, the rate limit and TOTP MFA. Routing it through `login_view` gives /django-admin/
+    exactly the same sign-in as the rest of the product.
+    """
+    from django.contrib import admin
+    from django.core.exceptions import PermissionDenied
+
+    if request.user.is_authenticated:
+        if admin.site.has_permission(request):
+            return redirect(_safe_next(request, fallback="admin:index"))
+        # Signed in but not admin staff: say no rather than bounce between the two login views.
+        raise PermissionDenied
+    return login_view(request)
+
+
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 def demo_login(request):
