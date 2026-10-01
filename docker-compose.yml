@@ -1,0 +1,126 @@
+# LPU Reserve (EduRev P20) — local / demo stack.
+#
+#   docker compose up --build                 # web + worker + beat + PostgreSQL + Redis
+#   docker compose --profile demo run --rm seed   # load demo data (after the stack is up)
+#   docker compose down -v                    # stop and wipe volumes
+#
+# Everything here is DEV-ONLY. The secret key and database password below are public
+# placeholders; production supplies real values through the environment / a secrets store.
+
+name: lpu-reserve
+
+x-app-env: &app-env
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-only-insecure-compose-key-never-use-in-production}
+  DEBUG: ${DEBUG:-0}
+  DEMO_MODE: ${DEMO_MODE:-1}
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,web}
+  CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000}
+  SITE_URL: ${SITE_URL:-http://localhost:8000}
+  DATABASE_URL: postgres://edurev:${POSTGRES_PASSWORD:-edurev}@db:5432/edurev
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/1
+  CELERY_TASK_ALWAYS_EAGER: "0"
+  LOG_JSON: ${LOG_JSON:-1}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  MEDIA_ROOT: /app/.media
+
+x-app: &app
+  build: .
+  image: lpu-reserve:local
+  environment:
+    <<: *app-env
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgres:16-alpine
+    # 700 connections: headroom for the 500-attempt same-slot concurrency test.
+    command: ["postgres", "-c", "max_connections=700"]
+    shm_size: 256mb
+    environment:
+      POSTGRES_USER: edurev
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edurev}
+      POSTGRES_DB: edurev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      # Host port 5434 so it never collides with a host PostgreSQL (5432) or scripts/devdb.sh (5433).
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5434}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edurev -d edurev"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  web:
+    <<: *app
+    environment:
+      <<: *app-env
+      RUN_MIGRATIONS: "1"
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    volumes:
+      - media:/app/.media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    command: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency", "${CELERY_CONCURRENCY:-2}"]
+    volumes:
+      - media:/app/.media
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_healthy # web runs migrations; wait for them
+
+  beat:
+    <<: *app
+    # Exactly ONE beat instance (never scale this service); schedule state lives in a volume.
+    command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule", "/var/lib/celery/celerybeat-schedule"]
+    volumes:
+      - beat-schedule:/var/lib/celery
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+
+  seed:
+    <<: *app
+    profiles: ["demo"]
+    command: ["python", "manage.py", "seed_demo"]
+    restart: "no"
+    volumes:
+      - media:/app/.media
+    healthcheck:
+      disable: true
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  media:
+  beat-schedule:

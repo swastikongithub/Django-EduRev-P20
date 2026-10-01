@@ -1,0 +1,49 @@
+# Keep the build context small and free of local state / secrets.
+
+# VCS and CI metadata
+.git
+.gitignore
+.gitattributes
+.github
+
+# Local environments and secrets
+.venv
+venv
+.env
+.env.*
+!.env.example
+
+# Local data: dev PostgreSQL cluster, uploads, collected static (rebuilt in the image)
+.devdb
+.media
+staticfiles
+*.log
+
+# Python / tooling caches
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+coverage.xml
+htmlcov
+
+# Not needed at runtime
+tests
+loadtest
+docs/*.pdf
+Makefile
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# Editors / OS
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+node_modules
+playwright-report
+test-results
