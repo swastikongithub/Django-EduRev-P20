@@ -8,6 +8,7 @@ Design-system template tags (loaded as builtins).
 """
 
 from datetime import date, datetime, timedelta
+from functools import lru_cache
 
 from django import template
 from django.templatetags.static import static
@@ -46,9 +47,7 @@ STATUS_TONE = {
 @register.simple_tag
 def status_badge(booking):
     tone, ic = STATUS_TONE.get(booking.status, ("neutral", "circle-dot"))
-    return format_html(
-        '<span class="badge badge--{}">{}{}</span>', tone, icon(ic), booking.get_status_display()
-    )
+    return format_html('<span class="badge badge--{}">{}{}</span>', tone, icon(ic), booking.get_status_display())
 
 
 @register.filter
@@ -149,7 +148,9 @@ def daystrip(schedule, start_hour=8, end_hour=21, compact=True, now=None):
     if cursor < hi:
         closed.append((pos(cursor), 100.0))
     segments = [
-        {"left": left, "width": right - left, "kind": "closed", "label": "Closed"} for left, right in closed if right > left
+        {"left": left, "width": right - left, "kind": "closed", "label": "Closed"}
+        for left, right in closed
+        if right > left
     ]
     for b in schedule.blocks:
         left, right = pos(b.start), pos(b.end)
@@ -164,7 +165,10 @@ def daystrip(schedule, start_hour=8, end_hour=21, compact=True, now=None):
             )
     now = now or timezone.now()
     now_pos = pos(now) if lo <= now <= hi else None
-    hours = [{"left": pos(lo + timedelta(hours=h)), "label": f"{start_hour + h}"} for h in range(0, end_hour - start_hour + 1, 3)]
+    hours = [
+        {"left": pos(lo + timedelta(hours=h)), "label": f"{start_hour + h}"}
+        for h in range(0, end_hour - start_hour + 1, 3)
+    ]
     return {"segments": segments, "now_pos": now_pos, "hours": hours, "compact": compact}
 
 
@@ -184,6 +188,18 @@ def active_any(context, prefixes):
     return active(context, *prefixes)
 
 
+@lru_cache(maxsize=64)
+def art_variants(art: str) -> tuple[str, ...]:
+    """The art key plus any numbered variants shipped in static (art-2, art-3...)."""
+    from django.contrib.staticfiles import finders
+
+    keys = [art]
+    for n in range(2, 6):
+        if finders.find(f"img/resources/{art}-{n}.webp"):
+            keys.append(f"{art}-{n}")
+    return tuple(keys)
+
+
 ACCENT_ART = {"orange": "orange", "blue": "blue", "indigo": "indigo", "green": "green", "ink": "ink", "amber": "amber"}
 
 
@@ -194,9 +210,16 @@ def resource_photo(resource, size="sm", cls=""):
         return format_html('<img src="{}" alt="" loading="lazy" decoding="async" class="{}">', resource.image.url, cls)
     if resource.art:
         suffix = "-sm" if size == "sm" else ""
-        src = static(f"img/resources/{resource.art}{suffix}.webp")
-        return format_html('<img src="{}" alt="" loading="lazy" decoding="async" width="{}" height="{}" class="{}">', src,
-                           480 if size == "sm" else 960, 320 if size == "sm" else 640, cls)
+        variants = art_variants(resource.art)
+        key = variants[resource.pk % len(variants)] if resource.pk else variants[0]
+        src = static(f"img/resources/{key}{suffix}.webp")
+        return format_html(
+            '<img src="{}" alt="" loading="lazy" decoding="async" width="{}" height="{}" class="{}">',
+            src,
+            480 if size == "sm" else 960,
+            320 if size == "sm" else 640,
+            cls,
+        )
     accent = ACCENT_ART.get(resource.type.accent, "orange")
     return format_html('<div class="art art--{}">{}</div>', accent, icon(resource.type.icon))
 

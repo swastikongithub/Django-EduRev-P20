@@ -27,7 +27,7 @@ running app (gunicorn, sessions, CSRF, the real API), complementing the in-proce
 pip install -r requirements-dev.txt
 LOCUST_PASSWORD='choose-a-local-password' \
 LOCUST_RESOURCE_ID=12 \
-LOCUST_USERNAME_TEMPLATE='student{n}' LOCUST_USERNAME_START=1 LOCUST_USERNAME_COUNT=120 \
+LOCUST_USERNAME_TEMPLATE='s{n:03d}' LOCUST_USERNAME_START=1 LOCUST_USERNAME_COUNT=120 \
 locust -f loadtest/locustfile.py --headless -u 500 -r 100 --host http://localhost:8000
 ```
 

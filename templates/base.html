@@ -47,12 +47,12 @@
     <header class="topbar">
       <a class="topbar__brand" href="{% url 'core:home' %}" aria-label="LPU Reserve home"><span class="brandmark brandmark--sm">{% include "components/brandmark.html" %}</span></a>
       <div class="topbar__title">{% block topbar_title %}LPU Reserve<small>Campus resource booking</small>{% endblock %}</div>
-      <form class="topbar__search" action="{% url 'catalogue:find' %}" method="get" role="search">
+      {% block topbar_search %}      <form class="topbar__search" action="{% url 'catalogue:find' %}" method="get" role="search">
         <label class="cmd">{% icon "search" %}<span class="sr-only">Search resources</span>
           <input type="search" name="q" placeholder="Try &ldquo;lab for 40 tomorrow&rdquo; or &ldquo;projector block 34&rdquo;" value="{{ request.GET.q|default:'' }}" data-cmdk autocomplete="off">
           <span class="kbd" aria-hidden="true">/</span>
         </label>
-      </form>
+      </form>{% endblock %}
       <div class="topbar__actions">
         <a class="iconbtn only-mobile" href="{% url 'catalogue:find' %}" aria-label="Search">{% icon "search" %}</a>
         <a class="iconbtn" href="{% url 'notifications:inbox' %}" aria-label="Notifications{% if counts.unread %}, {{ counts.unread }} unread{% endif %}">{% icon "bell" %}{% if counts.unread %}<span class="dotcount" aria-hidden="true">{{ counts.unread }}</span>{% endif %}</a>

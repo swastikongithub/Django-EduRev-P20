@@ -2,6 +2,7 @@
 {% block title %}Find a resource{% endblock %}
 {% block topbar_title %}Find<small>Rooms, labs, courts, equipment</small>{% endblock %}
 {% block page_class %}page--wide{% endblock %}
+{% block topbar_search %}<div class="topbar__search" aria-hidden="true"></div>{% endblock %}
 {% block content %}
 <form id="finder" class="finder" action="{% url 'catalogue:find' %}" method="get" data-autosubmit
       hx-get="{% url 'catalogue:find' %}" hx-target="#results" hx-select="#results" hx-swap="outerHTML" hx-push-url="true" hx-trigger="submit, input changed delay:350ms from:#q">
