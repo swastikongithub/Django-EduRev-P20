@@ -12,6 +12,7 @@ from apps.accounts.models import Role, User
 from apps.accounts.permissions import is_campus_wide
 from apps.audit.services import record
 from apps.catalogue.models import Resource
+from apps.core.http import MAX_PK, int_param, pk_param
 from apps.core.manage_views import staff_required
 
 from .models import ApprovalStep, ApprovalWorkflow, ApproverRole
@@ -39,7 +40,11 @@ def _workflows(inst):
 
 def _tester_input(request, inst):
     g = request.GET
-    resource = Resource.objects.filter(institution_id=inst, pk=g.get("resource") or 0).select_related("type").first()
+    resource = (
+        Resource.objects.filter(institution_id=inst, pk=int_param(g.get("resource"), 0, lo=0, hi=MAX_PK))
+        .select_related("type")
+        .first()
+    )
     role = g.get("role") if g.get("role") in Role.values else Role.STUDENT
     try:
         attendees = max(1, min(5000, int(g.get("attendees") or 1)))
@@ -142,7 +147,7 @@ def _post(request):
     if action == "save":
         pk = request.POST.get("pk")
         instance = (
-            get_object_or_404(ApprovalWorkflow, institution_id=inst, pk=pk)
+            get_object_or_404(ApprovalWorkflow, institution_id=inst, pk=pk_param(pk))
             if pk
             else ApprovalWorkflow(institution_id=inst)
         )
@@ -168,7 +173,7 @@ def _post(request):
         ctx.update(_editor_ctx(inst, form, echo, errors))
         return render(request, "manage/workflows.html", ctx)
 
-    w = get_object_or_404(ApprovalWorkflow, institution_id=inst, pk=request.POST.get("pk"))
+    w = get_object_or_404(ApprovalWorkflow, institution_id=inst, pk=pk_param(request.POST.get("pk")))
     if action == "toggle":
         before = workflow_snapshot(w)
         w.active = not w.active

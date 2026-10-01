@@ -123,6 +123,7 @@ def demo_login(request):
         messages.error(request, "Demo data isn't loaded. Run: python manage.py seed_demo")
         return redirect("accounts:login")
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    mfa.mark_verified(request, user, demo=True)  # demo personas skip MFA, and only while DEMO_MODE=1
     record(user, "auth.demo_login", user, request=request)
     return redirect(_safe_next(request))
 
@@ -261,19 +262,23 @@ def mfa_view(request):
             error = "Too many attempts. Wait a minute and try again."
         elif user.is_locked:
             error = "This account is locked after repeated failed attempts."
-        elif mfa.verify(secret, request.POST.get("code", "")):
-            if enrolling:
-                user.mfa_secret = mfa.encrypt(secret)
-                user.mfa_enabled = True
-                user.save(update_fields=["mfa_secret", "mfa_enabled"])
-                record(user, "auth.mfa_enrolled", user, request=request)
-            nxt = request.session.get("mfa_next") or "/home/"
-            for k in ("mfa_pending", "mfa_new_secret", "mfa_next"):
-                request.session.pop(k, None)
-            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-            record(user, "auth.login", user, after={"mfa": True}, request=request)
-            return redirect(nxt)
         else:
+            step = mfa.matched_step(secret, request.POST.get("code", ""))
+            if step is not None and mfa.consume_step(user, step):
+                if enrolling:
+                    user.mfa_secret = mfa.encrypt(secret)
+                    user.mfa_enabled = True
+                    user.save(update_fields=["mfa_secret", "mfa_enabled"])
+                    record(user, "auth.mfa_enrolled", user, request=request)
+                nxt = request.session.get("mfa_next") or "/home/"
+                for k in ("mfa_pending", "mfa_new_secret", "mfa_next"):
+                    request.session.pop(k, None)
+                User.objects.filter(pk=user.pk).update(failed_logins=0, locked_until=None)
+                login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+                mfa.mark_verified(request, user)
+                record(user, "auth.login", user, after={"mfa": True}, request=request)
+                return redirect(nxt)
+            # A wrong code and a replayed one (SEC-11) both count towards the lockout.
             user.failed_logins += 1
             fields = ["failed_logins"]
             if user.failed_logins >= settings.LOGIN_LOCKOUT_THRESHOLD:
@@ -283,7 +288,10 @@ def mfa_view(request):
                 for k in ("mfa_pending", "mfa_new_secret"):
                     request.session.pop(k, None)
             user.save(update_fields=fields)
-            error = "That code didn't match. Codes change every 30 seconds; use the current one."
+            if step is not None:
+                error = "That code has already been used. Wait for the next one, then enter it."
+            else:
+                error = "That code didn't match. Codes change every 30 seconds; use the current one."
     ctx = {"error": error, "enrolling": enrolling, "user_name": user.display_name}
     if enrolling:
         from apps.checkins.qr import svg

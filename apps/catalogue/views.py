@@ -1,6 +1,6 @@
 """Discovery (find) and the resource page (calendar + booking)."""
 
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -12,6 +12,7 @@ from django.views.decorators.http import require_POST
 
 from apps.accounts.permissions import can_manage_resource, has_cap
 from apps.bookings import availability
+from apps.core.http import date_param, int_param
 from apps.core.timeutil import aware, ceil_to
 
 from . import search
@@ -19,10 +20,7 @@ from .models import Building, Feature, Resource, ResourceType, SavedResource
 
 
 def _parse_date(value, default=None):
-    try:
-        return date.fromisoformat(value) if value else default
-    except ValueError:
-        return default
+    return date_param(value, default)
 
 
 def _parse_time(value):
@@ -51,10 +49,7 @@ def find(request):
     # Explicit controls win over what the free-text query implied.
     type_codes = g.getlist("type") or intent.type_codes
     building_code = g.get("building") or intent.building
-    try:
-        people = int(g.get("people") or intent.capacity or 0)
-    except ValueError:
-        people = 0
+    people = int_param(g.get("people") or intent.capacity or 0, 0, lo=0, hi=100_000)
     day = _parse_date(g.get("date"), intent.day)
     t_from = _parse_time(g.get("from")) or intent.start
     t_to = _parse_time(g.get("to")) or intent.end

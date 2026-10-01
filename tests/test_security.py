@@ -269,7 +269,6 @@ def test_sec10_locked_and_unknown_accounts_answer_alike(client, student):
     assert locked.status_code == unknown.status_code
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-11: a TOTP code can be replayed within its validity window")
 def test_sec11_totp_code_cannot_be_replayed(client, admin_user):
     secret = _enrol_mfa(admin_user)
     code = pyotp.TOTP(secret).now()
@@ -281,14 +280,12 @@ def test_sec11_totp_code_cannot_be_replayed(client, admin_user):
     assert replay.status_code == 200  # refused, re-rendered with an error
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-12: a session elevated to admin never has to pass MFA")
 def test_sec12_role_elevation_requires_mfa_step_up(client, student, admin_user):
     client.force_login(student)  # an ordinary, MFA-less student session
     change_role(student, Role.ADMIN, actor=admin_user)
     assert client.get(reverse("manage:users")).status_code != 200
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-13: malformed input raises unhandled exceptions (HTTP 500)")
 @pytest.mark.parametrize("case", ["resource_date_overflow", "series_non_numeric", "users_non_numeric"])
 def test_sec13_malformed_input_is_a_4xx_not_a_500(client, room, faculty, admin_user, case):
     client.raise_request_exception = False
@@ -304,7 +301,6 @@ def test_sec13_malformed_input_is_a_4xx_not_a_500(client, room, faculty, admin_u
     assert resp.status_code < 500
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-14: OpenAPI schema and Swagger UI are served to anonymous users")
 @pytest.mark.parametrize("path", ["/api/v1/schema/", "/api/v1/docs/"])
 def test_sec14_api_schema_requires_authentication(client, path):
     assert client.get(path).status_code in (401, 403, 302)
@@ -488,6 +484,98 @@ def test_sec05_public_compose_key_is_tolerated_only_on_a_demo_stack(monkeypatch)
 
 def test_sec05_debug_keeps_the_zero_config_dev_key(monkeypatch):
     assert _load_settings(monkeypatch, DEBUG="1")["SECRET_KEY"] == "dev-only-insecure-key-change-me"
+
+
+# ── SEC-11: a TOTP code works once ──────────────────────────────────────────
+
+
+def test_sec11_replayed_code_is_refused_with_a_clear_message(client, admin_user):
+    secret = _enrol_mfa(admin_user)
+    code = pyotp.TOTP(secret).now()
+    _password_login(client, admin_user)
+    client.post(reverse("accounts:mfa"), {"code": code})
+    client.post(reverse("accounts:logout"))
+    _password_login(client, admin_user)
+    resp = client.post(reverse("accounts:mfa"), {"code": code})
+    assert b"already been used" in resp.content
+    admin_user.refresh_from_db()
+    assert admin_user.failed_logins == 1  # a replay counts towards the lockout
+
+
+def test_sec11_the_enrolment_code_cannot_be_reused_to_sign_in(client, admin_user):
+    _password_login(client, admin_user)
+    client.get(reverse("accounts:mfa"))  # the enrolment page creates the secret
+    secret = mfa.decrypt(client.session["mfa_new_secret"])
+    code = pyotp.TOTP(secret).now()
+    assert client.post(reverse("accounts:mfa"), {"code": code}).status_code == 302
+    client.post(reverse("accounts:logout"))
+    _password_login(client, admin_user)
+    assert client.post(reverse("accounts:mfa"), {"code": code}).status_code == 200
+
+
+def test_sec11_consume_step_is_monotonic(admin_user):
+    assert mfa.consume_step(admin_user, 1000)
+    assert not mfa.consume_step(admin_user, 1000)
+    assert not mfa.consume_step(admin_user, 999)
+    assert mfa.consume_step(admin_user, 1001)
+
+
+# ── SEC-12: sessions of people who need MFA must have passed it ─────────────
+
+
+def test_sec12_full_mfa_sign_in_keeps_working(client, admin_user):
+    secret = _enrol_mfa(admin_user)
+    _password_login(client, admin_user)
+    client.post(reverse("accounts:mfa"), {"code": pyotp.TOTP(secret).now()})
+    assert client.session[mfa.SESSION_KEY] == admin_user.pk
+    assert client.get(reverse("manage:users")).status_code == 200
+
+
+def test_sec12_elevated_session_is_ended_and_recorded(client, student, admin_user):
+    client.force_login(student)
+    change_role(student, Role.ADMIN, actor=admin_user)
+    resp = client.get(reverse("manage:users"))
+    assert resp.status_code == 302 and resp.url.startswith(reverse("accounts:login"))
+    assert "_auth_user_id" not in client.session
+    assert AuditLog.objects.filter(action="auth.mfa_step_up", actor=student).exists()
+
+
+def test_sec12_elevated_api_session_gets_a_401_envelope(client, student, admin_user):
+    client.force_login(student)
+    change_role(student, Role.ADMIN, actor=admin_user)
+    resp = client.get("/api/v1/me/")
+    assert resp.status_code == 401
+    assert resp.json()["error"]["code"] == "mfa_required"
+
+
+def test_sec12_voluntary_enrolment_is_enforced_too(client, custodian):
+    client.force_login(custodian)  # signed in before enrolling
+    assert client.get(reverse("manage:home")).status_code == 200
+    _enrol_mfa(custodian)
+    assert client.get(reverse("manage:home")).status_code == 302
+
+
+def test_sec12_demo_stamp_is_void_once_demo_mode_is_off(client, settings, admin_user):
+    from django.contrib.auth import SESSION_KEY
+
+    settings.DEMO_MODE = True
+    client.force_login(admin_user)
+    session = client.session
+    session[mfa.SESSION_KEY] = mfa.DEMO_MARKER
+    session.save()
+    assert client.get(reverse("manage:users")).status_code == 200
+    settings.DEMO_MODE = False
+    assert client.get(reverse("manage:users")).status_code == 302
+    assert SESSION_KEY not in client.session
+
+
+# ── SEC-14: the live API schema is for signed-in users ──────────────────────
+
+
+@pytest.mark.parametrize("path", ["/api/v1/schema/", "/api/v1/docs/"])
+def test_sec14_signed_in_users_can_read_the_api_schema(client, student, path):
+    client.force_login(student)
+    assert client.get(path).status_code == 200
 
 
 # ════════════════════════════════════════════════════════════════════════════
