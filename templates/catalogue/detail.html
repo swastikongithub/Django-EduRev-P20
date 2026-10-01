@@ -39,9 +39,7 @@
   <div class="stack" style="--gap: var(--s6)">
     <section class="panel panel--flagged calpanel" aria-labelledby="cal-h">
       <span class="flag flag--ink">{% icon "calendar-days" %}<span id="cal-h">Availability</span></span>
-      <div id="calendar" hx-target="this" hx-swap="outerHTML">
-        {% include "catalogue/_calendar.html" %}
-      </div>
+      {% include "catalogue/_calendar.html" %}
     </section>
 
     <section class="grid grid-2">

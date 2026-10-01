@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Your profile{% endblock %}
+{% block topbar_title %}Profile<small>Standing, limits and settings</small>{% endblock %}
+{% block content %}
+<section class="profilecard panel">
+  {% initials_avatar request.user "lg" %}
+  <div class="profilecard__text">
+    <h1>{{ request.user.display_name }}</h1>
+    <p class="muted">{{ request.user.get_role_display }}{% if request.user.programme %}, {{ request.user.programme }}{% elif request.user.designation %}, {{ request.user.designation }}{% endif %}</p>
+    <p class="small faint tnum">{% if request.user.vid %}VID {{ request.user.vid }}{% endif %}{% if request.user.section %} &nbsp;|&nbsp; Section {{ request.user.section }}{% endif %}{% if request.user.department %} &nbsp;|&nbsp; {{ request.user.department.name }}{% endif %}</p>
+  </div>
+  <form method="post" action="{% url 'accounts:logout' %}" class="push">{% csrf_token %}<button class="btn" type="submit">{% icon "log-out" %}Sign out</button></form>
+</section>
+
+<div class="grid grid-3 stats-row">
+  <div class="panel kpi"><span class="kpi__label">{% icon "calendar-check" 15 %}Upcoming</span><span class="kpi__value">{{ stats.upcoming }}</span></div>
+  <div class="panel kpi"><span class="kpi__label">{% icon "check" 15 %}Completed</span><span class="kpi__value">{{ stats.completed }}</span></div>
+  <div class="panel kpi"><span class="kpi__label">{% icon "ban" 15 %}No-shows, all time</span><span class="kpi__value">{{ stats.no_shows }}</span></div>
+</div>
+
+<div class="split">
+  <div class="stack" style="--gap: var(--s6)">
+    <section class="panel panel--flagged" aria-labelledby="standing-h">
+      <span class="flag">{% icon "shield-check" %}<span id="standing-h">Booking standing</span></span>
+      {% if restriction %}
+        <div class="notice notice--danger">{% icon "ban" %}<div><strong>Booking paused until {{ restriction.ends_at|date:"j M, H:i" }}</strong>{{ restriction.reason }}{% if restriction.tier_label %} ({{ restriction.tier_label }}){% endif %}. Talk to a resource custodian if a no-show was a mistake; they can forgive it.</div></div>
+      {% elif recent_no_shows %}
+        <div class="notice notice--warn">{% icon "triangle-alert" %}<div><strong>{{ recent_no_shows|length }} recent no-show{{ recent_no_shows|pluralize }}</strong>Cancel bookings you won't use. It frees the slot and keeps your record clean.</div></div>
+      {% else %}
+        <div class="notice notice--success">{% icon "circle-check" %}<div><strong>Good standing</strong>No recent no-shows. Thanks for checking in on time.</div></div>
+      {% endif %}
+      {% if tiers %}
+      <ol class="ladder" aria-label="How no-shows add up">
+        {% for t in tiers %}
+        <li class="ladder__step{% if recent_no_shows|length >= t.no_shows %} is-reached{% endif %}"><span class="ladder__n tnum">{{ t.no_shows }}</span><span class="small">{% if t.restrict_days %}{{ t.restrict_days }}-day pause{% else %}Warning{% endif %}</span><span class="xsmall faint">within {{ t.window_days }} days</span></li>
+        {% endfor %}
+      </ol>
+      {% endif %}
+      {% if recent_no_shows %}
+      <ul class="list">{% for n in recent_no_shows %}<li class="row row--between small"><span>{{ n.resource.name }}, {{ n.booking.start|dayname }} {{ n.booking.start|hm }}</span><span class="badge badge--danger">Released</span></li>{% endfor %}</ul>
+      {% endif %}
+    </section>
+
+    <section class="panel" aria-labelledby="quota-h">
+      <h2 id="quota-h" class="h-sm">Your limits</h2>
+      {% if quotas %}
+      <ul class="quotas">
+        {% for q in quotas %}
+        <li>
+          <div class="row row--between"><span class="small strong">{{ q.quota.name }}</span><span class="xsmall faint tnum">{% if q.quota.max_hours %}{{ q.hours_used }} of {{ q.quota.max_hours }} h{% endif %}{% if q.quota.max_hours and q.quota.max_bookings %} &nbsp;|&nbsp; {% endif %}{% if q.quota.max_bookings %}{{ q.bookings_used }} of {{ q.quota.max_bookings }} bookings{% endif %}</span></div>
+          <div class="meter{% if q.pct >= 90 %} is-high{% elif q.pct >= 70 %} is-mid{% endif %}" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ q.pct }}" aria-label="{{ q.quota.name }}"><span style="width: {{ q.pct }}%"></span></div>
+          <span class="xsmall faint">{{ q.quota.get_period_display|capfirst }}{% if q.quota.is_departmental %}, shared by {{ q.quota.department.code }}{% endif %}{% if q.quota.resource_type %}, {{ q.quota.resource_type.plural|default:q.quota.resource_type.name|lower }}{% endif %}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="small muted">No booking limits apply to your role.</p>{% endif %}
+    </section>
+  </div>
+
+  <aside class="stack sticky-side" style="--gap: var(--s5)">
+    <section class="panel">
+      <h2 class="h-sm">Calendar sync</h2>
+      <p class="small muted">Add this link to Google Calendar, Outlook or Apple Calendar to see your bookings there. Keep it private.</p>
+      <div class="copyfield"><input class="input" value="{{ feed_url }}" readonly aria-label="Calendar feed link"><button class="btn btn--icon" type="button" data-copy="{{ feed_url }}" aria-label="Copy link">{% icon "copy" %}</button></div>
+    </section>
+    <section class="panel">
+      <h2 class="h-sm">Appearance</h2>
+      <button class="btn" type="button" data-theme-toggle>{% icon "moon" cls="when-light" %}{% icon "sun" cls="when-dark" %}Switch light / dark</button>
+    </section>
+  </aside>
+</div>
+{% endblock %}

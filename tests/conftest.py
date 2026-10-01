@@ -21,6 +21,15 @@ def at(d: date, hh: int, mm: int = 0) -> datetime:
 
 
 @pytest.fixture(autouse=True)
+def _plain_static_storage(settings):
+    """Tests don't need hashed filenames; avoid depending on a collectstatic manifest."""
+    settings.STORAGES = {
+        **settings.STORAGES,
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+
+
+@pytest.fixture(autouse=True)
 def _reset_tenant_cache():
     reset_default_institution_cache()
     yield

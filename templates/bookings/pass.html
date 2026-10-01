@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{{ b.reference }}{% endblock %}
+{% block topbar_title %}Booking pass<small>{{ b.reference }}</small>{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{% url 'bookings:mine' %}">Bookings</a>{% icon "chevron-right" %}<span>{{ b.reference }}</span></nav>
+
+{% if is_new %}
+<div class="celebrate" role="status">
+  <svg class="celebrate__tick" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg>
+  <div>
+    {% if b.status == "pending" %}
+      <strong>Requested. The slot is held for you.</strong>
+      <span>We'll notify you when it's approved. Nobody else can take this time meanwhile.</span>
+    {% else %}
+      <strong>Booked. It's yours.</strong>
+      <span>{% if b.requires_checkin %}Scan the QR at the door, or tap Check in, within {{ b.checkin_grace_minutes }} minutes of the start.{% else %}Added to your bookings.{% endif %}</span>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<div class="split pass-layout">
+  <article class="ticket" aria-labelledby="ticket-h">
+    <div class="ticket__media">{% resource_photo b.resource "lg" %}<span class="ticket__ref tnum">{{ b.reference }}</span></div>
+    <div class="ticket__main">
+      <div class="row row--between row--top">
+        {% status_badge b %}
+        {% if b.series_id %}<span class="badge badge--plain">{% icon "repeat" %}Weekly, {{ series_count }} upcoming</span>{% endif %}
+      </div>
+      <h1 id="ticket-h" class="ticket__title">{{ b.resource.name }}</h1>
+      <p class="muted">{{ b.resource.location_label }}</p>
+      <div class="ticket__when">
+        <div><span class="xsmall faint">Day</span><strong>{{ b.start|dayname }}</strong><span class="small muted">{{ b.start|date:"j F Y" }}</span></div>
+        <div><span class="xsmall faint">Time</span><strong class="tnum">{{ b.start|hm }}–{{ b.end|hm }}</strong><span class="small muted">{{ b.duration_minutes|duration }}</span></div>
+        <div><span class="xsmall faint">For</span><strong>{% if b.group_label %}{{ b.group_label }}{% else %}{{ b.booked_for.display_name }}{% endif %}</strong><span class="small muted">{{ b.attendees }} {% if b.attendees == 1 %}person{% else %}people{% endif %}</span></div>
+      </div>
+      {% if b.title %}<p class="ticket__purpose">{{ b.title }}</p>{% endif %}
+      {% if b.status_reason and b.status in "cancelled rejected expired no_show" %}<div class="notice notice--warn">{% icon "info" %}<div>{{ b.status_reason }}</div></div>{% endif %}
+    </div>
+    <div class="ticket__tear" aria-hidden="true"></div>
+    <div class="ticket__qr" id="checkin">
+      {% if qr %}
+        <div class="qrbox">{{ qr }}</div>
+        {% if state.state == "open" %}
+          <p class="checkin-live">{% icon "zap" 16 %}Check-in open, <time class="tnum" data-countdown="{{ state.closes|date:'c' }}" data-expired="closing now">{{ state.closes|hm }}</time> left</p>
+          {% if is_owner or is_manager %}
+          <form method="post" action="{% url 'checkins:check_in' b.reference %}">{% csrf_token %}<button class="btn btn--primary btn--lg btn--block" type="submit">{% icon "scan-line" %}Check in now</button></form>
+          {% endif %}
+          <p class="xsmall faint">Or scan the QR on the door of {{ b.resource.name }}.</p>
+        {% elif state.state == "in_use" %}
+          <p class="checkin-live">{% icon "zap" 16 %}In use until {{ b.end|hm }}</p>
+          {% if is_owner or is_manager %}
+          <form method="post" action="{% url 'checkins:check_out' b.reference %}">{% csrf_token %}<button class="btn btn--ink btn--block" type="submit">{% icon "log-out" %}Check out{% if b.end > now %} early and free it up{% endif %}</button></form>
+          {% endif %}
+        {% elif state.state == "not_yet" %}
+          <p class="small muted">Check-in opens at <strong class="tnum">{{ state.opens|hm }}</strong> and closes at <strong class="tnum">{{ state.closes|hm }}</strong>. Miss it and the slot is released.</p>
+        {% elif b.status == "pending" %}
+          <p class="small muted">The QR becomes active once approved.</p>
+        {% elif state.state == "not_required" %}
+          <p class="small muted">No check-in needed for this one.</p>
+        {% endif %}
+      {% else %}
+        <div class="qrbox qrbox--void">{% icon "qr-code" 48 %}<span class="small">Pass no longer active</span></div>
+      {% endif %}
+    </div>
+  </article>
+
+  <aside class="stack sticky-side" style="--gap: var(--s5)">
+    <section class="panel" aria-labelledby="tl-h">
+      <h2 id="tl-h" class="h-sm">Progress</h2>
+      <ol class="timeline">
+        {% for t in timeline %}
+        <li class="timeline__item is-{{ t.state }}">
+          <span class="timeline__dot" aria-hidden="true">{% if t.state == "done" %}{% icon "check" 12 %}{% elif t.state == "failed" %}{% icon "x" 12 %}{% endif %}</span>
+          <div><strong class="small">{{ t.label }}</strong>{% if t.at %}<span class="xsmall faint tnum">{{ t.at|dayname }}, {{ t.at|hm }}</span>{% elif t.note %}<span class="xsmall faint">{{ t.note }}</span>{% endif %}</div>
+        </li>
+        {% endfor %}
+      </ol>
+    </section>
+
+    {% if approvals %}
+    <section class="panel" aria-labelledby="ap-h">
+      <h2 id="ap-h" class="h-sm">Approval</h2>
+      <ul class="list">
+        {% for a in approvals %}
+        <li class="approvalrow">
+          <div class="row row--between"><span class="small strong">{{ a.step_order }}. {{ a.get_approver_role_display }}</span>
+            <span class="badge {% if a.decision == 'approved' %}badge--success{% elif a.decision == 'rejected' %}badge--danger{% elif a.decision == 'pending' %}badge--pending{% endif %}">{{ a.get_decision_display }}</span></div>
+          {% if a.decided_by %}<span class="xsmall faint">{{ a.decided_by.display_name }}, {{ a.decided_at|dayname }} {{ a.decided_at|hm }}</span>{% endif %}
+          {% if a.comment %}<p class="small approvalrow__comment">&ldquo;{{ a.comment }}&rdquo;</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% elif auto_note %}
+    <p class="small muted">{% icon "zap" 14 %} {{ auto_note }}.</p>
+    {% endif %}
+
+    {% if issuances %}
+    <section class="panel" aria-labelledby="it-h">
+      <h2 id="it-h" class="h-sm">Items</h2>
+      <ul class="list">{% for i in issuances %}<li class="row row--between small"><span>{{ i.quantity }} &times; {{ i.item.name }}</span><span class="badge">{{ i.get_status_display }}</span></li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+
+    <section class="stack" style="--gap: 8px">
+      {% if b.is_holding %}<a class="btn btn--block" href="{% url 'bookings:ics' b.reference %}">{% icon "calendar-plus" %}Add to my calendar</a>{% endif %}
+      <a class="btn btn--block btn--ghost" href="{{ b.resource.get_absolute_url }}">{% icon "building-2" %}About {{ b.resource.name }}</a>
+      {% if can_cancel %}
+      <form method="post" action="{% url 'bookings:cancel' b.reference %}" data-confirm="Cancel this booking? {{ b.resource.name }} will be offered to others straight away.">{% csrf_token %}
+        <button class="btn btn--danger btn--block" type="submit">{% icon "calendar-x" %}Cancel booking</button>
+      </form>
+      {% endif %}
+    </section>
+  </aside>
+</div>
+
+<dialog id="confirm-dialog" class="sheet" aria-labelledby="confirm-h">
+  <div class="sheet__head"><h2 id="confirm-h" class="h-sm">Are you sure?</h2></div>
+  <div class="sheet__body stack"><p data-confirm-text></p><div class="row"><button class="btn btn--danger-solid" type="button" data-confirm-yes>Yes, cancel it</button><button class="btn btn--ghost" type="button" data-close>Keep it</button></div></div>
+</dialog>
+{% endblock %}

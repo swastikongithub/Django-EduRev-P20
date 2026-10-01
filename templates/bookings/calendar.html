@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Your week{% endblock %}
+{% block topbar_title %}Calendar<small>Your week at a glance</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div><h1>{{ week_start|date:"j M" }} – {{ days|last|first|date:"j M" }}</h1><p>Everything you've booked this week, in one place.</p></div>
+  <div class="row row--wrap">
+    <a class="btn btn--icon" href="?date={{ prev|date:'Y-m-d' }}" aria-label="Previous week">{% icon "chevron-left" %}</a>
+    <a class="btn" href="?">This week</a>
+    <a class="btn btn--icon" href="?date={{ next|date:'Y-m-d' }}" aria-label="Next week">{% icon "chevron-right" %}</a>
+    <button class="btn" type="button" data-copy="{{ feed_url }}">{% icon "copy" %}Copy calendar feed</button>
+  </div>
+</div>
+<div class="mycal" style="--minutes: {{ total_minutes }}">
+  <div class="mycal__times" aria-hidden="true">{% for h in hours %}<span>{{ h }}</span>{% endfor %}</div>
+  {% for day, items in days %}
+  <section class="mycal__day{% if day == today %} is-today{% endif %}" aria-label="{{ day|date:'l j F' }}">
+    <h2 class="mycal__head"><span>{{ day|date:"D" }}</span><strong class="tnum">{{ day|date:"j" }}</strong></h2>
+    <div class="mycal__track">
+      {% if day == today %}<span class="mycal__now" style="--top: {{ now_minutes }}"></span>{% endif %}
+      {% for it in items %}
+      <a class="mycal__item st-{% if it.b.status == 'pending' %}pending{% elif it.b.status == 'no_show' %}booked{% else %}mine{% endif %}" style="--top: {{ it.top }}; --h: {{ it.height }}" href="{{ it.b.get_absolute_url }}">
+        <strong class="truncate">{{ it.b.resource.name }}</strong><span class="tnum">{{ it.b.start|hm }}–{{ it.b.end|hm }}</span>
+      </a>
+      {% empty %}<span class="mycal__empty xsmall faint">Free</span>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+<p class="xsmall faint" style="margin-top: var(--s4)">The calendar feed keeps Google Calendar, Outlook or Apple Calendar up to date with your bookings. Treat the link like a password.</p>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Scan to check in{% endblock %}
+{% block topbar_title %}Scan<small>Check in with a QR</small>{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
+{% block content %}
+<section class="scanner" data-scanner>
+  <div class="scanner__frame">
+    <video class="scanner__video" playsinline muted aria-label="Camera preview"></video>
+    <div class="scanner__overlay" aria-hidden="true"><span></span></div>
+    <div class="scanner__idle" data-idle>
+      <div class="empty__icon">{% icon "scan-line" %}</div>
+      <p class="strong">Point your camera at the QR on the door</p>
+      <p class="small muted">Works with the room/equipment QR or someone's booking pass.</p>
+      <button type="button" class="btn btn--primary btn--lg" data-start>{% icon "camera" %}Start camera</button>
+    </div>
+  </div>
+  <p class="scanner__status small" data-status role="status" aria-live="polite"></p>
+</section>
+
+<section class="panel stack scanner__manual" aria-labelledby="manual-h">
+  <h2 id="manual-h" class="h-sm">No camera? Type the code</h2>
+  <form class="row" method="get" data-manual>
+    <label class="sr-only" for="code">Room or equipment code</label>
+    <input class="input" id="code" name="code" placeholder="e.g. 34-301" autocomplete="off" required>
+    <button class="btn btn--ink" type="submit">Check in</button>
+  </form>
+  <p class="xsmall faint">The code is printed under the QR on every door and equipment tag. Your phone's own camera app also works; it opens the same page.</p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'vendor/jsqr.js' %}" defer></script>
+<script src="{% static 'js/scan.js' %}" defer></script>
+{% endblock %}

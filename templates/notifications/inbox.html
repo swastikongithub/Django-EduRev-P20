@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block topbar_title %}Notifications{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>Notifications</h1><p>Confirmations, approvals, reminders and anything that changed about your bookings.</p></div></div>
+{% if page.object_list %}
+<ul class="inbox panel panel--flush">
+  {% for n in page.object_list %}
+  <li class="inbox__item tone-{{ n.tone }}{% if n.pk in unread_ids %} is-unread{% endif %}">
+    <span class="inbox__icon" aria-hidden="true">{% if n.tone == "success" %}{% icon "circle-check" %}{% elif n.tone == "danger" %}{% icon "circle-alert" %}{% elif n.tone == "warning" %}{% icon "triangle-alert" %}{% else %}{% icon "bell" %}{% endif %}</span>
+    <div class="inbox__text">
+      {% if n.url %}<a href="{{ n.url }}" class="inbox__title">{{ n.title }}</a>{% else %}<span class="inbox__title">{{ n.title }}</span>{% endif %}
+      {% if n.body %}<p class="small muted">{{ n.body }}</p>{% endif %}
+    </div>
+    <time class="xsmall faint nowrap" datetime="{{ n.created_at|date:'c' }}">{{ n.created_at|dayname }}, {{ n.created_at|hm }}</time>
+  </li>
+  {% endfor %}
+</ul>
+{% if page.has_other_pages %}<nav class="pager">{% if page.has_previous %}<a class="btn btn--sm" href="?page={{ page.previous_page_number }}">Newer</a>{% endif %}{% if page.has_next %}<a class="btn btn--sm" href="?page={{ page.next_page_number }}">Older</a>{% endif %}</nav>{% endif %}
+{% else %}
+<div class="panel empty"><div class="empty__icon">{% icon "inbox" %}</div><h3>You're all caught up</h3><p>Booking confirmations, approval decisions and check-in reminders will appear here.</p></div>
+{% endif %}
+{% endblock %}

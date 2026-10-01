@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Your bookings{% endblock %}
+{% block topbar_title %}Bookings<small>Yours, past and upcoming</small>{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div><h1>Your bookings</h1></div>
+  <div class="row row--wrap">
+    <a class="btn" href="{% url 'bookings:calendar' %}">{% icon "calendar-days" %}Week view</a>
+    {% if perms.accounts.book_recurring %}<a class="btn" href="{% url 'bookings:series_new' %}">{% icon "repeat" %}Weekly booking</a>{% endif %}
+    <a class="btn btn--primary" href="{% url 'catalogue:find' %}">{% icon "plus" %}New booking</a>
+  </div>
+</div>
+
+<nav class="seg tabs" aria-label="Filter bookings">
+  <a href="?tab=upcoming"{% if tab == "upcoming" %} aria-current="page"{% endif %}>Upcoming{% if counts.upcoming %} <span class="tabcount">{{ counts.upcoming }}</span>{% endif %}</a>
+  <a href="?tab=pending"{% if tab == "pending" %} aria-current="page"{% endif %}>Awaiting approval{% if counts.pending %} <span class="tabcount">{{ counts.pending }}</span>{% endif %}</a>
+  <a href="?tab=past"{% if tab == "past" %} aria-current="page"{% endif %}>Past</a>
+</nav>
+
+{% if groups %}
+<div class="daygroups">
+  {% for day, items in groups %}
+  <section class="daygroup">
+    <h2 class="daygroup__day"><span>{{ day|dayname }}</span>{% if day|dayname|length < 10 %}<small>{{ day|date:"j F" }}</small>{% endif %}</h2>
+    <ul class="bookinglist">
+      {% for b in items %}
+      <li>
+        <a class="bookingrow" href="{{ b.get_absolute_url }}">
+          <span class="bookingrow__time tnum"><strong>{{ b.start|hm }}</strong><span>{{ b.end|hm }}</span></span>
+          <span class="bookingrow__media">{% resource_photo b.resource "sm" %}</span>
+          <span class="bookingrow__text"><strong class="truncate">{{ b.resource.name }}</strong><span class="small muted truncate">{{ b.title }}{% if b.group_label %}, {{ b.group_label }}{% endif %}</span></span>
+          <span class="bookingrow__status">{% status_badge b %}</span>
+          {% icon "chevron-right" 18 "bookingrow__chev" %}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+</div>
+{% if page.has_other_pages %}<nav class="pager">{% if page.has_previous %}<a class="btn btn--sm" href="?tab={{ tab }}&amp;page={{ page.previous_page_number }}">Previous</a>{% endif %}<span class="small muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>{% if page.has_next %}<a class="btn btn--sm" href="?tab={{ tab }}&amp;page={{ page.next_page_number }}">Next</a>{% endif %}</nav>{% endif %}
+{% else %}
+<div class="panel empty">
+  <div class="empty__icon">{% icon "calendar-check" %}</div>
+  {% if tab == "pending" %}<h3>Nothing waiting for approval</h3><p>Requests for seminar halls, equipment and vehicles show up here while they're reviewed.</p>
+  {% elif tab == "past" %}<h3>No past bookings yet</h3><p>Once you've used a room or a piece of kit, it shows up here.</p>
+  {% else %}<h3>No upcoming bookings</h3><p>Find a free room, lab or court and it'll show up here with its QR pass.</p>{% endif %}
+  <a class="btn btn--primary" href="{% url 'catalogue:find' %}">Find something to book</a>
+</div>
+{% endif %}
+
+{% if series %}
+<section class="home-section">
+  <div class="section-head"><h2>Weekly bookings you manage</h2></div>
+  <ul class="list panel">{% for s in series %}<li class="row row--between"><div><strong class="small">{{ s.title }}</strong><div class="xsmall faint">{{ s.resource.name }}, {{ s.start_time|time:"H:i" }}–{{ s.end_time|time:"H:i" }}, until {{ s.until_date|date:"j M" }}</div></div><span class="badge">{{ s.created_count }} booked{% if s.skipped %}, {{ s.skipped|length }} skipped{% endif %}</span></li>{% endfor %}</ul>
+</section>
+{% endif %}
+{% endblock %}

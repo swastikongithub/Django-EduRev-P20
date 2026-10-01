@@ -199,3 +199,14 @@ def resource_photo(resource, size="sm", cls=""):
                            480 if size == "sm" else 960, 320 if size == "sm" else 640, cls)
     accent = ACCENT_ART.get(resource.type.accent, "orange")
     return format_html('<div class="art art--{}">{}</div>', accent, icon(resource.type.icon))
+
+
+@register.simple_tag
+def slot_times(step=30, first=6, last=23):
+    """HH:MM options for time pickers on the resource's slot grid."""
+    out = []
+    m = first * 60
+    while m <= last * 60:
+        out.append(f"{m // 60:02d}:{m % 60:02d}")
+        m += int(step)
+    return out

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Booking pass{% endblock %}
+{% block topbar_title %}Check in{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
+{% block content %}
+<section class="panel checkcard">
+  {% if foreign %}
+    <div class="empty__icon">{% icon "shield-check" %}</div>
+    <h1 class="h-md">This is a valid LPU Reserve pass</h1>
+    <p class="muted">It belongs to someone else, so only they or the custodian of {{ b.resource.name }} can check it in.</p>
+    <a class="btn" href="{% url 'checkins:scan' %}">Scan another code</a>
+  {% else %}
+    <div class="checkcard__head">{% status_badge b %}<span class="tnum small muted">{{ b.reference }}</span></div>
+    <h1 class="h-md">{{ b.resource.name }}</h1>
+    <p class="checkcard__time tnum">{{ b.start|dayname }}, {{ b.start|hm }}–{{ b.end|hm }}</p>
+    {% if is_manager and not is_owner %}
+      <dl class="kv"><dt>Booked for</dt><dd>{{ b.booked_for.display_name }}{% if b.booked_for.vid %} (VID {{ b.booked_for.vid }}){% endif %}</dd>{% if b.group_label %}<dt>Group</dt><dd>{{ b.group_label }}</dd>{% endif %}<dt>People</dt><dd>{{ b.attendees }}</dd></dl>
+    {% endif %}
+    {% if state.state == "open" %}
+      <p class="checkin-live">{% icon "zap" 16 %}Check-in open, <time class="tnum" data-countdown="{{ state.closes|date:'c' }}" data-expired="closing now">{{ state.closes|hm }}</time> left</p>
+      <form method="post">{% csrf_token %}<button class="btn btn--primary btn--xl btn--block" type="submit">{% icon "scan-line" %}{% if is_owner %}Check in{% else %}Verify and check in{% endif %}</button></form>
+    {% elif state.state == "in_use" %}
+      <div class="notice notice--success">{% icon "circle-check" %}<div><strong>Checked in</strong>In use until {{ b.end|hm }}.</div></div>
+    {% elif state.state == "not_yet" %}
+      <div class="notice">{% icon "clock" %}<div><strong>Too early</strong>Check-in opens at {{ state.opens|hm }}.</div></div>
+    {% elif state.state == "missed" %}
+      <div class="notice notice--danger">{% icon "ban" %}<div><strong>Check-in window closed</strong>The slot was released after {{ state.closes|hm }}.</div></div>
+    {% else %}
+      <div class="notice notice--warn">{% icon "info" %}<div><strong>Not active</strong>This booking is {{ b.get_status_display|lower }}.</div></div>
+    {% endif %}
+    {% if is_owner %}<a class="btn btn--ghost btn--block" href="{{ b.get_absolute_url }}">Open the full pass</a>{% endif %}
+  {% endif %}
+</section>
+{% endblock %}
