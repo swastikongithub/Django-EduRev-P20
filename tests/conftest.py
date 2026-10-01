@@ -60,6 +60,22 @@ def _reset_tenant_cache():
     reset_default_institution_cache()
 
 
+@pytest.fixture(autouse=True)
+def _empty_cache(settings):
+    """
+    Every test starts with an empty cache, as it starts with an empty database. The cache holds
+    the sign-in rate-limit counters (20 per minute per address); shared across tests, a fast run
+    of the browser suite signs in 21 times within a minute and the 21st is refused. The cache is
+    a private in-memory one, so clearing it never flushes a developer's Redis (REDIS_URL).
+    """
+    from django.core.cache import cache
+
+    settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "tests"}}
+    cache.clear()
+    yield
+    cache.clear()
+
+
 @pytest.fixture
 def monday():
     """A Monday comfortably in the future."""
