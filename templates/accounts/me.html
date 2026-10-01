@@ -69,6 +69,17 @@
       <a class="btn" href="{% url 'accounts:export' %}">{% icon "download" %}Download my data</a>
     </section>
     <section class="panel">
+      <h2 class="h-sm">{% translate "Language" %}</h2>
+      <p class="small muted">{% translate "Choose the language for menus and the home screen. More screens follow as translations are reviewed." %}</p>
+      {% get_current_language as LANG %}{% get_available_languages as LANGS %}
+      <form method="post" action="{% url 'set_language' %}" class="row" style="margin-top: 10px">{% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <label class="sr-only" for="lang">{% translate "Language" %}</label>
+        <select class="select" id="lang" name="language">{% for code, name in LANGS %}<option value="{{ code }}"{% if code == LANG %} selected{% endif %} lang="{{ code }}">{{ name }}</option>{% endfor %}</select>
+        <button class="btn" type="submit">{% translate "Save language" %}</button>
+      </form>
+    </section>
+    <section class="panel">
       <h2 class="h-sm">Appearance</h2>
       <button class="btn" type="button" data-theme-toggle>{% icon "moon" cls="when-light" %}{% icon "sun" cls="when-dark" %}Switch light / dark</button>
     </section>

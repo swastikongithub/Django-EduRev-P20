@@ -1,5 +1,5 @@
 {% load static %}<!doctype html>
-<html lang="en">
+{% get_current_language as LANG %}<html lang="{{ LANG }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -11,6 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+  {% if LANG == "hi" %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700;800&display=swap">{% elif LANG == "pa" %}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gurmukhi:wght@400;600;700;800&display=swap">{% endif %}
   <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <link rel="stylesheet" href="{% static 'css/pages.css' %}">
@@ -24,7 +25,7 @@
 </head>
 <body class="{% block body_class %}{% endblock %}" data-sprite="{% static 'img/icons.svg' %}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 <div class="loading-bar" aria-hidden="true"></div>
-<a class="skip-link" href="#main">Skip to content</a>
+<a class="skip-link" href="#main">{% translate "Skip to content" %}</a>
 {% block shell %}
 <div class="app">
   <aside class="rail" aria-label="Primary">
@@ -39,17 +40,17 @@
     </nav>
     {% endif %}
     <div class="rail__group rail__foot">
-      <button type="button" class="rail__item" data-theme-toggle>{% icon "moon" cls="when-light" %}{% icon "sun" cls="when-dark" %}<span>Theme</span></button>
+      <button type="button" class="rail__item" data-theme-toggle>{% icon "moon" cls="when-light" %}{% icon "sun" cls="when-dark" %}<span>{% translate "Theme" %}</span></button>
     </div>
   </aside>
 
   <div class="main-col">
     <header class="topbar">
       <a class="topbar__brand" href="{% url 'core:home' %}" aria-label="LPU Reserve home"><span class="brandmark brandmark--sm">{% include "components/brandmark.html" %}</span></a>
-      <div class="topbar__title">{% block topbar_title %}LPU Reserve<small>Campus resource booking</small>{% endblock %}</div>
+      <div class="topbar__title">{% block topbar_title %}LPU Reserve<small>{% translate "Campus resource booking" %}</small>{% endblock %}</div>
       {% block topbar_search %}      <form class="topbar__search" action="{% url 'catalogue:find' %}" method="get" role="search">
-        <label class="cmd">{% icon "search" %}<span class="sr-only">Search resources</span>
-          <input type="search" name="q" placeholder="Try &ldquo;lab for 40 tomorrow&rdquo; or &ldquo;projector block 34&rdquo;" value="{{ request.GET.q|default:'' }}" data-cmdk autocomplete="off">
+        <label class="cmd">{% icon "search" %}<span class="sr-only">{% translate "Search resources" %}</span>
+          <input type="search" name="q" placeholder="{% translate 'Try “lab for 40 tomorrow” or “projector block 34”' %}" value="{{ request.GET.q|default:'' }}" data-cmdk autocomplete="off">
           <span class="kbd" aria-hidden="true">/</span>
         </label>
       </form>{% endblock %}
@@ -70,11 +71,11 @@
 </div>
 
 <nav class="tabbar" aria-label="Primary">
-  <a href="{% url 'core:home' %}"{% active "/home" %}>{% icon "house" %}<span>Home</span></a>
-  <a href="{% url 'catalogue:find' %}"{% active "/find" "/r/" %}>{% icon "search" %}<span>Find</span></a>
-  <a class="tabbar__scan" href="{% url 'checkins:scan' %}"{% active "/scan" %} aria-label="Scan QR to check in"><span class="scanfab">{% icon "scan-line" %}</span><span>Scan</span></a>
-  <a href="{% url 'bookings:mine' %}"{% active "/bookings" "/b/" %}>{% icon "calendar-check" %}<span>Bookings</span></a>
-  {% if nav_manage %}<a href="{% url 'manage:home' %}"{% active "/manage" "/insights" %}>{% icon "layout-dashboard" %}<span>Manage</span></a>{% else %}<a href="{% url 'accounts:me' %}"{% active "/me" %}>{% icon "user" %}<span>Me</span></a>{% endif %}
+  <a href="{% url 'core:home' %}"{% active "/home" %}>{% icon "house" %}<span>{% translate "Home" %}</span></a>
+  <a href="{% url 'catalogue:find' %}"{% active "/find" "/r/" %}>{% icon "search" %}<span>{% translate "Find" %}</span></a>
+  <a class="tabbar__scan" href="{% url 'checkins:scan' %}"{% active "/scan" %} aria-label="Scan QR to check in"><span class="scanfab">{% icon "scan-line" %}</span><span>{% translate "Scan" %}</span></a>
+  <a href="{% url 'bookings:mine' %}"{% active "/bookings" "/b/" %}>{% icon "calendar-check" %}<span>{% translate "Bookings" %}</span></a>
+  {% if nav_manage %}<a href="{% url 'manage:home' %}"{% active "/manage" "/insights" %}>{% icon "layout-dashboard" %}<span>{% translate "Manage" %}</span></a>{% else %}<a href="{% url 'accounts:me' %}"{% active "/me" %}>{% icon "user" %}<span>{% translate "Me" %}</span></a>{% endif %}
 </nav>
 {% endblock %}
 

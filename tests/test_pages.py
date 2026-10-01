@@ -299,3 +299,13 @@ def test_untouched_accessory_fields_reserve_nothing(client, student, room, tomor
         {"date": d.isoformat(), "start": "17:00", "end": "18:00", f"item-{item.pk}": "2"},
     )
     assert Issuance.objects.get().quantity == 2
+
+
+def test_hindi_and_punjabi_shell(client, student, room):
+    client.force_login(student)
+    client.post(reverse("set_language"), {"language": "hi", "next": "/home/"})
+    resp = client.get(reverse("core:home"))
+    assert 'lang="hi"' in resp.content.decode()
+    assert "आपको क्या चाहिए, और कब?" in resp.content.decode()
+    client.post(reverse("set_language"), {"language": "pa", "next": "/home/"})
+    assert "ਤੁਹਾਨੂੰ ਕੀ ਚਾਹੀਦਾ ਹੈ" in client.get(reverse("core:home")).content.decode()
