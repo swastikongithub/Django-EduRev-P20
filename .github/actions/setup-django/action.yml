@@ -1,0 +1,47 @@
+name: Set up Django test environment
+description: >
+  PostgreSQL 16 in Docker (with a configurable max_connections, which GitHub service
+  containers cannot pass), Python with pip caching, the project's dev dependencies, and a wait
+  until the database accepts connections. Used by every job that runs the Django test suite.
+
+inputs:
+  python-version:
+    description: Python version
+    default: "3.12"
+  max-connections:
+    description: PostgreSQL max_connections (the 500-attempt booking race needs headroom above 100)
+    default: "200"
+
+runs:
+  using: composite
+  steps:
+    - name: Start PostgreSQL 16
+      shell: bash
+      run: |
+        docker run -d --name pg -p 5432:5432 \
+          -e POSTGRES_USER=edurev -e POSTGRES_PASSWORD=edurev -e POSTGRES_DB=edurev \
+          --shm-size=256m postgres:16-alpine -c max_connections=${{ inputs.max-connections }}
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+        cache-dependency-path: |
+          requirements.txt
+          requirements-dev.txt
+
+    - name: Install dependencies
+      shell: bash
+      run: pip install -r requirements-dev.txt
+
+    - name: Wait for PostgreSQL
+      shell: bash
+      run: |
+        for i in $(seq 1 60); do
+          if docker exec pg pg_isready -U edurev -d edurev >/dev/null 2>&1; then
+            docker exec pg psql -U edurev -d edurev -tAc "SHOW max_connections"
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "PostgreSQL did not become ready"; docker logs pg; exit 1
