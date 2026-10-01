@@ -7,7 +7,7 @@ and check-out actions. The body re-renders itself every 60 s through htmx.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, time, timedelta
+from datetime import time, timedelta
 
 from django.core.paginator import Paginator
 from django.db.models import Q
@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.utils.http import urlencode
 
 from apps.catalogue.models import Building, ResourceType
+from apps.core.http import date_param
 from apps.core.manage_views import staff_required
 from apps.core.scope import managed_resources, scope_label
 from apps.core.timeutil import aware, trange
@@ -30,10 +31,7 @@ SOON = timedelta(minutes=90)
 
 
 def _date(v, default):
-    try:
-        return date.fromisoformat(v)
-    except (TypeError, ValueError):
-        return default
+    return date_param(v, default)
 
 
 def _pct(dt, day):

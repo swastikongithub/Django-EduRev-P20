@@ -2,13 +2,14 @@
 
 import csv
 import json
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 
 from django.core.paginator import Paginator
 from django.http import StreamingHttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
+from apps.core.http import date_param
 from apps.core.manage_views import staff_required
 
 from .models import AuditLog
@@ -17,10 +18,7 @@ MAX_EXPORT = 50_000
 
 
 def _parse_date(v):
-    try:
-        return date.fromisoformat(v)
-    except (TypeError, ValueError):
-        return None
+    return date_param(v)
 
 
 def filtered(request):

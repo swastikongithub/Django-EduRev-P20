@@ -6,7 +6,7 @@ Every action goes through apps.maintenance.services, which re-checks can_manage_
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 
 from django.contrib import messages
 from django.db.models import Case, IntegerField, Value, When
@@ -17,7 +17,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.errors import DomainError
-from apps.core.http import safe_next
+from apps.core.http import date_param, safe_next
 from apps.core.manage_views import staff_required
 from apps.core.scope import managed_resources, resource_q, scope_label
 from apps.core.timeutil import aware, trange
@@ -127,8 +127,9 @@ def index(request):
 
 
 def _parse_dt(d, t):
+    day = date_param(d)
     try:
-        return aware(date.fromisoformat(d), datetime.strptime(t, "%H:%M").time())
+        return aware(day, datetime.strptime(t, "%H:%M").time()) if day else None
     except (TypeError, ValueError):
         return None
 

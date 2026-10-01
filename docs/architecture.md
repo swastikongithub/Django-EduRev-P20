@@ -192,7 +192,7 @@ deployment serves one tenant (LPU). The gaps that a second tenant would expose a
 | Concern | Mechanism | Where |
 |---|---|---|
 | Authentication | Django session auth (Path P1); DRF uses `SessionAuthentication` | `config/settings.py` |
-| Second factor | TOTP for `admin`, `facility_manager` and superusers (`MFA_REQUIRED_ROLES`); enrolment on first password sign-in; secret Fernet-encrypted with a key derived from `DJANGO_SECRET_KEY` | `apps/accounts/mfa.py`, `views.mfa_view` |
+| Second factor | TOTP for `admin`, `facility_manager` and superusers (`MFA_REQUIRED_ROLES`); enrolment on first password sign-in; secret Fernet-encrypted with a key derived from `DJANGO_SECRET_KEY`; each code is single-use (last accepted time step stored). `MFASessionMiddleware` ends any session of a user who needs MFA unless it carries the stamp `mfa_view` writes, so a promotion mid-session or any sign-in path that skipped MFA forces a fresh sign-in (API: 401 `mfa_required`). `/django-admin/login/` is the product sign-in view | `apps/accounts/mfa.py`, `middleware.py`, `views.mfa_view`, `views.admin_login` |
 | Brute force | Per-account lockout after 5 failures for 15 minutes; per-IP rate limits on sign-in (20/min), MFA (20/min) and demo sign-in (30/min); DRF throttles (user 600/min, anon 60/min) | `apps/accounts/views.py`, `REST_FRAMEWORK` |
 | Authorisation | Role groups with capability permissions (RBAC) plus object scope, enforced twice: capability check and a scoped queryset. UI hiding is cosmetic | `apps/accounts/permissions.py`, `apps/core/scope.py`, `HasCap` in `apps/core/api.py`; see [roles.md](roles.md) |
 | Demo personas | One-click sign-in only when `DEMO_MODE=1` (default off), never shown otherwise | `views.demo_login` |

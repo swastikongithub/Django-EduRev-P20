@@ -86,6 +86,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.accounts.middleware.MFASessionMiddleware",  # MFA-verified sessions only for those who need MFA
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.InstitutionMiddleware",
@@ -223,6 +224,9 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Campus Resource, Laboratory & Facility Booking Platform (EduRev P20).",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # The live schema and Swagger UI are for signed-in users (SEC-14). Integrators who are not
+    # users (the P13 timetable feed) use the published docs/openapi.yaml.
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
     "SCHEMA_PATH_PREFIX": "/api/v1",
     "ENUM_NAME_OVERRIDES": {
         "BookingStatusEnum": "apps.bookings.models.BookingStatus",

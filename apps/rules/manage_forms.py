@@ -16,6 +16,7 @@ from django.utils import timezone
 from apps.accounts.models import Department, Role
 from apps.catalogue.manage_forms import StyledFormMixin
 from apps.catalogue.models import Building, Resource, ResourceType
+from apps.core.http import MAX_DATE_DISTANCE
 from apps.core.timeutil import trange
 
 from .models import AvailabilityRule, Blackout, BookingPolicy, Quota, RestrictionTier, Scope, Weekday
@@ -514,6 +515,9 @@ def week_rows(rules, start_hour=6, end_hour=23):
 
 def parse_local(value: str) -> datetime | None:
     try:
-        return timezone.make_aware(datetime.strptime(value, "%Y-%m-%dT%H:%M"))
+        dt = datetime.strptime(value, "%Y-%m-%dT%H:%M")
     except (TypeError, ValueError):
         return None
+    if abs(dt.date() - timezone.localdate()) > MAX_DATE_DISTANCE:
+        return None  # far-off years overflow later date arithmetic (SEC-13)
+    return timezone.make_aware(dt)

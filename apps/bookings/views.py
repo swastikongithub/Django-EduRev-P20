@@ -3,7 +3,7 @@ Booking pages. Views parse the request, call apps.bookings.services and render;
 every rule lives in the service layer (and, for overlaps, in PostgreSQL).
 """
 
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -17,6 +17,7 @@ from django.views.decorators.http import require_POST
 from apps.accounts.permissions import can_manage_resource, has_cap
 from apps.catalogue.models import Resource
 from apps.core.errors import DomainError
+from apps.core.http import MAX_PK, date_param, int_param
 from apps.core.timeutil import aware, trange
 
 from . import services
@@ -24,10 +25,7 @@ from .models import HOLDING_STATUSES, Booking, BookingSeries, BookingStatus
 
 
 def _date(v, default=None):
-    try:
-        return date.fromisoformat(v)
-    except (TypeError, ValueError):
-        return default
+    return date_param(v, default)
 
 
 def _time(v):
@@ -38,10 +36,7 @@ def _time(v):
 
 
 def _int(v, default=1):
-    try:
-        return max(1, int(v))
-    except (TypeError, ValueError):
-        return default
+    return int_param(v, default, lo=1, hi=100_000)
 
 
 def _hx_redirect(url):
@@ -397,9 +392,9 @@ def series_new(request):
             requester=request.user, resource=resource, occurrences=occ, attendees=_int(g.get("attendees"))
         )
         ctx["ok_count"] = sum(1 for p in ctx["plans"] if p.ok)
-    if g.get("series"):
+    if series_pk := int_param(g.get("series"), lo=0, hi=MAX_PK):
         ctx["done"] = (
-            BookingSeries.objects.filter(pk=g.get("series"), requester=request.user).select_related("resource").first()
+            BookingSeries.objects.filter(pk=series_pk, requester=request.user).select_related("resource").first()
         )
         if ctx["done"]:
             ctx["done_bookings"] = ctx["done"].bookings.order_by("period")
