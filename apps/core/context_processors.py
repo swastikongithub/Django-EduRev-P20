@@ -114,3 +114,10 @@ def shell(request):
     book_nav, manage_nav = _nav(user, counts)
     ctx.update({"nav_book": book_nav, "nav_manage": manage_nav, "counts": counts})
     return ctx
+
+
+def brand(request):
+    """Official LPU artwork when it has been added to static/img/brand/ (docs/branding.md)."""
+    from apps.core.branding import brand_assets
+
+    return {"brand": brand_assets()}

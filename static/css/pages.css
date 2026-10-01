@@ -10,6 +10,8 @@
   position: relative; overflow: hidden;
 }
 .auth-hero__brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: var(--fs-lg); letter-spacing: -0.01em; }
+.auth-hero__logo { height: 44px; width: auto; max-width: 220px; object-fit: contain; }
+.auth-hero__seal { width: 56px; height: 56px; flex: none; }
 .auth-hero__board { display: flex; flex-direction: column; gap: 14px; background: rgb(255 255 255 / .18); border: 1px solid rgb(19 35 58 / .18); border-radius: var(--r-xl); padding: 24px; max-width: 620px; }
 .hb-row { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 16px; font-size: var(--fs-sm); font-weight: 650; }
 .hb-label { opacity: .95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

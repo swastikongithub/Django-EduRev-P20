@@ -1,0 +1,6 @@
+{% load static %}{% if brand.favicon %}<link rel="icon" href="{% static brand.favicon %}" type="image/svg+xml">
+  {% endif %}{% if brand.favicon_ico %}<link rel="icon" href="{% static brand.favicon_ico %}" sizes="16x16 32x32 48x48">
+  {% endif %}{% if brand.favicon_png %}<link rel="icon" href="{% static brand.favicon_png %}" type="image/png" sizes="32x32">
+  {% endif %}{% if not brand.favicon and not brand.favicon_ico and not brand.favicon_png %}<link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  {% endif %}{% if brand.apple_touch_icon %}<link rel="apple-touch-icon" href="{% static brand.apple_touch_icon %}">
+  {% endif %}<link rel="manifest" href="{% url 'core:manifest' %}">
