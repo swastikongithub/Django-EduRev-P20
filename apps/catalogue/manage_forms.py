@@ -150,15 +150,33 @@ MAX_ATTRIBUTES = 30
 
 
 class ResourceForm(StyledFormMixin, forms.ModelForm):
-    photo = forms.FileField(required=False, widget=forms.ClearableFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}))
+    photo = forms.FileField(
+        required=False, widget=forms.ClearableFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"})
+    )
     remove_photo = forms.BooleanField(required=False)
-    custodians = forms.ModelMultipleChoiceField(queryset=User.objects.none(), required=False,
-                                                widget=forms.CheckboxSelectMultiple)
+    custodians = forms.ModelMultipleChoiceField(
+        queryset=User.objects.none(), required=False, widget=forms.CheckboxSelectMultiple
+    )
 
     class Meta:
         model = Resource
-        fields = ["name", "code", "type", "tagline", "description", "capacity", "building", "floor", "room",
-                  "department", "features", "status", "status_note", "is_bookable", "acquisition_cost"]
+        fields = [
+            "name",
+            "code",
+            "type",
+            "tagline",
+            "description",
+            "capacity",
+            "building",
+            "floor",
+            "room",
+            "department",
+            "features",
+            "status",
+            "status_note",
+            "is_bookable",
+            "acquisition_cost",
+        ]
         widgets = {
             "features": forms.CheckboxSelectMultiple,
             "status": forms.RadioSelect,
@@ -166,8 +184,13 @@ class ResourceForm(StyledFormMixin, forms.ModelForm):
             "capacity": forms.NumberInput(attrs={"min": 1, "inputmode": "numeric"}),
             "acquisition_cost": forms.NumberInput(attrs={"min": 0, "step": "1", "inputmode": "decimal"}),
         }
-        labels = {"is_bookable": "Bookable online", "status_note": "Why, and until when?", "acquisition_cost": "Acquisition cost (₹)",
-                  "type": "Type", "building": "Block"}
+        labels = {
+            "is_bookable": "Bookable online",
+            "status_note": "Why, and until when?",
+            "acquisition_cost": "Acquisition cost (₹)",
+            "type": "Type",
+            "building": "Block",
+        }
         help_texts = {
             "code": "The code on the door, e.g. 34-301. It also forms the door QR link.",
             "tagline": "One line people see in search results.",
@@ -178,8 +201,10 @@ class ResourceForm(StyledFormMixin, forms.ModelForm):
             "name": {"required": "Give the resource a name people will recognise."},
             "code": {"required": "Add the resource code, e.g. 34-301."},
             "type": {"required": "Choose what type of resource this is."},
-            "capacity": {"required": "Say how many people (or units) it holds.",
-                         "min_value": "Capacity must be at least 1."},
+            "capacity": {
+                "required": "Say how many people (or units) it holds.",
+                "min_value": "Capacity must be at least 1.",
+            },
         }
 
     def __init__(self, *args, user, **kwargs):
@@ -196,14 +221,17 @@ class ResourceForm(StyledFormMixin, forms.ModelForm):
         if self.campus_wide:
             self.fields["custodians"].queryset = (
                 User.objects.filter(institution_id=inst, is_active=True)
-                .exclude(role__in=[Role.STUDENT, Role.FACULTY, Role.STAFF]).order_by("first_name", "last_name")
+                .exclude(role__in=[Role.STUDENT, Role.FACULTY, Role.STAFF])
+                .order_by("first_name", "last_name")
             )
             current = set(self.instance.custodians.values_list("user_id", flat=True)) if self.instance.pk else set()
             if current:  # keep anyone already assigned visible, whatever their role now
                 self.fields["custodians"].queryset = User.objects.filter(
                     Q(pk__in=self.fields["custodians"].queryset.values("pk")) | Q(pk__in=current)
                 ).order_by("first_name", "last_name")
-            self.fields["custodians"].label_from_instance = lambda u: f"{u.display_name}, {u.get_role_display().lower()}"
+            self.fields["custodians"].label_from_instance = lambda u: (
+                f"{u.display_name}, {u.get_role_display().lower()}"
+            )
             if self.instance.pk and not self.is_bound:
                 self.initial["custodians"] = list(self.instance.custodians.values_list("user_id", flat=True))
         else:
@@ -233,7 +261,11 @@ class ResourceForm(StyledFormMixin, forms.ModelForm):
 
     def clean(self):
         data = super().clean()
-        if data.get("status") and data["status"] != ResourceStatus.ACTIVE and not (data.get("status_note") or "").strip():
+        if (
+            data.get("status")
+            and data["status"] != ResourceStatus.ACTIVE
+            and not (data.get("status_note") or "").strip()
+        ):
             self.add_error("status_note", "Say why it's unavailable so people know when to expect it back.")
         cost = data.get("acquisition_cost")
         if cost is not None and cost < 0:
@@ -262,8 +294,25 @@ def parse_attributes(post) -> tuple[list[tuple[str, str]], list[str]]:
 
 
 def resource_snapshot(r: Resource) -> dict:
-    data = snapshot(r, fields=["name", "code", "type", "tagline", "description", "capacity", "building", "floor", "room",
-                               "department", "status", "status_note", "is_bookable", "acquisition_cost"])
+    data = snapshot(
+        r,
+        fields=[
+            "name",
+            "code",
+            "type",
+            "tagline",
+            "description",
+            "capacity",
+            "building",
+            "floor",
+            "room",
+            "department",
+            "status",
+            "status_note",
+            "is_bookable",
+            "acquisition_cost",
+        ],
+    )
     data["features"] = sorted(f.name for f in r.features.all())
     data["custodians"] = sorted(c.user.username for c in r.custodians.select_related("user"))
     data["attributes"] = [f"{a.key}: {a.value}" for a in r.attributes.all()]
@@ -297,20 +346,43 @@ def save_resource(form: ResourceForm, attributes, *, actor, request=None) -> Res
             Custodian.objects.bulk_create([Custodian(resource=resource, user_id=uid) for uid in wanted - have])
         refresh_search_vectors(Resource.objects.filter(pk=resource.pk))
         after = resource_snapshot(resource)
-        record(actor, "resource.create" if creating else "resource.update", resource, before=before, after=after,
-               request=request)
+        record(
+            actor,
+            "resource.create" if creating else "resource.update",
+            resource,
+            before=before,
+            after=after,
+            request=request,
+        )
     return resource
 
 
 # ── CSV bulk import ─────────────────────────────────────────────────────────
 
-IMPORT_COLUMNS = ["code", "name", "type_code", "building_code", "capacity", "floor", "room", "department_code",
-                  "features", "description"]
+IMPORT_COLUMNS = [
+    "code",
+    "name",
+    "type_code",
+    "building_code",
+    "capacity",
+    "floor",
+    "room",
+    "department_code",
+    "features",
+    "description",
+]
 IMPORT_REQUIRED = ["code", "name", "type_code", "capacity"]
 MAX_IMPORT_BYTES = 1024 * 1024
 MAX_IMPORT_ROWS = 1000
-CSV_TYPES = {"text/csv", "text/plain", "application/csv", "application/vnd.ms-excel", "text/x-csv",
-             "application/octet-stream", ""}
+CSV_TYPES = {
+    "text/csv",
+    "text/plain",
+    "application/csv",
+    "application/vnd.ms-excel",
+    "text/x-csv",
+    "application/octet-stream",
+    "",
+}
 
 SAMPLE_CSV = (
     ",".join(IMPORT_COLUMNS) + "\n"
@@ -375,8 +447,13 @@ def parse_import(text: str, institution_id: int) -> ImportPreview:
     reader.fieldnames = header
     missing = [c for c in IMPORT_REQUIRED if c not in header]
     if missing:
-        return ImportPreview([], [f"The file is missing the column{'s' if len(missing) > 1 else ''} "
-                                  f"{', '.join(missing)}. The first row must name the columns: {', '.join(IMPORT_COLUMNS)}."])
+        return ImportPreview(
+            [],
+            [
+                f"The file is missing the column{'s' if len(missing) > 1 else ''} "
+                f"{', '.join(missing)}. The first row must name the columns: {', '.join(IMPORT_COLUMNS)}."
+            ],
+        )
     raw_rows = list(reader)
     if not raw_rows:
         return ImportPreview([], ["The file has a header row but no resources under it."])
@@ -418,8 +495,11 @@ def parse_import(text: str, institution_id: int) -> ImportPreview:
             seen_slugs.add(slug)
         row.type = types.get(data["type_code"].lower())
         if not row.type:
-            row.errors.append(f"Type '{data['type_code']}' doesn't exist. Use one of: {', '.join(sorted(types))}."
-                              if data["type_code"] else "Type code is empty.")
+            row.errors.append(
+                f"Type '{data['type_code']}' doesn't exist. Use one of: {', '.join(sorted(types))}."
+                if data["type_code"]
+                else "Type code is empty."
+            )
         if data["building_code"]:
             row.building = buildings.get(data["building_code"].lower())
             if not row.building:

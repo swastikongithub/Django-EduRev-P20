@@ -92,8 +92,11 @@ def row_status(r, sched, bookings, now, is_today):
     for blk in sched.blocks if sched else []:
         if blk.start <= now < blk.end and blk.kind in ("class", "maintenance", "blackout"):
             label = {"class": "Class", "maintenance": "Maintenance", "blackout": "Blackout"}[blk.kind]
-            return {"tone": "class" if blk.kind == "class" else "warn", "icon": "clock",
-                    "text": f"{label} until {timezone.localtime(blk.end):%H:%M}"}
+            return {
+                "tone": "class" if blk.kind == "class" else "warn",
+                "icon": "clock",
+                "text": f"{label} until {timezone.localtime(blk.end):%H:%M}",
+            }
     if sched and not any(o <= now < c for o, c in sched.intervals):
         return {"tone": "plain", "icon": "circle-pause", "text": "Closed now"}
     nxt = min((blk.start for blk in (sched.blocks if sched else []) if blk.start > now), default=None)
@@ -134,8 +137,7 @@ def board(request):
         day_bookings[b.resource_id].append(b)
 
     board = [
-        {"r": r, "sched": sched, "status": row_status(r, sched, day_bookings[r.pk], now, is_today)}
-        for r, sched in rows
+        {"r": r, "sched": sched, "status": row_status(r, sched, day_bookings[r.pk], now, is_today)} for r, sched in rows
     ]
 
     # Side list: whole filtered scope, not just this page of rows.
@@ -193,9 +195,11 @@ def board(request):
         "refresh_url": here,
         "here": here,
         "page_prev": url_for(date=day.isoformat() if not is_today else "", page=page.previous_page_number())
-        if page.has_previous() else "",
+        if page.has_previous()
+        else "",
         "page_next": url_for(date=day.isoformat() if not is_today else "", page=page.next_page_number())
-        if page.has_next() else "",
+        if page.has_next()
+        else "",
     }
     template = "manage/_board_body.html" if request.headers.get("HX-Request") else "manage/board.html"
     return render(request, template, ctx)

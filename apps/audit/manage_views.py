@@ -57,8 +57,15 @@ def diff(before, after):
     rows = []
     for k in list(dict.fromkeys([*b.keys(), *a.keys()])):
         bv, av = _fmt(b.get(k)), _fmt(a.get(k))
-        rows.append({"field": k.replace("_", " "), "before": bv, "after": av,
-                     "changed": (k in b and k in a and bv != av), "only": "after" if k not in b else "before" if k not in a else ""})
+        rows.append(
+            {
+                "field": k.replace("_", " "),
+                "before": bv,
+                "after": av,
+                "changed": (k in b and k in a and bv != av),
+                "only": "after" if k not in b else "before" if k not in a else "",
+            }
+        )
     rows.sort(key=lambda r: not r["changed"])
     return rows
 
@@ -72,10 +79,23 @@ def _export(qs):
     writer = csv.writer(_Echo())
 
     def rows():
-        yield writer.writerow(["time", "actor", "action", "target_type", "target_id", "target", "ip", "before", "after"])
+        yield writer.writerow(
+            ["time", "actor", "action", "target_type", "target_id", "target", "ip", "before", "after"]
+        )
         for e in qs[:MAX_EXPORT].iterator(chunk_size=2000):
-            yield writer.writerow([timezone.localtime(e.created_at).isoformat(timespec="seconds"), e.actor_label, e.action,
-                                   e.target_type, e.target_id, e.target_label, e.ip or "", _fmt(e.before), _fmt(e.after)])
+            yield writer.writerow(
+                [
+                    timezone.localtime(e.created_at).isoformat(timespec="seconds"),
+                    e.actor_label,
+                    e.action,
+                    e.target_type,
+                    e.target_id,
+                    e.target_label,
+                    e.ip or "",
+                    _fmt(e.before),
+                    _fmt(e.after),
+                ]
+            )
 
     resp = StreamingHttpResponse(rows(), content_type="text/csv; charset=utf-8")
     resp["Content-Disposition"] = f'attachment; filename="audit-log-{timezone.localdate():%Y%m%d}.csv"'
@@ -95,9 +115,16 @@ def audit(request):
     actions = sorted({a.split(".")[0] for a in base.order_by().values_list("action", flat=True).distinct()})
     params = request.GET.copy()
     params.pop("page", None)
-    return render(request, "manage/audit.html", {
-        "page": page, "filters": f, "filtered": any(f.values()),
-        "action_prefixes": [a + "." for a in actions],
-        "target_types": list(base.order_by("target_type").values_list("target_type", flat=True).distinct()),
-        "querystring": params.urlencode(), "max_export": MAX_EXPORT,
-    })
+    return render(
+        request,
+        "manage/audit.html",
+        {
+            "page": page,
+            "filters": f,
+            "filtered": any(f.values()),
+            "action_prefixes": [a + "." for a in actions],
+            "target_types": list(base.order_by("target_type").values_list("target_type", flat=True).distinct()),
+            "querystring": params.urlencode(),
+            "max_export": MAX_EXPORT,
+        },
+    )

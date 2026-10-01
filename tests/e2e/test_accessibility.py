@@ -23,6 +23,8 @@ AXE = Path(__file__).parent / "vendor" / "axe.min.js"
 def browser_context_args(browser_context_args):
     # Our CSP (script-src 'self') rightly blocks injected scripts; let the audit tool in for this module only.
     return {**browser_context_args, "bypass_csp": True}
+
+
 BLOCKING = {"critical", "serious"}
 
 
@@ -52,13 +54,15 @@ def booked_pass(student, room):
     d = timezone.localdate() + timedelta(days=1)
     if d.weekday() == 6:
         d += timedelta(days=1)
-    return bookings.create_booking(requester=student, resource=room, start=at(d, 10), end=at(d, 11), title="Study",
-                                   notify=False)
+    return bookings.create_booking(
+        requester=student, resource=room, start=at(d, 10), end=at(d, 11), title="Study", notify=False
+    )
 
 
 @pytest.mark.parametrize("theme", ["light", "dark"])
-@pytest.mark.parametrize("path", ["/home/", "/find/?q=room", "ROOM", "PASS", "/bookings/", "/calendar/", "/scan/", "/me/",
-                                  "/inbox/"])
+@pytest.mark.parametrize(
+    "path", ["/home/", "/find/?q=room", "ROOM", "PASS", "/bookings/", "/calendar/", "/scan/", "/me/", "/inbox/"]
+)
 def test_student_pages_have_no_serious_violations(page, live_server, student, room, booked_pass, path, theme):
     sign_in(page, live_server, student)
     page.evaluate(f"localStorage.setItem('lpr-theme', '{theme}')")

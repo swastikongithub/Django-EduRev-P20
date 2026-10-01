@@ -23,8 +23,7 @@ from .conftest import at
 
 pytestmark = pytest.mark.django_db
 
-PAGES = ["manage:home", "manage:approvals", "manage:board", "manage:no_shows", "manage:maintenance",
-         "manage:inventory"]
+PAGES = ["manage:home", "manage:approvals", "manage:board", "manage:no_shows", "manage:maintenance", "manage:inventory"]
 
 
 @pytest.fixture
@@ -91,13 +90,27 @@ def test_pages_render_with_live_data(fm_client, custodian_workflow, student, roo
     """Smoke the full screens with something in every list."""
     b = book(student, room, day, 10, 11)
     ok = book(student, room2, day, 12, 13)
-    NoShow.objects.create(institution=lpu, booking=ok, user=student, resource=room2, detected_at=timezone.now(),
-                          released_minutes=45)
-    Restriction.objects.create(institution=lpu, user=student, starts_at=timezone.now() - timedelta(hours=1),
-                               ends_at=timezone.now() + timedelta(days=3), reason="3 no-shows in 30 days")
+    NoShow.objects.create(
+        institution=lpu, booking=ok, user=student, resource=room2, detected_at=timezone.now(), released_minutes=45
+    )
+    Restriction.objects.create(
+        institution=lpu,
+        user=student,
+        starts_at=timezone.now() - timedelta(hours=1),
+        ends_at=timezone.now() + timedelta(days=3),
+        reason="3 no-shows in 30 days",
+    )
     BreakdownReport.objects.create(institution=lpu, resource=room, reported_by=student, summary="Projector dead")
-    InventoryItem.objects.create(institution=lpu, name="Whiteboard markers", sku="MRK", kind="consumable",
-                                 resource=room, quantity_total=20, quantity_available=2, reorder_level=5)
+    InventoryItem.objects.create(
+        institution=lpu,
+        name="Whiteboard markers",
+        sku="MRK",
+        kind="consumable",
+        resource=room,
+        quantity_total=20,
+        quantity_available=2,
+        reorder_level=5,
+    )
     pages = {name: fm_client.get(reverse(name)) for name in PAGES}
     assert all(r.status_code == 200 for r in pages.values())
     assert b"Study group" in pages["manage:approvals"].content
@@ -133,8 +146,9 @@ def test_custodian_queue_is_scoped(custodian_client, custodian_workflow, student
     assert "Room 34-301" in html and "Room 34-302" not in html
 
 
-def test_custodian_cannot_decide_for_resource_they_dont_manage(custodian_client, custodian_workflow, student,
-                                                                room2, day):
+def test_custodian_cannot_decide_for_resource_they_dont_manage(
+    custodian_client, custodian_workflow, student, room2, day
+):
     b = book(student, room2, day, 10, 11)
     step = pending_step(b)
     resp = custodian_client.post(reverse("manage:approval_decide", args=[step.pk]), {"action": "approve"})
@@ -182,8 +196,9 @@ def no_show_on(lpu, student, day):
     def _make(resource, h=10):
         b = book(student, resource, day, h, h + 1)
         Booking.objects.filter(pk=b.pk).update(status=BookingStatus.NO_SHOW)
-        return NoShow.objects.create(institution=lpu, booking=b, user=student, resource=resource,
-                                     detected_at=timezone.now(), released_minutes=45)
+        return NoShow.objects.create(
+            institution=lpu, booking=b, user=student, resource=resource, detected_at=timezone.now(), released_minutes=45
+        )
 
     return _make
 
@@ -207,15 +222,26 @@ def test_forgive_requires_reason_and_works(custodian_client, no_show_on, room):
     assert ns.forgiven and ns.forgiven_reason == "Room was locked"
 
 
-def test_lift_restriction_scoped_to_people_seen_on_your_resources(custodian_client, no_show_on, lpu, student,
-                                                                   make_user, room):
+def test_lift_restriction_scoped_to_people_seen_on_your_resources(
+    custodian_client, no_show_on, lpu, student, make_user, room
+):
     other = make_user(Role.STUDENT)
     no_show_on(room)
     now = timezone.now()
-    mine = Restriction.objects.create(institution=lpu, user=student, starts_at=now - timedelta(hours=1),
-                                      ends_at=now + timedelta(days=7), reason="3 no-shows")
-    theirs = Restriction.objects.create(institution=lpu, user=other, starts_at=now - timedelta(hours=1),
-                                        ends_at=now + timedelta(days=7), reason="3 no-shows")
+    mine = Restriction.objects.create(
+        institution=lpu,
+        user=student,
+        starts_at=now - timedelta(hours=1),
+        ends_at=now + timedelta(days=7),
+        reason="3 no-shows",
+    )
+    theirs = Restriction.objects.create(
+        institution=lpu,
+        user=other,
+        starts_at=now - timedelta(hours=1),
+        ends_at=now + timedelta(days=7),
+        reason="3 no-shows",
+    )
     assert custodian_client.post(reverse("manage:restriction_lift", args=[theirs.pk])).status_code == 404
     assert custodian_client.post(reverse("manage:restriction_lift", args=[mine.pk])).status_code == 302
     mine.refresh_from_db()
@@ -227,9 +253,16 @@ def test_lift_restriction_scoped_to_people_seen_on_your_resources(custodian_clie
 
 
 def _schedule_post(resource, d, h1, h2, step="preview", **extra):
-    data = {"resource": resource.pk, "start_date": d.isoformat(), "start_time": f"{h1:02d}:00",
-            "end_date": d.isoformat(), "end_time": f"{h2:02d}:00", "kind": "repair", "title": "Projector repair",
-            "step": step}
+    data = {
+        "resource": resource.pk,
+        "start_date": d.isoformat(),
+        "start_time": f"{h1:02d}:00",
+        "end_date": d.isoformat(),
+        "end_time": f"{h2:02d}:00",
+        "kind": "repair",
+        "title": "Projector repair",
+        "step": step,
+    }
     if step == "confirm":
         data["checked"] = f"{resource.pk}|{at(d, h1).isoformat()}|{at(d, h2).isoformat()}"
     data.update(extra)
@@ -263,8 +296,14 @@ def test_confirm_with_changed_details_previews_again(custodian_client, room, day
 
 
 def test_schedule_refuses_over_a_timetabled_class(custodian_client, room, day):
-    BookingSlot.objects.create(resource=room, period=trange(at(day, 14), at(day, 15)), kind=SlotKind.CLASS,
-                               source_type="timetable_entry", source_id=1, label="CSE326 Lecture")
+    BookingSlot.objects.create(
+        resource=room,
+        period=trange(at(day, 14), at(day, 15)),
+        kind=SlotKind.CLASS,
+        source_type="timetable_entry",
+        source_id=1,
+        label="CSE326 Lecture",
+    )
     url = reverse("manage:maintenance_schedule")
     preview = custodian_client.post(url, _schedule_post(room, day, 13, 16))
     assert b"CSE326 Lecture" in preview.content and b"Schedule and cancel" not in preview.content
@@ -274,8 +313,9 @@ def test_schedule_refuses_over_a_timetabled_class(custodian_client, room, day):
 
 
 def test_custodian_cannot_schedule_on_unmanaged_resource(custodian_client, room, room2, day):
-    resp = custodian_client.post(reverse("manage:maintenance_schedule"),
-                                 _schedule_post(room2, day, 9, 10, step="confirm"))
+    resp = custodian_client.post(
+        reverse("manage:maintenance_schedule"), _schedule_post(room2, day, 9, 10, step="confirm")
+    )
     assert resp.status_code == 200 and b"Pick one of the resources you look after" in resp.content
     assert not MaintenanceWindow.objects.exists()
 
@@ -304,8 +344,16 @@ def test_window_and_report_actions(custodian_client, custodian, facility_manager
 
 @pytest.fixture
 def markers(lpu, room):
-    return InventoryItem.objects.create(institution=lpu, name="Markers", sku="MRK-1", kind="consumable",
-                                        resource=room, quantity_total=10, quantity_available=2, reorder_level=5)
+    return InventoryItem.objects.create(
+        institution=lpu,
+        name="Markers",
+        sku="MRK-1",
+        kind="consumable",
+        resource=room,
+        quantity_total=10,
+        quantity_available=2,
+        reorder_level=5,
+    )
 
 
 def test_restock_changes_stock(custodian_client, markers):
@@ -324,15 +372,31 @@ def test_restock_rejects_bad_quantity(custodian_client, markers):
 
 
 def test_custodian_cannot_restock_elsewhere(custodian_client, lpu, room2):
-    item = InventoryItem.objects.create(institution=lpu, name="Cables", sku="CBL-1", kind="accessory", resource=room2,
-                                        quantity_total=4, quantity_available=4, reorder_level=1)
+    item = InventoryItem.objects.create(
+        institution=lpu,
+        name="Cables",
+        sku="CBL-1",
+        kind="accessory",
+        resource=room2,
+        quantity_total=4,
+        quantity_available=4,
+        reorder_level=1,
+    )
     assert custodian_client.post(reverse("manage:inventory_restock", args=[item.pk]), {"qty": "3"}).status_code == 404
     item.refresh_from_db()
     assert item.quantity_available == 4
 
 
 def test_low_stock_filter(custodian_client, markers, lpu, room):
-    InventoryItem.objects.create(institution=lpu, name="Dusters", sku="DST-1", kind="consumable", resource=room,
-                                 quantity_total=10, quantity_available=10, reorder_level=2)
+    InventoryItem.objects.create(
+        institution=lpu,
+        name="Dusters",
+        sku="DST-1",
+        kind="consumable",
+        resource=room,
+        quantity_total=10,
+        quantity_available=10,
+        reorder_level=2,
+    )
     html = custodian_client.get(reverse("manage:inventory"), {"low": "1"}).content.decode()
     assert "Markers" in html and "Dusters" not in html

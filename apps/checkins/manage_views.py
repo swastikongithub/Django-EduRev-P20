@@ -42,7 +42,9 @@ def _restrictions(user, now):
         institution_id=user.institution_id, starts_at__lte=now, ends_at__gt=now, lifted_at__isnull=True
     )
     if not is_campus_wide(user):
-        qs = qs.filter(user_id__in=_no_shows(user).filter(detected_at__gte=now - RESTRICTION_LOOKBACK).values("user_id"))
+        qs = qs.filter(
+            user_id__in=_no_shows(user).filter(detected_at__gte=now - RESTRICTION_LOOKBACK).values("user_id")
+        )
     return qs
 
 
@@ -119,7 +121,9 @@ def forgive(request, pk):
     back = safe_next(request, reverse("manage:no_shows"))
     reason = request.POST.get("reason", "").strip()
     if ns.forgiven:
-        messages.info(request, f"Already forgiven by {ns.forgiven_by.display_name if ns.forgiven_by else 'a colleague'}.")
+        messages.info(
+            request, f"Already forgiven by {ns.forgiven_by.display_name if ns.forgiven_by else 'a colleague'}."
+        )
         return redirect(back)
     if not reason:
         messages.error(request, "Add a short reason so the forgiveness is on record, then try again.")
@@ -143,7 +147,9 @@ def lift(request, pk):
     user, now = request.user, timezone.now()
     qs = Restriction.objects.filter(institution_id=user.institution_id).select_related("user")
     if not is_campus_wide(user):
-        qs = qs.filter(user_id__in=_no_shows(user).filter(detected_at__gte=now - RESTRICTION_LOOKBACK).values("user_id"))
+        qs = qs.filter(
+            user_id__in=_no_shows(user).filter(detected_at__gte=now - RESTRICTION_LOOKBACK).values("user_id")
+        )
     try:
         r = qs.get(pk=pk)
     except Restriction.DoesNotExist:

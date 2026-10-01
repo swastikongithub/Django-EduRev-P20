@@ -60,7 +60,9 @@ def _default_form(request, resources):
     if report_id and report_id.isdigit():
         report = _reports(request.user).filter(pk=report_id).first()
         if report:
-            form.update(resource=str(report.resource_id), kind=MaintenanceKind.REPAIR, title=f"Repair: {report.summary}"[:140])
+            form.update(
+                resource=str(report.resource_id), kind=MaintenanceKind.REPAIR, title=f"Repair: {report.summary}"[:140]
+            )
     return form
 
 
@@ -136,8 +138,10 @@ def _parse_dt(d, t):
 def schedule(request):
     user, now = request.user, timezone.now()
     p = request.POST
-    form = {k: p.get(k, "").strip() for k in ("resource", "start_date", "start_time", "end_date", "end_time",
-                                               "kind", "title", "vendor", "notes")}
+    form = {
+        k: p.get(k, "").strip()
+        for k in ("resource", "start_date", "start_time", "end_date", "end_time", "kind", "title", "vendor", "notes")
+    }
     errors = {}
     resource = None
     if form["resource"].isdigit():
@@ -171,12 +175,24 @@ def schedule(request):
         return _render(request, form=form, preview=preview)
     try:
         window = services.schedule(
-            resource, start, end, title=form["title"], kind=form["kind"], actor=user,
-            notes=form["notes"], vendor=form["vendor"][:120], request=request,
+            resource,
+            start,
+            end,
+            title=form["title"],
+            kind=form["kind"],
+            actor=user,
+            notes=form["notes"],
+            vendor=form["vendor"][:120],
+            request=request,
         )
     except DomainError as exc:
-        preview = {**services.impact(resource, start, end), "resource": resource, "start": start, "end": end,
-                   "signature": signature}
+        preview = {
+            **services.impact(resource, start, end),
+            "resource": resource,
+            "start": start,
+            "end": end,
+            "signature": signature,
+        }
         return _render(request, form=form, preview=preview, error=exc.message)
     s, e = timezone.localtime(window.start), timezone.localtime(window.end)
     msg = f"Scheduled. {resource.name} is closed {s:%a %d %b %H:%M} to {e:%a %d %b %H:%M}."

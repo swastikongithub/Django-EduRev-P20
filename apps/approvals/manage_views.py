@@ -161,8 +161,11 @@ def queue(request):
 def _approval_or_404(request, pk):
     try:
         a = Approval.objects.select_related(
-            "booking__resource__type", "booking__resource__building", "booking__booked_for__department",
-            "booking__requester", "decided_by",
+            "booking__resource__type",
+            "booking__resource__building",
+            "booking__booked_for__department",
+            "booking__requester",
+            "decided_by",
             "workflow",
         ).get(pk=pk, booking__institution_id=request.user.institution_id)
     except Approval.DoesNotExist:
@@ -211,11 +214,17 @@ def decide(request, pk):
 def _outcome(a, b, user):
     who = b.booked_for.display_name
     if b.status == "approved":
-        tone, sentence = "success", f"Approved. {who}'s booking of {b.resource.name} is confirmed and the QR pass is on its way."
+        tone, sentence = (
+            "success",
+            f"Approved. {who}'s booking of {b.resource.name} is confirmed and the QR pass is on its way.",
+        )
     elif b.status == "rejected":
         tone, sentence = "danger", f"Rejected. {who} has been told why."
     elif b.status == "expired":
-        tone, sentence = "warn", "The start time passed before a decision, so the request expired and the slot was released."
+        tone, sentence = (
+            "warn",
+            "The start time passed before a decision, so the request expired and the slot was released.",
+        )
     elif b.status == "pending" and a.decision == Decision.APPROVED:
         nxt = b.approvals.filter(decision=Decision.PENDING).first()
         step = nxt.get_approver_role_display().lower() if nxt else "the next approver"

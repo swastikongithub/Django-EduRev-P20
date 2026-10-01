@@ -77,7 +77,9 @@ def find(request):
         .select_related("type", "building")
         .prefetch_related("features")
     )
-    types = ResourceType.objects.filter(institution_id=user.institution_id).annotate(n=Count("resources")).filter(n__gt=0)
+    types = (
+        ResourceType.objects.filter(institution_id=user.institution_id).annotate(n=Count("resources")).filter(n__gt=0)
+    )
     selected_types = []
     if type_codes:
         matching = types.filter(_type_q(type_codes))
@@ -128,7 +130,9 @@ def find(request):
         "intent": intent,
         "types": types,
         "selected_types": selected_types,
-        "buildings": Building.objects.filter(institution_id=user.institution_id).annotate(n=Count("resources")).filter(n__gt=0),
+        "buildings": Building.objects.filter(institution_id=user.institution_id)
+        .annotate(n=Count("resources"))
+        .filter(n__gt=0),
         "building_code": building_code or "",
         "features": features_all,
         "feature_ids": feature_ids,
@@ -162,7 +166,9 @@ def _time_options():
 def detail(request, slug):
     user = request.user
     resource = get_object_or_404(
-        Resource.objects.select_related("type", "building", "department").prefetch_related("features", "attributes", "custodians__user"),
+        Resource.objects.select_related("type", "building", "department").prefetch_related(
+            "features", "attributes", "custodians__user"
+        ),
         institution_id=user.institution_id,
         slug=slug,
     )
@@ -202,7 +208,9 @@ def detail(request, slug):
         "next_day": day + timedelta(days=1),
         "hours_rows": [(h, f"{h:02d}:00") for h in range(window[0].hour, window[1].hour)],
         "policy": policy,
-        "hours": [(wd, name, hours.get(wd, [])) for wd, name in enumerate(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])],
+        "hours": [
+            (wd, name, hours.get(wd, [])) for wd, name in enumerate(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])
+        ],
         "weekday_names": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
         "legend": availability.LEGEND,
         "items": items_for(resource),
@@ -254,12 +262,27 @@ def calendar_runs(sched, window_start: time):
         row = int((c.start - origin).total_seconds() // (ROW_MINUTES * 60)) + 1
         span = max(1, int((c.end - c.start).total_seconds() // (ROW_MINUTES * 60)))
         prev = runs[-1] if runs else None
-        if prev and c.state != "free" and prev["state"] == c.state and prev["reason"] == c.reason and prev["end"] == c.start:
+        if (
+            prev
+            and c.state != "free"
+            and prev["state"] == c.state
+            and prev["reason"] == c.reason
+            and prev["end"] == c.start
+        ):
             prev["span"] += span
             prev["end"] = c.end
             continue
-        runs.append({"row": row, "span": span, "state": c.state, "reason": c.reason, "start": c.start, "end": c.end,
-                     "selectable": c.selectable})
+        runs.append(
+            {
+                "row": row,
+                "span": span,
+                "state": c.state,
+                "reason": c.reason,
+                "start": c.start,
+                "end": c.end,
+                "selectable": c.selectable,
+            }
+        )
     return runs
 
 

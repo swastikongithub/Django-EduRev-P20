@@ -6,8 +6,16 @@ from django.shortcuts import render
 
 from apps.accounts.permissions import has_cap
 
-STAFF_CAPS = ("approve_bookings", "manage_resources", "manage_maintenance", "manage_inventory",
-              "view_department_analytics", "configure_policy", "manage_timetable", "manage_users")
+STAFF_CAPS = (
+    "approve_bookings",
+    "manage_resources",
+    "manage_maintenance",
+    "manage_inventory",
+    "view_department_analytics",
+    "configure_policy",
+    "manage_timetable",
+    "manage_users",
+)
 
 
 def staff_required(*caps):

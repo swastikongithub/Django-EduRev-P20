@@ -62,17 +62,21 @@ def resources(request):
     )
     params = request.GET.copy()
     params.pop("page", None)
-    return render(request, "manage/resources.html", {
-        "page": page,
-        "filters": f,
-        "filtered": any(f.values()),
-        "totals": totals,
-        "types": ResourceType.objects.filter(institution_id=user.institution_id),
-        "buildings": Building.objects.filter(institution_id=user.institution_id),
-        "statuses": ResourceStatus.choices,
-        "can_create": can_create_resources(user),
-        "querystring": params.urlencode(),
-    })
+    return render(
+        request,
+        "manage/resources.html",
+        {
+            "page": page,
+            "filters": f,
+            "filtered": any(f.values()),
+            "totals": totals,
+            "types": ResourceType.objects.filter(institution_id=user.institution_id),
+            "buildings": Building.objects.filter(institution_id=user.institution_id),
+            "statuses": ResourceStatus.choices,
+            "can_create": can_create_resources(user),
+            "querystring": params.urlencode(),
+        },
+    )
 
 
 def _import(request):
@@ -97,11 +101,17 @@ def _import(request):
         preview = parse_import(text, request.user.institution_id)
         if preview.ok:
             created = commit_import(preview, actor=request.user, request=request)
-            messages.success(request, f"Imported {len(created)} resource{'s' if len(created) != 1 else ''}. "
-                                      "They're bookable now under each type's rules.")
+            messages.success(
+                request,
+                f"Imported {len(created)} resource{'s' if len(created) != 1 else ''}. "
+                "They're bookable now under each type's rules.",
+            )
             return redirect(reverse("manage:resources") + "?status=active")
-        ctx.update(text=text, preview=preview,
-                   error="Something changed since you checked the file, so nothing was imported. Review the rows below.")
+        ctx.update(
+            text=text,
+            preview=preview,
+            error="Something changed since you checked the file, so nothing was imported. Review the rows below.",
+        )
     return render(request, "manage/resource_import.html", ctx)
 
 
@@ -130,7 +140,10 @@ def _resource_form(request, resource):
         attributes, attr_errors = parse_attributes(request.POST)
         if form.is_valid() and not attr_errors:
             saved = save_resource(form, attributes, actor=request.user, request=request)
-            messages.success(request, f"{saved.name} {'added' if creating else 'saved'}. Changes apply to new bookings straight away.")
+            messages.success(
+                request,
+                f"{saved.name} {'added' if creating else 'saved'}. Changes apply to new bookings straight away.",
+            )
             return redirect("manage:resource_edit", saved.pk)
         attr_rows = list(zip(request.POST.getlist("attr_key"), request.POST.getlist("attr_value"), strict=False))
     else:
@@ -167,10 +180,9 @@ def _hours_summary(hours):
 
 @staff_required(*RESOURCE_CAPS)
 def door_qr(request, pk):
-    resource = get_object_or_404(
-        manageable_resources(request.user).select_related("type", "building"), pk=pk
-    )
+    resource = get_object_or_404(manageable_resources(request.user).select_related("type", "building"), pk=pk)
     url = door_url(resource)
     contacts = resource.custodians.select_related("user").order_by("-is_primary")
-    return render(request, "manage/door_qr.html", {"r": resource, "qr": svg(url, box_size=12), "url": url,
-                                                    "contacts": contacts})
+    return render(
+        request, "manage/door_qr.html", {"r": resource, "qr": svg(url, box_size=12), "url": url, "contacts": contacts}
+    )
