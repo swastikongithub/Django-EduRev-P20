@@ -16,8 +16,8 @@ a Content-Security-Policy that forbids inline script is the second.
 and Django admin:
 
 ```
-default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-font-src 'self' https://fonts.gstatic.com; script-src 'self'; connect-src 'self'; media-src 'self' blob:;
+default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline';
+font-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self' blob:;
 frame-ancestors 'none'; base-uri 'self'; form-action 'self'
 ```
 
@@ -39,7 +39,11 @@ scanner) and `Cross-Origin-Opener-Policy: same-origin`.
   (`tests/e2e/test_accessibility.py`), which is confined to that module.
 - Swagger UI at `/api/v1/docs/` is excluded because it loads inline script; it requires
   sign-in.
-- Google Fonts is the only third-party origin.
+- No third-party origin remains. *Update (Phase 3):* the fonts were loaded from Google Fonts
+  until the OWASP ZAP baseline flagged the stylesheet for lacking Subresource Integrity, which
+  Google's per-browser CSS cannot carry. They are now self-hosted under `static/fonts`.
+- The `'unsafe-inline'` style allowance is the one Medium alert the ZAP baseline accepts, with
+  this reasoning, in `.zap/accepted.tsv` ([ci.md](../ci.md#owasp-zap-baseline)).
 
 ## Alternatives considered
 

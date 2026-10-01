@@ -5,7 +5,7 @@ Top 10. Every exploitable finding got an executable proof in `tests/test_securit
 committed as a strict `xfail` asserting the secure behaviour. The fix removed the marker, so
 each proof is now a regression test that fails if the finding returns.
 
-**Status: all 14 findings are closed.** No `xfail` markers remain in the security suite.
+**Status: all 14 findings are closed**, and the Phase 3 re-review's findings are fixed or accepted with a recorded reason. No `xfail` markers remain in the security suite.
 
 ## Findings
 
@@ -40,18 +40,42 @@ sign-in off by default; the append-only audit trigger; image upload validation (
 bytes, size, pixel count, re-encode); output escaping; security headers (CSP without inline
 script, `frame-ancestors 'none'`, `nosniff`, referrer and permissions policies).
 
+## Phase 3 re-review
+
+An independent re-review in Phase 3 covered authentication and MFA, lockout and rate limiting,
+sessions, CSRF, cookies, CSP and headers, authorisation and IDOR on every view and endpoint,
+audit coverage, schema exposure, malformed input, forwarded headers, redirects, uploads and CSV
+exports, under production-like settings (`DEBUG=0`, `check --deploy` clean). None of SEC-01 to
+SEC-14 had regressed. Each finding was reproduced before it was fixed; each fix has a test.
+
+| ID | Finding | Severity | Resolution | Test |
+|---|---|---|---|---|
+| QA-01 | Concurrent wrong passwords or TOTP codes raced past the lockout: the failure count was read, incremented in Python and saved, so simultaneous requests overwrote each other (12 concurrent guesses left the count at 1) | Medium | Fixed: the count changes under a row lock in one helper used by both paths | `tests/test_lockout_race.py` (failed 3/3 before the fix) |
+| QA-02 | `str.isdigit()` guards accepted characters such as `²` that `int()` rejects: HTTP 500 at 17 sites across pages, console and API | Low | Fixed: `apps.core.http.is_digits` (ASCII digits only) at every site; the malformed-input sweep gained a Unicode-digit variant | `test_malformed_input.py`, `test_superscript_digits_are_not_a_server_error`, `test_api_booking_items_with_superscript_keys_are_a_400` |
+| QA-03 | A restock quantity beyond the integer column raised a database error (HTTP 500) | Low | Fixed: bounded to 1..100,000 | `test_restock_rejects_absurd_quantities` |
+| QA-04 | Acknowledging and resolving breakdowns, restocking, and downloading the audit log or Insights CSVs (which can name people) left no audit entry | Low | Fixed: `maintenance.acknowledge`, `maintenance.resolve`, `inventory.restock`, `audit.export`, `insights.export` are recorded | `test_acknowledging_and_resolving_a_breakdown_are_audited`, `test_csv_exports_of_the_audit_log_and_insights_are_audited`, `test_restock_rejects_absurd_quantities` |
+| QA-05 | The API's anonymous throttle keyed on the raw, client-supplied `X-Forwarded-For` | Info | Fixed: DRF `NUM_PROXIES` follows `TRUSTED_PROXY_HOPS` | `test_api_throttle_counts_proxies_like_the_rest_of_the_app` |
+| QA-06 | A password-verified sign-in waited for its TOTP code for the whole 10-hour session | Info | Fixed: it expires after 10 minutes | `test_a_half_finished_mfa_sign_in_expires` |
+| QA-07 | `X-Forwarded-Proto` is trusted without a declared proxy | Info | Accepted (SEC-R10): only affects the client's own request; coupling it to `TRUSTED_PROXY_HOPS` would risk redirect loops | — |
+| QA-08 | First MFA enrolment trusts whoever completes the first password sign-in | Info | Accepted with mitigation (SEC-R8): enrol at onboarding | — |
+| QA-09 | Health probes run before host and HTTPS checks and name the failing dependency class | Info | Accepted by design (SEC-R9) | `tests/test_health.py` |
+
+The OWASP ZAP baseline added in the same phase found two further Medium issues, both fixed
+(wildcard CORS on static files; Google Fonts without Subresource Integrity, now self-hosted);
+see [ci.md](ci.md#owasp-zap-baseline). The CSRF cookie is now `HttpOnly` as well.
+
 ## Residual risk and follow-ups
 
-Tracked in [known-issues.md](known-issues.md):
+Tracked in [known-issues.md](known-issues.md#security-and-privacy):
 
-- The OWASP ZAP baseline scan is not yet part of CI (CES §1.5).
+- The ZAP baseline is passive and does not cover staff pages or TLS (OPS-10).
 - An approval request whose only eligible approver is the requester waits for a campus-wide
-  approver; there is no automatic re-routing.
+  approver; there is no automatic re-routing (SEC-R5).
 - Rotating `DJANGO_SECRET_KEY` makes stored TOTP secrets undecryptable; the runbook describes
-  re-enrolment.
+  re-enrolment (SEC-R2).
 
 ## Running the suite
 
 ```bash
-pytest tests/test_security.py tests/test_malformed_input.py -q
+pytest tests/test_security.py tests/test_malformed_input.py tests/test_lockout_race.py -q
 ```

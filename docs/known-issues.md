@@ -18,9 +18,8 @@ go-live, **Low** is debt or polish.
 | OPS-4 | With `REDIS_URL` set, Redis backs the Django cache (sign-in and API rate limits, Insights cache) and the Celery broker. A Redis outage degrades sign-in rate limiting, the API throttle, Insights and email delivery. **Booking correctness never depends on it** | Degraded, not incorrect, behaviour during a Redis outage; the [runbook playbook](runbook.md#redis-is-down) covers it | Medium | Accepted by design ([ADR 0001](adr/0001-track-p-django-postgresql.md)); monitor Redis in Phase 6 |
 | OPS-5 | Without `REDIS_URL`, the cache is per-process memory, so rate-limit counters are per gunicorn worker | Effective sign-in limits are multiplied by the worker count | Medium | Production must set `REDIS_URL` ([environment.md](environment.md)) |
 | OPS-6 | `SweepRun` (about 4,000 rows a day), `BookingAttempt` and `Notification` are never pruned | Slow table growth; no functional impact for years | Low | Backlog: a monthly pruning sweep with a configurable horizon |
-| OPS-7 | The OWASP ZAP baseline scan required by CES §1.5 is not in CI | Missing evidence for the "ZAP clean at handover" criterion | Medium | Phase 3 |
-| OPS-8 | The Locust scenario exists ([loadtest/README.md](../loadtest/README.md)) but no load-test report has been produced against a deployed environment | CES §1.5 asks for a report at M4 | Medium | Phase 6, once staging exists |
-| OPS-9 | CI runs on pushes to `main` and on pull requests only, not on pushes to development branches | A branch is untested until a PR is opened | Low | Phase 3 |
+| OPS-8 | The 500-user scenario has been run only against a production-like stack on a single 4-core machine ([load-test-report.md](load-test-report.md)); no measurement exists against a deployed environment | CES §1.5 asks for a report at M4 against the concurrency targets; the CES user and latency targets are unverified | Medium | Phase 6, once staging exists |
+| OPS-10 | The OWASP ZAP baseline is passive and covers public and student pages only; staff console pages, TLS configuration and active (attack) scanning are out of its scope ([ci.md](ci.md#owasp-zap-baseline)) | Staff pages and TLS are verified by other means (tests, `check --deploy`, the platform) rather than by ZAP | Low | Phase 6: TLS scan of the deployed host; backlog: an authenticated staff pass |
 
 ## Configuration
 
@@ -69,7 +68,9 @@ but only one tenant (LPU) is served. A second tenant would expose:
 | SEC-R4 | Field-level encryption covers the TOTP secret only; `vid` and `phone` are stored in plain text (CES §1.4 asks for field-level encryption of identity fields) | Relies on database encryption at rest | Medium | Backlog: encrypted fields for `vid`/`phone`, with a lookup hash for `vid` sign-in |
 | SEC-R5 | A request whose only eligible approver is its own requester (for example a custodian booking their own room) waits for a facility manager or administrator, who can decide any step; there is no automatic re-routing | Such requests rely on campus-wide approvers watching the queue | Low | Backlog: route self-requests to the next approver role |
 | SEC-R6 | `audit.record()` never raises into business flows; a failed audit write is visible only in logs | A silent gap in the audit trail is possible if the database refuses the insert | Low | Backlog: alert on the `audit write failed` log line |
-| SEC-R7 | Pages load the Plus Jakarta Sans font from Google Fonts | A third-party request on every page (privacy) and a dependency on its availability | Low | Phase 5 or backlog: self-host the font files |
+| SEC-R8 | A privileged account that has not enrolled MFA yet enrols whichever authenticator completes its first password sign-in (trust on first use). Enrolment is audited (`auth.mfa_enrolled`) but nobody is notified | Someone who learns an un-enrolled administrator's password before they first sign in could enrol their own authenticator | Low | Enrol privileged staff at onboarding; backlog: email the person on enrolment |
+| SEC-R9 | `/health/` and `/ready/` answer before host validation, the HTTPS redirect and HSTS, and `/ready/` names the failing dependency's exception class | Probes must work for the platform without a Host header or TLS; the class name (for example `OperationalError`) reveals no data | Low | Accepted by design ([ADR 0006](adr/0006-celery-beat-sweeps-with-sweeprun.md) and `apps/core/health.py`) |
+| SEC-R10 | `X-Forwarded-Proto: https` is trusted whether or not `TRUSTED_PROXY_HOPS` declares a proxy | A client that reaches gunicorn directly can only make its own request look secure; nobody else is affected. Coupling the two would turn a forgotten `TRUSTED_PROXY_HOPS` into an HTTPS redirect loop | Low | Accepted (Phase 3 re-review); production exposes only the proxy |
 
 ## Data
 
@@ -84,7 +85,6 @@ but only one tenant (LPU) is served. A second tenant would expose:
 |---|---|---|---|
 | UI-1 | Internationalisation is partial: the shell, sign-in and home are translated into Hindi and Punjabi; most other screens are English only | Medium | Phase 4 |
 | UI-2 | The brandmark and favicon are placeholder marks, not the official LPU logo; there is no `favicon.ico`, PNG icon set or web manifest | Medium | Phase 5, once the official artwork is supplied |
-| UI-3 | `apps/core/manage_views.placeholder` and `templates/manage/placeholder.html` are no longer routed | Low | Phase 3 |
 
 ## Test debt
 
@@ -92,3 +92,12 @@ but only one tenant (LPU) is served. A second tenant would expose:
 |---|---|---|---|
 | TD-1 | `seed_demo` (demo data generator) has no automated test | Low | Backlog: a smoke test that seeds a small campus |
 | TD-2 | The thin Celery task wrappers in `apps/maintenance/tasks.py` and `apps/approvals/tasks.py` are not exercised directly (the services they call are) | Low | Backlog |
+
+## Resolved
+
+| # | Was | Resolved in |
+|---|---|---|
+| OPS-7 | No OWASP ZAP baseline scan in CI | Phase 3: `zap` job, two passes over a production-like stack, gated by risk ([ci.md](ci.md#owasp-zap-baseline)) |
+| OPS-9 | CI did not run on pushes to development branches | Phase 3: the active development branch is listed under `on.push` ([ci.md](ci.md#when-ci-runs)) |
+| SEC-R7 | Fonts loaded from Google Fonts (third-party request on every page) | Phase 3: fonts self-hosted under `static/fonts` (SIL OFL 1.1); the CSP names no third-party origin |
+| UI-3 | Dead `placeholder` view and template | Phase 3: removed |
