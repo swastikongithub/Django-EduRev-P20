@@ -35,8 +35,10 @@ erasure of a person must not be blocked by audit rows that reference them.
   DBA operation (disable trigger, export, delete, re-enable) and should itself be recorded.
 - Because `record()` swallows its own failures, a broken audit write is visible only in logs.
 - `pg_restore` works normally (the trigger does not fire on `INSERT` or `COPY`).
-- `ip` is taken from the first `X-Forwarded-For` entry when present; behind a proxy that does
-  not overwrite the header, it can be spoofed (see [known issues](../known-issues.md)).
+- `ip` was originally taken from the first `X-Forwarded-For` entry and could be spoofed.
+  *Update (SEC-07):* it now comes from `apps.core.http.client_ip`, which trusts exactly
+  `TRUSTED_PROXY_HOPS` proxies and otherwise uses `REMOTE_ADDR`
+  ([security review](../security-review.md)).
 
 ## Alternatives considered
 
