@@ -1,5 +1,6 @@
 """Sign-in (with lockout), demo personas, profile and booking standing."""
 
+import logging
 import time
 from datetime import timedelta
 
@@ -32,7 +33,14 @@ DEMO_PERSONAS = [
 ]
 
 
+log = logging.getLogger("security")
+
 BAD_CREDENTIALS = "That VID / username and password don't match."
+MFA_UNREADABLE_MESSAGE = (
+    "Your code can't be checked: this server can no longer read the key your authenticator app was set up "
+    "with. This is a server configuration problem, not a wrong code, and it does not count against your "
+    "account. Ask an administrator to restore the previous secret key or to reset your two-step sign-in."
+)
 # How long a correct password stays "half signed in" waiting for the TOTP code.
 MFA_PENDING_SECONDS = 10 * 60
 
@@ -292,13 +300,23 @@ def mfa_view(request):
     enrolling = not user.mfa_enabled
     secret = None
     if enrolling:
-        if "mfa_new_secret" not in request.session:
-            request.session["mfa_new_secret"] = mfa.encrypt(mfa.new_secret())
-        secret = mfa.decrypt(request.session["mfa_new_secret"])
+        secret = mfa.decrypt(request.session.get("mfa_new_secret") or "")
+        if secret is None:  # first visit, or the key changed mid-enrolment: start from a fresh secret
+            secret = mfa.new_secret()
+            request.session["mfa_new_secret"] = mfa.encrypt(secret)
     else:
         secret = mfa.decrypt(user.mfa_secret)
     error = ""
-    if request.method == "POST":
+    if secret is None:
+        # The stored secret exists but no configured key can read it (DJANGO_SECRET_KEY changed
+        # without DJANGO_SECRET_KEY_FALLBACKS). No code can succeed, so say so instead of
+        # "didn't match", and do not count it towards the lockout. Reported once per sign-in.
+        error = MFA_UNREADABLE_MESSAGE
+        if not request.session.get("mfa_unreadable_reported"):
+            request.session["mfa_unreadable_reported"] = True
+            log.error("MFA secret for user %s cannot be decrypted with the configured keys", user.pk)
+            record(None, "auth.mfa_secret_unreadable", user, request=request)
+    elif request.method == "POST":
         if getattr(request, "limited", False):
             error = "Too many attempts. Wait a minute and try again."
         elif user.is_locked:
@@ -311,8 +329,10 @@ def mfa_view(request):
                     user.mfa_enabled = True
                     user.save(update_fields=["mfa_secret", "mfa_enabled"])
                     record(user, "auth.mfa_enrolled", user, request=request)
+                elif mfa.reencrypt_if_needed(user):
+                    log.info("MFA secret for user %s moved to the current secret key", user.pk)
                 nxt = request.session.get("mfa_next") or "/home/"
-                for k in ("mfa_pending", "mfa_pending_at", "mfa_new_secret", "mfa_next"):
+                for k in ("mfa_pending", "mfa_pending_at", "mfa_new_secret", "mfa_next", "mfa_unreadable_reported"):
                     request.session.pop(k, None)
                 User.objects.filter(pk=user.pk).update(failed_logins=0, locked_until=None)
                 login(request, user, backend="django.contrib.auth.backends.ModelBackend")
