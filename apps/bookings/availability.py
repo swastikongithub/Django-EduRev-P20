@@ -117,22 +117,29 @@ class DaySchedule:
         return busy / total if total else 0
 
 
+_UNSET = object()
+
+
 class _Context:
-    """Per-user facts that don't change between cells."""
+    """Per-user facts that don't change between cells. Pass `restriction` / `manager` when
+    building many contexts for one request so they are looked up once, not per resource."""
 
-    def __init__(self, resource, user, now, policy):
-        from apps.checkins.services import active_restriction
-
+    def __init__(self, resource, user, now, policy, *, restriction=_UNSET, manager=None):
         self.now = now
         self.policy = policy
-        self.privileged = user.is_authenticated and is_campus_wide(user)
-        self.manager = user.is_authenticated and can_manage_resource(user, resource)
-        self.user_id = user.pk if user.is_authenticated else None
+        authed = user.is_authenticated
+        self.privileged = authed and is_campus_wide(user)
+        if manager is None:
+            manager = authed and can_manage_resource(user, resource)
+        self.manager = bool(manager)
+        self.user_id = user.pk if authed else None
         self.role = getattr(user, "role", "")
-        self.forbidden = bool(
-            user.is_authenticated and not resource.type.role_may_book(self.role) and not self.privileged
-        )
-        self.restriction = active_restriction(user, now) if user.is_authenticated else None
+        self.forbidden = bool(authed and not resource.type.role_may_book(self.role) and not self.privileged)
+        if restriction is _UNSET:
+            from apps.checkins.services import active_restriction
+
+            restriction = active_restriction(user, now) if authed else None
+        self.restriction = restriction
         self.lead_until = now + timedelta(minutes=policy.lead_time_minutes) if not self.privileged else now
         self.horizon = (
             timezone.localtime(now).date() + timedelta(days=policy.max_advance_days)
@@ -276,19 +283,29 @@ def day(resource, d: date, user, **kw) -> DaySchedule:
 
 
 def board(resources, d: date, user, *, now=None, window=(time(7, 0), time(22, 0)), step=30):
-    """Many resources, one day, a shared timeline — the live booking board and the 'rooms at 2 pm' view."""
-    from apps.rules.services import policy_for, weekly_hours
+    """
+    Many resources, one day, a shared timeline: the live booking board and the "rooms at 2 pm"
+    view. A constant number of queries however many rows: slots, blackouts, policies, hours,
+    the viewer's restriction and the viewer's managed-resource scope.
+    """
+    from apps.accounts.permissions import managed_resource_ids
+    from apps.checkins.services import active_restriction
+    from apps.rules.services import policies_for, weekly_hours_for
 
     now = now or timezone.now()
     resources = list(resources)
     if not resources:
         return []
     slots, blackouts = _load(resources, aware(d, time.min), aware(d + timedelta(days=1), time.min))
+    policies = policies_for(resources)
+    hours = weekly_hours_for(resources)
+    authed = user.is_authenticated
+    restriction = active_restriction(user, now) if authed else None
+    managed = managed_resource_ids(user, [r.pk for r in resources]) if authed else set()
     rows = []
     for r in resources:
-        policy = policy_for(r)
-        ctx = _Context(r, user, now, policy)
-        rows.append((r, _day(r, d, ctx, weekly_hours(r), slots[r.pk], blackouts, step, window)))
+        ctx = _Context(r, user, now, policies[r.pk], restriction=restriction, manager=r.pk in managed)
+        rows.append((r, _day(r, d, ctx, hours[r.pk], slots[r.pk], blackouts, step, window)))
     return rows
 
 
