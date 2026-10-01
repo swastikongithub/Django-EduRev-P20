@@ -117,6 +117,9 @@
   if ($("[data-countdown]")) { tick(); setInterval(tick, 1000); }
   document.addEventListener("htmx:afterSwap", tick);
 
+  // ── Phones: filter panels start collapsed so results are visible ─────
+  if (window.innerWidth < 900) $$("details.filters[open]").forEach((d) => { d.open = false; });
+
   // ── Copy to clipboard ────────────────────────────────────────────────
   document.addEventListener("click", async (e) => {
     const b = e.target.closest("[data-copy]");

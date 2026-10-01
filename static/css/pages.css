@@ -399,3 +399,22 @@ a.inbox__title:hover { color: var(--link); text-decoration: underline; }
 .mfa-qr svg.qr path { fill: #13233a; }
 .mfa-key { display: block; margin-top: 8px; padding: 8px 10px; border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--fs-sm); letter-spacing: .12em; word-break: break-all; }
 .mfa-code { letter-spacing: .4em; text-align: center; font-variant-numeric: tabular-nums; font-size: var(--fs-2xl); font-weight: 750; }
+
+/* ── Resource page layout: calendar, then the booking panel, then details (any width) ── */
+.detail-body { display: grid; grid-template-columns: minmax(0, 1fr) 440px; grid-template-areas: "cal side" "info side"; gap: var(--s6); align-items: start; }
+.detail-cal { grid-area: cal; min-width: 0; }
+.detail-side { grid-area: side; position: sticky; top: calc(var(--topbar-h) + var(--s5)); }
+.detail-info { grid-area: info; min-width: 0; }
+@media (max-width: 1100px) {
+  .detail-body { grid-template-columns: minmax(0, 1fr); grid-template-areas: "cal" "side" "info"; }
+  .detail-side { position: static; }
+}
+.mobilebook { display: none; }
+@media (max-width: 899px) {
+  .mobilebook:not([hidden]) { display: flex; align-items: center; justify-content: space-between; gap: 12px; position: fixed; left: 12px; right: 12px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 25; padding: 10px 10px 10px 16px; border-radius: var(--r-lg); background: var(--ink-900); color: #fff; box-shadow: var(--shadow-float); font-weight: 750; font-variant-numeric: tabular-nums; animation: toast-in var(--t-med) var(--ease-spring); }
+}
+@media (max-width: 560px) {
+  .composer__types { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 calc(-1 * var(--s4)); padding: 0 var(--s4) 4px; scrollbar-width: none; }
+  .composer__types::-webkit-scrollbar { display: none; }
+  .typecard { flex: 0 0 104px; scroll-snap-align: start; }
+}

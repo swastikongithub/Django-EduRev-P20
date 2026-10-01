@@ -68,6 +68,8 @@
     box.classList.remove("is-pulse"); void box.offsetWidth; box.classList.add("is-pulse");
     const label = $("[data-submit-label] span");
     if (label) label.textContent = label.textContent.replace(/\s\d{2}:\d{2}–\d{2}:\d{2}$/, "") + " " + s + "–" + e;
+    const bar = $("[data-mobilebook]");
+    if (bar) { bar.hidden = false; $("[data-mobilebook-label]", bar).textContent = $("[data-sel-day]", box).textContent + ", " + s + "–" + e; }
     const repeat = $("[data-repeat-link]");
     if (repeat) {
       const u = new URL(repeat.href, location.href);
