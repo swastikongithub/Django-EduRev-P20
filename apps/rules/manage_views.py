@@ -17,6 +17,7 @@ from apps.accounts.models import Role, User
 from apps.accounts.permissions import has_cap, is_campus_wide
 from apps.audit.services import record, snapshot
 from apps.catalogue.models import Resource, ResourceStatus, ResourceType
+from apps.core.http import pk_param
 from apps.core.manage_views import staff_required
 
 from .manage_forms import (
@@ -251,7 +252,7 @@ def _audit(request, action, obj, before=None, after=None, label=None):
 
 
 def _get(model, request, pk):
-    return get_object_or_404(model, institution_id=request.user.institution_id, pk=pk)
+    return get_object_or_404(model, institution_id=request.user.institution_id, pk=pk_param(pk))
 
 
 # Each POST action returns either a redirect, or a context dict with the bound form to re-show.
@@ -264,7 +265,7 @@ def _save_model(request, *, model, form_cls, tab, noun, action_prefix, form_kwar
             instance_qs
             if instance_qs is not None
             else model.objects.filter(institution_id=request.user.institution_id),
-            pk=pk,
+            pk=pk_param(pk),
         )
         before = snapshot(instance)
     else:
@@ -285,7 +286,7 @@ def _save_model(request, *, model, form_cls, tab, noun, action_prefix, form_kwar
 
 
 def _delete_model(request, *, qs, tab, noun, action_prefix, label=None):
-    obj = get_object_or_404(qs, pk=request.POST.get("pk"))
+    obj = get_object_or_404(qs, pk=pk_param(request.POST.get("pk")))
     before = snapshot(obj)
     lbl = label(obj) if label else str(obj)
     _audit(request, f"{action_prefix}.delete", obj, before=before, label=lbl)
@@ -410,7 +411,7 @@ def act_quota_delete(request):
 
 
 def act_quota_toggle(request):
-    q = get_object_or_404(_quota_scope(request.user), pk=request.POST.get("pk"))
+    q = get_object_or_404(_quota_scope(request.user), pk=pk_param(request.POST.get("pk")))
     before = snapshot(q)
     q.active = not q.active
     q.save(update_fields=["active", "updated_at"])

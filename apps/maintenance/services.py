@@ -144,9 +144,11 @@ def complete(window: MaintenanceWindow, actor, *, request=None, now=None):
 
 
 def _reopen_if_needed(resource):
-    """Bring a resource back into service when no critical breakdown remains open."""
+    """Bring a resource back into service when no confirmed critical breakdown remains open."""
     open_critical = (
-        resource.breakdowns.filter(severity=Severity.CRITICAL).exclude(status=ReportStatus.RESOLVED).exists()
+        resource.breakdowns.filter(severity=Severity.CRITICAL, confirmed_at__isnull=False)
+        .exclude(status=ReportStatus.RESOLVED)
+        .exists()
     )
     if resource.status == "out_of_service" and not open_critical:
         resource.status = "active"
@@ -154,7 +156,51 @@ def _reopen_if_needed(resource):
         resource.save(update_fields=["status", "status_note", "updated_at"])
 
 
+def _can_take_offline(user, resource) -> bool:
+    return has_cap(user, "manage_maintenance") and can_manage_resource(user, resource)
+
+
+def _take_offline(report: BreakdownReport, actor, *, request=None, now=None):
+    """Out of service, plus a 24-hour repair block on the ledger. Caller holds the transaction."""
+    resource = report.resource
+    now = now or timezone.now()
+    report.confirmed_by = actor
+    report.confirmed_at = now
+    report.save(update_fields=["confirmed_by", "confirmed_at", "updated_at"])
+    resource.status = "out_of_service"
+    resource.status_note = report.summary[:200]
+    resource.save(update_fields=["status", "status_note", "updated_at"])
+    # Block the next 24 hours so nobody walks into a broken room; the custodian
+    # shortens or extends the window when the repair is planned.
+    # If a timetabled class sits inside that window the claim is refused (classes are
+    # never displaced automatically); the resource is still out of service, so no new
+    # bookings are accepted, and the custodian relocates the class.
+    try:
+        with transaction.atomic():
+            window = schedule(
+                resource,
+                now.replace(second=0, microsecond=0),
+                now + timedelta(hours=24),
+                title=f"Breakdown: {report.summary[:80]}",
+                kind="repair",
+                actor=actor,
+                notes=report.details,
+                request=request,
+                enforce_permissions=False,
+            )
+        report.window = window
+        report.save(update_fields=["window"])
+    except BookingRejected:
+        pass
+
+
 def report_breakdown(resource, user, *, summary, details="", severity=Severity.HIGH, request=None, now=None):
+    """
+    Anyone may report a breakdown. Only someone who manages the resource can take it out of
+    service: their own critical report does so at once; anyone else's critical report alerts the
+    custodians, who confirm it from the console (`confirm_critical`). An unverified report from
+    any signed-in user must never cancel other people's bookings (SEC-02).
+    """
     from apps.notifications.models import Kind
 
     now = now or timezone.now()
@@ -167,42 +213,40 @@ def report_breakdown(resource, user, *, summary, details="", severity=Severity.H
             details=details,
             severity=severity,
         )
-        if severity == Severity.CRITICAL:
-            resource.status = "out_of_service"
-            resource.status_note = summary[:200]
-            resource.save(update_fields=["status", "status_note", "updated_at"])
-            # Block the next 24 hours so nobody walks into a broken room; the custodian
-            # shortens or extends the window when the repair is planned.
-            # If a timetabled class sits inside that window the claim is refused (classes are
-            # never displaced automatically); the resource is still out of service, so no new
-            # bookings are accepted, and the custodian relocates the class.
-            try:
-                with transaction.atomic():
-                    window = schedule(
-                        resource,
-                        now.replace(second=0, microsecond=0),
-                        now + timedelta(hours=24),
-                        title=f"Breakdown: {summary[:80]}",
-                        kind="repair",
-                        actor=user,
-                        notes=details,
-                        request=request,
-                        enforce_permissions=False,
-                    )
-                report.window = window
-                report.save(update_fields=["window"])
-            except BookingRejected:
-                pass
-        _notify_custodians(
-            resource,
-            Kind.BREAKDOWN,
-            f"Breakdown reported · {resource.name}",
-            f"{report.get_severity_display()}: {summary}",
-            "/manage/maintenance/",
-        )
+        critical = severity == Severity.CRITICAL
+        if critical and _can_take_offline(user, resource):
+            _take_offline(report, user, request=request, now=now)
+        if critical and report.confirmed_at is None:
+            title = f"Critical breakdown to confirm · {resource.name}"
+            body = f"Reported as critical: {summary}. Check it and take the resource out of service if needed."
+        else:
+            title = f"Breakdown reported · {resource.name}"
+            body = f"{report.get_severity_display()}: {summary}"
+        _notify_custodians(resource, Kind.BREAKDOWN, title, body, "/manage/maintenance/")
         from apps.audit.services import record
 
         record(user, "maintenance.report", report, after={"severity": severity}, request=request)
+    return report
+
+
+def confirm_critical(report: BreakdownReport, actor, *, request=None, now=None):
+    """A custodian confirms someone else's critical report: the resource goes out of service."""
+    _require_manager(actor, report.resource)
+    with transaction.atomic():
+        report = BreakdownReport.objects.select_for_update().select_related("resource").get(pk=report.pk)
+        if report.severity != Severity.CRITICAL:
+            raise InvalidTransition("Only a critical report takes a resource out of service.")
+        if report.status == ReportStatus.RESOLVED:
+            raise InvalidTransition("This report is already resolved.")
+        if report.confirmed_at is not None:
+            raise InvalidTransition("This report has already been confirmed.")
+        _take_offline(report, actor, request=request, now=now)
+        if report.status == ReportStatus.OPEN:
+            report.status = ReportStatus.ACKNOWLEDGED
+            report.save(update_fields=["status", "updated_at"])
+        from apps.audit.services import record
+
+        record(actor, "maintenance.confirm_critical", report, request=request)
     return report
 
 

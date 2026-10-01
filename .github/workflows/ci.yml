@@ -41,7 +41,7 @@ jobs:
     timeout-minutes: 30
     env:
       DATABASE_URL: postgres://edurev:edurev@localhost:5432/edurev
-      DJANGO_SECRET_KEY: ci-only-dummy-key-not-a-secret
+      DJANGO_SECRET_KEY: ci-only-dummy-key-not-a-secret-0123456789
       DEBUG: "0"
       CELERY_TASK_ALWAYS_EAGER: "1"
       REDIS_URL: ""
@@ -132,7 +132,7 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Smoke test image (Django check, non-root user)
         run: |
-          docker run --rm --entrypoint sh -e DJANGO_SECRET_KEY=ci-only-dummy-key-not-a-secret lpu-reserve:ci \
+          docker run --rm --entrypoint sh -e DJANGO_SECRET_KEY=ci-only-dummy-key-not-a-secret-0123456789 lpu-reserve:ci \
             -c 'test "$(id -u)" != "0" && python manage.py check'
       - name: Validate docker-compose.yml
         run: docker compose config --quiet

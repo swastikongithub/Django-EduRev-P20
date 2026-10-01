@@ -49,7 +49,10 @@ def test_login_lockout_after_five_failures(client, student):
     student.refresh_from_db()
     assert student.is_locked
     resp = client.post(reverse("accounts:login"), {"username": student.username, "password": "x-test-password-123"})
-    assert b"locked" in resp.content
+    # Even the right password is refused, with the same answer as a wrong one (SEC-10).
+    assert resp.status_code == 200 and "_auth_user_id" not in client.session
+    wrong = client.post(reverse("accounts:login"), {"username": "nobody-here", "password": "wrong"})
+    assert resp.context["error"] == wrong.context["error"]
 
 
 def test_real_login_works(client, student):
@@ -206,12 +209,24 @@ def test_series_page_preview_for_faculty_only(client, faculty, student, room, to
     assert resp.status_code == 200 and len(resp.context["plans"]) == 3
 
 
-def test_breakdown_report_from_resource_page(client, student, room):
+def test_breakdown_report_from_resource_page(client, student, custodian, room):
     client.force_login(student)
     resp = client.post(
-        reverse("maintenance:report", args=[room.slug]), {"summary": "Projector dead", "severity": "critical"}
+        reverse("maintenance:report", args=[room.slug]),
+        {"summary": "Projector dead", "severity": "critical"},
+        follow=True,
     )
-    assert resp.status_code == 302
+    assert b"asked to check it urgently" in resp.content
+    room.refresh_from_db()
+    assert room.status == "active"  # unconfirmed (SEC-02)
+
+    client.force_login(custodian)
+    resp = client.post(
+        reverse("maintenance:report", args=[room.slug]),
+        {"summary": "Projector dead", "severity": "critical"},
+        follow=True,
+    )
+    assert b"out of service until the repair is done" in resp.content
     room.refresh_from_db()
     assert room.status == "out_of_service"
 
@@ -299,3 +314,13 @@ def test_untouched_accessory_fields_reserve_nothing(client, student, room, tomor
         {"date": d.isoformat(), "start": "17:00", "end": "18:00", f"item-{item.pk}": "2"},
     )
     assert Issuance.objects.get().quantity == 2
+
+
+def test_hindi_and_punjabi_shell(client, student, room):
+    client.force_login(student)
+    client.post(reverse("set_language"), {"language": "hi", "next": "/home/"})
+    resp = client.get(reverse("core:home"))
+    assert 'lang="hi"' in resp.content.decode()
+    assert "आपको क्या चाहिए, और कब?" in resp.content.decode()
+    client.post(reverse("set_language"), {"language": "pa", "next": "/home/"})
+    assert "ਤੁਹਾਨੂੰ ਕੀ ਚਾਹੀਦਾ ਹੈ" in client.get(reverse("core:home")).content.decode()

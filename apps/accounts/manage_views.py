@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from apps.audit.services import record
-from apps.core.http import safe_next
+from apps.core.http import pk_param, safe_next
 from apps.core.manage_views import staff_required
 
 from .models import Department, Role, User
@@ -97,7 +97,7 @@ def users(request):
     if request.method == "POST":
         if not can_manage:
             raise PermissionDenied
-        target = get_object_or_404(User, institution_id=inst, pk=request.POST.get("user"))
+        target = get_object_or_404(User, institution_id=inst, pk=pk_param(request.POST.get("user")))
         action = request.POST.get("action")
         try:
             if action == "role":

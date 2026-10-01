@@ -108,13 +108,17 @@ def _t(h, m=0, ampm=None):
     return time(h, m)
 
 
+MAX_QUERY_CHARS = 200  # longer than any real search; also bounds the full-text query
+
 TIME = r"(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?"
 
 
 def parse(text: str, *, today: date | None = None, feature_names: list[str] | None = None) -> Intent:
     today = today or timezone.localdate()
     it = Intent()
-    s = " " + (text or "").lower().strip() + " "
+    # Whitespace runs collapse and the query is capped before any pattern runs: several patterns
+    # scan `\s*` after digits, which is quadratic over a long run of spaces (SEC-08).
+    s = " " + " ".join((text or "").lower().split())[:MAX_QUERY_CHARS] + " "
 
     def cut(pattern):
         nonlocal s

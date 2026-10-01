@@ -30,6 +30,30 @@ def _plain_static_storage(settings):
 
 
 @pytest.fixture(autouse=True)
+def _force_login_includes_mfa(monkeypatch):
+    """
+    `client.force_login(user)` stands for a completed sign-in. For a user who needs MFA that
+    includes the second factor, so stamp the session exactly as `accounts.views.mfa_view` does;
+    otherwise `MFASessionMiddleware` would end it. A user promoted *after* signing in keeps an
+    unstamped session (that is SEC-12's proof).
+    """
+    from django.test import Client
+
+    from apps.accounts import mfa
+
+    original = Client.force_login
+
+    def force_login(self, user, backend=None):
+        original(self, user, backend)
+        if mfa.needs_mfa(user):
+            session = self.session
+            session[mfa.SESSION_KEY] = user.pk
+            session.save()
+
+    monkeypatch.setattr(Client, "force_login", force_login)
+
+
+@pytest.fixture(autouse=True)
 def _reset_tenant_cache():
     reset_default_institution_cache()
     yield

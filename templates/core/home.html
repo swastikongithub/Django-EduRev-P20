@@ -3,7 +3,7 @@
 {% block content %}
 <div class="home-head">
   <div>
-    <h1>{{ greeting }}, {{ request.user.first_name|default:request.user.username }}</h1>
+    <h1>{% translate greeting %}, {{ request.user.first_name|default:request.user.username }}</h1>
     <p class="muted">{% now "l, j F" %}{% if request.user.section %} &nbsp;|&nbsp; Section {{ request.user.section }}{% endif %}{% if request.user.department %} &nbsp;|&nbsp; {{ request.user.department.name }}{% endif %}</p>
   </div>
 </div>
@@ -14,7 +14,7 @@
 
 <div class="home-grid">
   <section class="panel composer" aria-labelledby="composer-h">
-    <h2 id="composer-h" class="composer__title">What do you need, and when?</h2>
+    <h2 id="composer-h" class="composer__title">{% translate "What do you need, and when?" %}</h2>
     <form class="composer__form" action="{% url 'catalogue:find' %}" method="get">
       <fieldset class="composer__types">
         <legend class="sr-only">Kind of resource</legend>
@@ -28,32 +28,32 @@
       </fieldset>
       <div class="composer__when">
         <div class="field">
-          <label for="c-date">Day</label>
+          <label for="c-date">{% translate "Day" %}</label>
           <div class="seg seg--fill" role="group" aria-label="Quick day">
-            <label><input type="radio" name="date" value="{{ today|date:'Y-m-d' }}" checked>Today</label>
-            <label><input type="radio" name="date" value="{{ tomorrow|date:'Y-m-d' }}">Tomorrow</label>
+            <label><input type="radio" name="date" value="{{ today|date:'Y-m-d' }}" checked>{% translate "Today" %}</label>
+            <label><input type="radio" name="date" value="{{ tomorrow|date:'Y-m-d' }}">{% translate "Tomorrow" %}</label>
           </div>
         </div>
         <div class="field">
-          <label for="c-from">From</label>
+          <label for="c-from">{% translate "From" %}</label>
           <select class="select" id="c-from" name="from">{% for t in times %}<option{% if t == default_from %} selected{% endif %}>{{ t }}</option>{% endfor %}</select>
         </div>
         <div class="field">
-          <label for="c-to">Until</label>
+          <label for="c-to">{% translate "Until" %}</label>
           <select class="select" id="c-to" name="to">{% for t in times %}<option{% if t == default_to %} selected{% endif %}>{{ t }}</option>{% endfor %}</select>
         </div>
         <div class="field">
-          <label for="c-people">People</label>
+          <label for="c-people">{% translate "People" %}</label>
           <input class="input" id="c-people" name="people" type="number" min="1" max="1000" inputmode="numeric" placeholder="1">
         </div>
-        <button class="btn btn--primary btn--lg composer__go" type="submit">{% icon "search" %}Show what's free</button>
+        <button class="btn btn--primary btn--lg composer__go" type="submit">{% icon "search" %}{% translate "Show what's free" %}</button>
       </div>
       <p class="composer__hint xsmall faint">Only resources that are genuinely free for the whole time are shown. Classes on the timetable, maintenance and blackouts are already taken out.</p>
     </form>
   </section>
 
   <section class="panel panel--flagged nextpass" aria-labelledby="next-h">
-    <span class="flag">{% icon "qr-code" %}<span id="next-h">Your next booking</span></span>
+    <span class="flag">{% icon "qr-code" %}<span id="next-h">{% translate "Your next booking" %}</span></span>
     {% if next_booking %}
       {% with b=next_booking s=next_state %}
       <a class="nextpass__main" href="{{ b.get_absolute_url }}">
@@ -93,7 +93,7 @@
     {% else %}
       <div class="empty empty--compact">
         <div class="empty__icon">{% icon "calendar-plus" %}</div>
-        <h3>Nothing booked yet</h3>
+        <h3>{% translate "Nothing booked yet" %}</h3>
         <p class="small">Pick what you need on the left. Your QR pass will live here.</p>
       </div>
     {% endif %}
@@ -131,7 +131,7 @@
 
 {% if usual_rows %}
 <section class="home-section" aria-labelledby="usual-h">
-  <div class="section-head"><h2 id="usual-h">Your usual spots today</h2></div>
+  <div class="section-head"><h2 id="usual-h">{% translate "Your usual spots today" %}</h2></div>
   <div class="usual">
     {% for r, sched in usual_rows %}
     <a class="panel usual__card" href="{{ r.get_absolute_url }}">

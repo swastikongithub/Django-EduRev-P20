@@ -76,9 +76,19 @@ class BreakdownReport(TenantModel, TimeStampedModel):
     )
     resolved_at = models.DateTimeField(null=True, blank=True)
     resolution = models.CharField(max_length=240, blank=True)
+    # A critical report takes the resource out of service only once someone who manages it has
+    # confirmed it: immediately when they file it themselves, otherwise from the console (SEC-02).
+    confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    confirmed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
 
     def __str__(self):
         return self.summary
+
+    @property
+    def awaiting_confirmation(self) -> bool:
+        return self.severity == Severity.CRITICAL and self.confirmed_at is None and self.status != ReportStatus.RESOLVED

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from django.conf import settings
 from django.urls import NoReverseMatch, reverse
+from django.utils.translation import gettext as _
 
 from apps.accounts.permissions import has_cap
 
@@ -76,7 +77,7 @@ def _nav(user, counts):
             label, ic, name, match = it[:4]
             url = _url(name)
             if url:
-                out.append(NavItem(label, ic, url, match, it[4] if len(it) > 4 else 0))
+                out.append(NavItem(_(label), ic, url, match, it[4] if len(it) > 4 else 0))
         return out
 
     return build(book), build(manage)

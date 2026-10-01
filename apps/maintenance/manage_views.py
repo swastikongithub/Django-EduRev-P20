@@ -6,7 +6,7 @@ Every action goes through apps.maintenance.services, which re-checks can_manage_
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 
 from django.contrib import messages
 from django.db.models import Case, IntegerField, Value, When
@@ -17,7 +17,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.errors import DomainError
-from apps.core.http import safe_next
+from apps.core.http import date_param, safe_next
 from apps.core.manage_views import staff_required
 from apps.core.scope import managed_resources, resource_q, scope_label
 from apps.core.timeutil import aware, trange
@@ -127,8 +127,9 @@ def index(request):
 
 
 def _parse_dt(d, t):
+    day = date_param(d)
     try:
-        return aware(date.fromisoformat(d), datetime.strptime(t, "%H:%M").time())
+        return aware(day, datetime.strptime(t, "%H:%M").time()) if day else None
     except (TypeError, ValueError):
         return None
 
@@ -230,7 +231,7 @@ def window_action(request, pk, action):
 @staff_required("manage_maintenance")
 @require_POST
 def report_action(request, pk, action):
-    if action not in ("acknowledge", "resolve"):
+    if action not in ("acknowledge", "confirm", "resolve"):
         raise Http404
     try:
         report = _reports(request.user).select_related("resource", "window").get(pk=pk)
@@ -244,6 +245,9 @@ def report_action(request, pk, action):
         if action == "acknowledge":
             services.acknowledge(report, request.user)
             msg = "Acknowledged. The report stays open until you mark it resolved."
+        elif action == "confirm":
+            services.confirm_critical(report, request.user, request=request)
+            msg = f"{report.resource.name} is out of service and blocked for repair for the next 24 hours."
         else:
             resolution = request.POST.get("resolution", "").strip()
             if not resolution:
@@ -251,7 +255,7 @@ def report_action(request, pk, action):
                 return redirect(back)
             services.resolve(report, request.user, resolution, request=request)
             report.resource.refresh_from_db(fields=["status"])
-            msg = f"Resolved. {report.resource.name} is {'back in service' if report.resource.status == 'active' else 'still out of service: another critical report is open'}."
+            msg = f"Resolved. {report.resource.name} is {'back in service' if report.resource.status == 'active' else 'still out of service: another confirmed critical report is open'}."
     except DomainError as exc:
         messages.error(request, exc.message)
     else:

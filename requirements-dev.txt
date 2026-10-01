@@ -8,3 +8,4 @@ pip-audit>=2.7
 locust>=2.29
 playwright>=1.48
 pytest-playwright>=0.5
+polib>=1.2

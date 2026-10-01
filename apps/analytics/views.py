@@ -32,6 +32,8 @@ from django.utils.text import slugify
 from apps.accounts.models import Department
 from apps.accounts.permissions import has_cap
 from apps.catalogue.models import ResourceType
+from apps.core.exports import spreadsheet_safe
+from apps.core.http import date_param
 from apps.core.manage_views import staff_required
 from apps.core.templatetags.ui import inr
 
@@ -133,9 +135,8 @@ def _period(q, institution_id) -> tuple[str, date, date, list[str]]:
 
     raw_start, raw_end = q.get("start"), q.get("end")
     if raw_start or raw_end:
-        try:
-            cs, ce = date.fromisoformat(raw_start or ""), date.fromisoformat(raw_end or "")
-        except ValueError:
+        cs, ce = date_param(raw_start, today=today), date_param(raw_end, today=today)
+        if cs is None or ce is None:
             errors.append("Enter both dates as day, month and year to use a custom range.")
         else:
             ce = min(ce, today)
@@ -649,11 +650,7 @@ def dashboard(request):
 # ── CSV exports ─────────────────────────────────────────────────────────────
 
 
-def _safe(v):
-    """Neutralise spreadsheet formulas in text cells (names come from users and custodians)."""
-    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
-        return "'" + v
-    return "" if v is None else v
+_safe = spreadsheet_safe  # names in insights rows come from users and custodians
 
 
 def _util_cols(rows, key_label):

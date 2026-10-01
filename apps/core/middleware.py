@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.utils.cache import patch_cache_control
 
 from .models import Institution
 
@@ -52,4 +53,10 @@ class SecurityHeadersMiddleware:
             response.setdefault("Content-Security-Policy", self.CSP)
         response.setdefault("Permissions-Policy", "camera=(self), geolocation=(), microphone=()")
         response.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+        user = getattr(request, "user", None)
+        if user is not None and user.is_authenticated:
+            # Personal pages are never stored by shared caches (proxies, CDNs). Pages that show a
+            # secret (TOTP seed, data export, QR passes, feed URL) also send no-store via
+            # @never_cache (SEC-09).
+            patch_cache_control(response, private=True)
         return response
