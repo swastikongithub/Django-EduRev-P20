@@ -65,4 +65,21 @@ ok "container runs as uid $(docker exec "$WEB" id -u)"
 docker exec "$WEB" python manage.py check --deploy --fail-level WARNING
 ok "manage.py check --deploy: no warnings"
 
+# Uploaded photos persist outside the container: write, fetch through the pre-signed URL a
+# browser would get, delete.
+docker exec "$WEB" python manage.py verify_storage | grep -q "via pre-signed URL" || fail "media storage round trip"
+ok "media storage: S3 bucket, pre-signed read"
+
+# Mail leaves the app over SMTP and arrives at the relay.
+docker exec "$WEB" python manage.py sendtestemail smoke@example.test >/dev/null
+docker exec "$WEB" python -c '
+import json, sys, time, urllib.request
+for _ in range(20):
+    msgs = json.load(urllib.request.urlopen("http://mail:8025/api/v1/messages"))["messages"]
+    if any(t["Address"] == "smoke@example.test" for m in msgs for t in m["To"]):
+        sys.exit(0)
+    time.sleep(0.5)
+sys.exit(1)' || fail "test email did not reach the SMTP relay"
+ok "email: delivered over SMTP"
+
 echo "SMOKE PASS"
