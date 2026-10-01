@@ -1,0 +1,60 @@
+<div id="calendar" class="calwrap" data-slot="{{ slot_minutes }}" data-view="{{ view }}" hx-target="this" hx-swap="outerHTML">
+  <div class="calbar">
+    <div class="seg" role="group" aria-label="Calendar view">
+      <a href="?view=week&amp;date={{ day|date:'Y-m-d' }}" hx-get="{{ request.path }}?view=week&amp;date={{ day|date:'Y-m-d' }}"{% if view == "week" %} aria-current="page"{% endif %}>Week</a>
+      <a href="?view=day&amp;date={{ day|date:'Y-m-d' }}" hx-get="{{ request.path }}?view=day&amp;date={{ day|date:'Y-m-d' }}"{% if view == "day" %} aria-current="page"{% endif %}>Day</a>
+    </div>
+    <div class="calbar__nav">
+      {% if view == "week" %}
+      <a class="btn btn--sm btn--icon" href="?view=week&amp;date={{ prev_week|date:'Y-m-d' }}" hx-get="{{ request.path }}?view=week&amp;date={{ prev_week|date:'Y-m-d' }}" aria-label="Previous week">{% icon "chevron-left" %}</a>
+      <span class="calbar__label">{{ days.0|date:"j M" }} – {{ days|last|date:"j M Y" }}</span>
+      <a class="btn btn--sm btn--icon" href="?view=week&amp;date={{ next_week|date:'Y-m-d' }}" hx-get="{{ request.path }}?view=week&amp;date={{ next_week|date:'Y-m-d' }}" aria-label="Next week">{% icon "chevron-right" %}</a>
+      {% else %}
+      <a class="btn btn--sm btn--icon" href="?view=day&amp;date={{ prev_day|date:'Y-m-d' }}" hx-get="{{ request.path }}?view=day&amp;date={{ prev_day|date:'Y-m-d' }}" aria-label="Previous day">{% icon "chevron-left" %}</a>
+      <span class="calbar__label">{{ day|dayname }}{% if day|dayname|length > 9 %}{% else %}, {{ day|date:"j M" }}{% endif %}</span>
+      <a class="btn btn--sm btn--icon" href="?view=day&amp;date={{ next_day|date:'Y-m-d' }}" hx-get="{{ request.path }}?view=day&amp;date={{ next_day|date:'Y-m-d' }}" aria-label="Next day">{% icon "chevron-right" %}</a>
+      {% endif %}
+      {% if day != today %}<a class="btn btn--sm btn--ghost" href="?view={{ view }}" hx-get="{{ request.path }}?view={{ view }}">Today</a>{% endif %}
+    </div>
+  </div>
+
+  <p class="calhint small muted"><span class="only-pointer">Drag across free time to select it.</span><span class="only-touch">Tap a start time, then tap where you want to finish.</span> Greyed and patterned blocks say why they're unavailable.</p>
+
+  <div class="cal cal--{{ view }}" style="--cols: {{ columns|length }}; --rows: {{ rows_total }}" data-calendar data-first-hour="{{ hours_rows.0.0 }}" data-hours="{{ hours_rows|length }}">
+    <div class="cal__head">
+      <div class="cal__corner"></div>
+      {% for s, runs in columns %}
+      <div class="cal__dayhead{% if s.day == today %} is-today{% endif %}{% if not s.is_open %} is-closed{% endif %}">
+        <span>{{ s.day|date:"D" }}</span><strong class="tnum">{{ s.day|date:"j" }}</strong>
+        <em class="tnum">{% if s.is_open %}{{ s.free_minutes|duration }} free{% else %}Closed{% endif %}</em>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="cal__body">
+      <div class="cal__times" aria-hidden="true">{% for h, label in hours_rows %}<span style="grid-row: {{ forloop.counter0|add:forloop.counter0|add:1 }} / span 2">{{ label }}</span>{% endfor %}</div>
+      {% for s, runs in columns %}
+      <div class="cal__col{% if s.day == today %} is-today{% endif %}" data-day="{{ s.day|date:'Y-m-d' }}" role="group" aria-label="{{ s.day|date:'l j F' }}">
+        {% for run in runs %}
+          {% if run.selectable %}
+          <button type="button" class="cal__cell" style="grid-row: {{ run.row }} / span {{ run.span }}" data-start="{{ run.start|date:'c' }}" data-end="{{ run.end|date:'c' }}" data-hm="{{ run.start|hm }}" data-hm-end="{{ run.end|hm }}" aria-label="{{ run.start|hm }} to {{ run.end|hm }}, free"></button>
+          {% elif run.state == "past" or run.state == "closed" %}
+          <div class="cal__off cal__off--{{ run.state }}" style="grid-row: {{ run.row }} / span {{ run.span }}" aria-hidden="true"></div>
+          {% else %}
+          <div class="cal__block st-{{ run.state }}{% if run.span < 2 %} is-short{% endif %}" style="grid-row: {{ run.row }} / span {{ run.span }}" data-why="{{ run.start|hm }}–{{ run.end|hm }}: {{ run.reason }}" tabindex="0" role="note" aria-label="{{ run.start|hm }} to {{ run.end|hm }}, unavailable: {{ run.reason }}">
+            <span class="cal__label">{{ run.reason }}</span>
+            {% if run.span > 1 %}<span class="cal__time tnum">{{ run.start|hm }}–{{ run.end|hm }}</span>{% endif %}
+          </div>
+          {% endif %}
+        {% endfor %}
+        {% if s.day == today %}<span class="cal__now" data-now hidden></span>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="legend cal-legend" aria-label="Legend">
+    <span class="legend__item"><span class="swatch swatch--free"></span>Available</span>
+    <span class="legend__item"><span class="swatch swatch--selected"></span>Selected</span>
+    {% for state, label in legend %}{% if state != "free" and state != "closed" %}<span class="legend__item"><span class="swatch swatch--{{ state }}"></span>{{ label }}</span>{% endif %}{% endfor %}
+  </div>
+</div>

@@ -181,7 +181,6 @@ def detail(request, slug):
     policy = policy_for(resource)
     hours = weekly_hours(resource)
     from apps.inventory.services import items_for
-
     from apps.maintenance.models import MaintenanceWindow, WindowStatus
 
     upcoming_maintenance = MaintenanceWindow.objects.filter(

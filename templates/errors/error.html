@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block shell %}
+<main id="main" class="errorpage">
+  <div class="errorpage__card">
+    <span class="brandmark">{% include "components/brandmark.html" %}</span>
+    <p class="errorpage__code tnum">{{ code }}</p>
+    <h1>{{ title }}</h1>
+    <p class="muted">{{ message }}</p>
+    <div class="row row--wrap" style="justify-content:center">
+      <a class="btn btn--primary" href="/home/">Go to home</a>
+      <a class="btn" href="/find/">Find a resource</a>
+    </div>
+  </div>
+</main>
+{% endblock %}

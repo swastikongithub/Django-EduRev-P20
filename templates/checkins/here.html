@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ r.name }}{% endblock %}
+{% block topbar_title %}You're at{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
+{% block content %}
+<section class="panel checkcard">
+  <div class="checkcard__media">{% resource_photo r "sm" %}</div>
+  <h1 class="h-md">{{ r.name }}</h1>
+  <p class="muted small">{{ r.location_label }}</p>
+  {% if error %}<div class="notice notice--danger" role="alert">{% icon "circle-alert" %}<div>{{ error }}</div></div>{% endif %}
+
+  {% if mine %}
+    <p class="checkcard__time tnum">Your booking: {{ mine.start|dayname }}, {{ mine.start|hm }}–{{ mine.end|hm }}</p>
+    {% if state.state == "open" %}
+      <p class="checkin-live">{% icon "zap" 16 %}Check-in open, <time class="tnum" data-countdown="{{ state.closes|date:'c' }}" data-expired="closing now">{{ state.closes|hm }}</time> left</p>
+      <form method="post">{% csrf_token %}<button class="btn btn--primary btn--xl btn--block" type="submit">{% icon "scan-line" %}Check in here</button></form>
+    {% elif state.state == "in_use" %}
+      <div class="notice notice--success">{% icon "circle-check" %}<div><strong>You're checked in</strong>Until {{ mine.end|hm }}.</div></div>
+      <a class="btn btn--block" href="{{ mine.get_absolute_url }}">Open pass</a>
+    {% elif state.state == "not_yet" %}
+      <div class="notice">{% icon "clock" %}<div><strong>A little early</strong>Check-in opens at {{ state.opens|hm }}. Scan again then.</div></div>
+    {% endif %}
+  {% elif posted %}
+    <div class="notice notice--warn">{% icon "info" %}<div><strong>No booking to check in right now</strong>You don't have a booking here that's open for check-in.</div></div>
+  {% else %}
+    <div class="notice">{% icon "info" %}<div><strong>You have no booking here right now</strong>If it's free, you can book it on the spot.</div></div>
+  {% endif %}
+
+  <div class="checkcard__today">
+    <div class="row row--between"><span class="small strong">Today here</span><span class="xsmall faint">{% if today.first_free %}Next free {{ today.first_free.start|hm }}{% else %}No free slots left today{% endif %}</span></div>
+    {% daystrip today compact=False %}
+  </div>
+  <a class="btn btn--block" href="{{ r.get_absolute_url }}">{% icon "calendar-plus" %}Book {{ r.name }}</a>
+  <button type="button" class="linkbtn small" data-open="report-dialog">Report a problem here</button>
+</section>
+
+<dialog id="report-dialog" class="sheet" aria-labelledby="report-h">
+  <div class="sheet__head"><h2 id="report-h" class="h-sm">Report a problem</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <form class="sheet__body stack" method="post" action="{% url 'maintenance:report' r.slug %}">
+    {% csrf_token %}
+    <div class="field"><label for="rp-sum">What's wrong?</label><input class="input" id="rp-sum" name="summary" maxlength="160" required autofocus></div>
+    <div class="field"><label for="rp-sev">How bad?</label><select class="select" id="rp-sev" name="severity"><option value="low">Minor</option><option value="high" selected>Major</option><option value="critical">Can't be used at all</option></select></div>
+    <button class="btn btn--primary" type="submit">Send report</button>
+  </form>
+</dialog>
+{% endblock %}

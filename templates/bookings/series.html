@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Weekly booking{% endblock %}
+{% block topbar_title %}Weekly booking<small>Same slot, every week</small>{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div>
+    <h1>Book the same slot every week</h1>
+    <p>Check every date before anything is booked. Dates that clash with a class, maintenance, a blackout or another booking are skipped, and the rest go ahead.</p>
+  </div>
+</div>
+
+{% if done %}
+<section class="panel panel--warm" aria-labelledby="done-h">
+  <div class="row row--between"><h2 id="done-h" class="h-sm">{{ done.title }}: {{ done.created_count }} session{{ done.created_count|pluralize }} booked</h2><a class="btn btn--sm" href="{% url 'bookings:mine' %}">Go to bookings</a></div>
+  <ul class="occlist">
+    {% for b in done_bookings %}<li class="occ is-ok"><span class="tnum">{{ b.start|date:"D j M" }}, {{ b.start|hm }}–{{ b.end|hm }}</span>{% status_badge b %}</li>{% endfor %}
+    {% for s in done.skipped %}<li class="occ is-skip"><span class="tnum">{{ s.start|slice:":10" }}</span><span class="small">{{ s.reason }}</span></li>{% endfor %}
+  </ul>
+</section>
+{% else %}
+<form method="post" class="split" action="{% url 'bookings:series_new' %}">
+  {% csrf_token %}
+  <section class="panel stack" style="--gap: var(--s4)" aria-label="Pattern">
+    {% if error %}<div class="notice notice--danger">{% icon "circle-alert" %}<div>{{ error }}</div></div>{% endif %}
+    <div class="field"><label for="s-res">Resource</label>
+      <select class="select" id="s-res" name="resource" required><option value="">Choose a room, lab or court</option>{% for x in resources %}<option value="{{ x.slug }}"{% if resource and x.pk == resource.pk %} selected{% endif %}>{{ x.name }} ({{ x.type.name }}, {{ x.capacity }})</option>{% endfor %}</select></div>
+    <div class="field"><span class="label">On</span><div class="chips">{% for name in weekday_names %}<label class="chip"><input type="checkbox" name="weekday" value="{{ forloop.counter0 }}"{% if forloop.counter0 in weekdays %} checked{% endif %}>{{ name }}</label>{% endfor %}</div></div>
+    <div class="form-grid">
+      <div class="field"><label for="s-from">From</label><select class="select" id="s-from" name="start">{% for t in times %}<option{% if t == t1 %} selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="s-to">Until</label><select class="select" id="s-to" name="end">{% for t in times %}<option{% if t == t2 %} selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="s-sd">First date</label><input class="input" type="date" id="s-sd" name="start_date" value="{{ start_date|date:'Y-m-d' }}"></div>
+      <div class="field"><label for="s-ud">Last date</label><input class="input" type="date" id="s-ud" name="until_date" value="{{ until_date|date:'Y-m-d' }}"></div>
+      <div class="field span-2"><label for="s-title">What's it for?</label><input class="input" id="s-title" name="title" value="{{ title }}" placeholder="e.g. CSE326 extra lab, K23KF" maxlength="140"></div>
+      <div class="field"><label for="s-group">Class or group</label><input class="input" id="s-group" name="group_label" value="{{ group_label }}" placeholder="K23KF" maxlength="120"></div>
+      <div class="field"><label for="s-att">People</label><input class="input" id="s-att" type="number" min="1" name="attendees" value="{{ attendees|default:'1' }}"></div>
+    </div>
+    <div class="row"><button class="btn btn--ink" type="submit" name="action" value="preview">{% icon "list-checks" %}Check every date</button></div>
+  </section>
+
+  <aside class="panel sticky-side" aria-labelledby="pv-h">
+    <h2 id="pv-h" class="h-sm">Dates</h2>
+    {% if plans %}
+      <p class="small muted">{{ ok_count }} of {{ plans|length }} can be booked.</p>
+      <ul class="occlist">
+        {% for p in plans %}
+        <li class="occ {% if p.ok %}is-ok{% else %}is-skip{% endif %}">
+          <span class="tnum">{{ p.start|date:"D j M" }}</span>
+          {% if p.ok %}<span class="badge badge--success">{% icon "check" %}Free</span>{% else %}<span class="small">{{ p.reason }}{% if p.alternatives %}<span class="xsmall faint"> Free instead: {% for a in p.alternatives %}{{ a.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% if ok_count %}<button class="btn btn--primary btn--block" type="submit" name="action" value="create">{% icon "calendar-check" %}Book {{ ok_count }} session{{ ok_count|pluralize }}</button>{% endif %}
+    {% else %}
+      <div class="empty empty--compact"><div class="empty__icon">{% icon "repeat" %}</div><p class="small">Set the pattern and check the dates. Nothing is booked until you confirm.</p></div>
+    {% endif %}
+  </aside>
+</form>
+{% endif %}
+{% endblock %}

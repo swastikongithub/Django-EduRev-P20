@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Console{% endblock %}
+{% block content %}
+<div class="panel empty">
+  <div class="empty__icon">{% icon "hammer" %}</div>
+  <h3>This console screen is being built</h3>
+  <p>{{ path }}</p>
+  <a class="btn" href="{% url 'core:home' %}">Back home</a>
+</div>
+{% endblock %}

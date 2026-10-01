@@ -1,0 +1,3 @@
+<form method="post" action="{% url 'catalogue:save' r.slug %}" hx-post="{% url 'catalogue:save' r.slug %}" hx-swap="outerHTML" class="savebtn-form">{% csrf_token %}
+  <button class="btn btn--sm{% if saved %} is-saved{% endif %}" type="submit" aria-pressed="{% if saved %}true{% else %}false{% endif %}">{% icon "star" %}{% if saved %}Starred{% else %}Star{% endif %}</button>
+</form>

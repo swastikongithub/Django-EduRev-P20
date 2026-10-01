@@ -1,0 +1,56 @@
+<section id="book-panel" class="panel bookpanel" aria-labelledby="book-h">
+  <div class="bookpanel__head">
+    <h2 id="book-h">Book {{ r.name }}</h2>
+    {% if workflow.instant %}
+      <span class="badge badge--success">{% icon "zap" %}Confirmed instantly</span>
+    {% else %}
+      <span class="badge badge--pending">{% icon "list-checks" %}Needs approval</span>
+    {% endif %}
+  </div>
+  {% if not workflow.instant %}
+  <p class="xsmall muted approvalpath">Goes to {% for s in workflow.steps %}<strong>{{ s }}</strong>{% if not forloop.last %}, then {% endif %}{% endfor %}. The slot is held for you while they decide.</p>
+  {% endif %}
+
+  {% if r.status != "active" %}
+    <div class="notice notice--danger">{% icon "wrench" %}<div><strong>Not bookable right now</strong>{{ r.status_note|default:"Out of service." }}</div></div>
+  {% elif not can_book %}
+    <div class="notice">{% icon "lock" %}<div><strong>Booked by faculty for groups</strong>{{ r.type.plural|default:r.type.name }} are booked by faculty or staff on behalf of a class or club. Ask your faculty coordinator.</div></div>
+  {% else %}
+  {% if error %}
+  <div class="notice notice--danger" role="alert" id="book-error">{% icon "circle-alert" %}<div><strong>Couldn't book that</strong>{{ error }}
+    {% if alternatives %}<div class="alts"><span class="xsmall strong">Free instead at the same time:</span>{% for a in alternatives %}<a class="chip" href="{{ a.get_absolute_url }}?date={{ day|date:'Y-m-d' }}">{{ a.name }}</a>{% endfor %}</div>{% endif %}
+  </div></div>
+  {% endif %}
+  <form class="stack bookform" method="post" action="{% url 'bookings:create' r.slug %}" hx-post="{% url 'bookings:create' r.slug %}" hx-target="#book-panel" hx-swap="outerHTML" data-bookform style="--gap: 14px">
+    {% csrf_token %}
+    {% slot_times policy.slot_minutes as times %}
+    <div class="selection" data-selection>
+      <div class="selection__empty"{% if form.start %} hidden{% endif %}>{% icon "mouse-pointer-click" %}<span>Choose a time on the calendar, or set it below.</span></div>
+      <div class="selection__chosen"{% if not form.start %} hidden{% endif %}><span class="selection__day" data-sel-day>{{ day|dayname }}</span><span class="selection__time tnum" data-sel-time>{{ form.start }}–{{ form.end }}</span><span class="selection__dur xsmall" data-sel-dur></span></div>
+    </div>
+    <div class="form-grid form-grid--3">
+      <div class="field span-3"><label for="b-date">Day</label><input class="input" type="date" id="b-date" name="date" value="{% if form.date %}{{ form.date }}{% else %}{{ day|date:'Y-m-d' }}{% endif %}" required data-bind="date"></div>
+      <div class="field"><label for="b-start">From</label><select class="select" id="b-start" name="start" required data-bind="start"><option value="">–</option>{% for t in times %}<option{% if t == form.start %} selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="b-end">Until</label><select class="select" id="b-end" name="end" required data-bind="end"><option value="">–</option>{% for t in times %}<option{% if t == form.end %} selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="b-people">People</label><input class="input" type="number" id="b-people" name="attendees" min="1" max="{{ r.capacity }}" value="{{ form.attendees|default:'1' }}" inputmode="numeric"></div>
+    </div>
+    <div class="field"><label for="b-title">What's it for?</label><input class="input" id="b-title" name="title" maxlength="140" value="{{ form.title|default:'' }}" placeholder="{% if r.type.category == 'sports' %}Practice session{% elif r.type.category == 'equipment' %}Project shoot{% else %}Group study for CSE326{% endif %}"></div>
+    {% if can_on_behalf %}
+    <div class="field"><label for="b-group">For a class or group <span class="faint">(optional)</span></label><input class="input" id="b-group" name="group_label" maxlength="120" value="{{ form.group_label|default:'' }}" placeholder="e.g. K23KF, CSE326 extra lab"></div>
+    {% endif %}
+    {% if items %}
+    <details class="items"{% if form %} open{% endif %}>
+      <summary>{% icon "package" %}Add accessories or consumables</summary>
+      <ul class="list">{% for it in items %}<li class="row row--between"><label for="item-{{ it.pk }}" class="small"><strong>{{ it.name }}</strong><span class="faint xsmall"> &nbsp;{% if it.kind == "accessory" %}returned after{% else %}used up{% endif %}, max {{ it.max_per_booking }}</span></label><input class="input input--qty" type="number" min="0" max="{{ it.max_per_booking }}" id="item-{{ it.pk }}" name="item-{{ it.pk }}" value="0" inputmode="numeric"></li>{% endfor %}</ul>
+    </details>
+    {% endif %}
+    <ul class="rules xsmall">
+      <li>{% icon "timer" %}{{ policy.min_duration_minutes|duration }} to {{ policy.max_duration_minutes|duration }} per booking</li>
+      {% if policy.requires_checkin %}<li>{% icon "qr-code" %}Check in within {{ policy.checkin_grace_minutes }} min of the start, or it's released for others</li>{% endif %}
+      {% if policy.lead_time_minutes %}<li>{% icon "clock" %}Book at least {{ policy.lead_time_minutes|duration }} ahead</li>{% endif %}
+    </ul>
+    <button class="btn btn--primary btn--lg btn--block" type="submit" data-submit-label>{% icon "calendar-check" %}<span>{% if workflow.instant %}Book{% else %}Request{% endif %}{% if form.start %} {{ form.start }}–{{ form.end }}{% endif %}</span></button>
+    {% if can_recurring %}<a class="btn btn--ghost btn--block btn--sm" href="{% url 'bookings:series_new' %}?resource={{ r.slug }}" data-repeat-link>{% icon "repeat" %}Repeat every week</a>{% endif %}
+  </form>
+  {% endif %}
+</section>
