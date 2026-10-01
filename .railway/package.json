@@ -1,0 +1,15 @@
+{
+  "name": "lpu-reserve-railway-iac",
+  "private": true,
+  "description": "Railway Infrastructure as Code for LPU Reserve. The Railway CLI evaluates railway.ts with this SDK.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "railway": "3.12.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

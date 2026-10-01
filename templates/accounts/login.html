@@ -1,10 +1,13 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Sign in{% endblock %}
 {% block body_class %}auth{% endblock %}
 {% block shell %}
 <div class="auth-wrap">
   <section class="auth-hero" aria-hidden="true">
-    <div class="auth-hero__brand"><span class="brandmark">{% include "components/brandmark.html" %}</span><span>LPU Reserve</span></div>
+    {% if brand.logo %}<div class="auth-hero__brand"><img class="auth-hero__logo" src="{% static brand.logo %}" alt="" height="44" decoding="async"><span>LPU Reserve</span></div>
+    {% elif brand.mark %}<div class="auth-hero__brand"><img class="auth-hero__seal" src="{% static brand.mark %}" alt="" width="56" height="56" decoding="async"><span>LPU Reserve</span></div>
+    {% else %}<div class="auth-hero__brand"><span class="brandmark">{% include "components/brandmark.html" %}</span><span>LPU Reserve</span></div>{% endif %}
     <div class="auth-hero__board">
       <div class="hb-row"><span class="hb-label">Room 34-301</span><span class="hb-track"><i class="hb hb--class" style="--l:4%;--w:18%"></i><i class="hb hb--booked" style="--l:30%;--w:12%"></i><i class="hb hb--class" style="--l:52%;--w:16%"></i></span></div>
       <div class="hb-row"><span class="hb-label">GPU Lab 38-204</span><span class="hb-track"><i class="hb hb--booked" style="--l:10%;--w:22%"></i><i class="hb hb--mine" style="--l:40%;--w:14%"></i><i class="hb hb--booked" style="--l:62%;--w:20%"></i></span></div>

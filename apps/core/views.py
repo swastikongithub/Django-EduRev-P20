@@ -4,14 +4,19 @@ from datetime import time, timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.templatetags.static import static
 from django.utils import timezone
+from django.views.decorators.cache import cache_control
+from django.views.decorators.http import require_GET
 
 from apps.accounts.permissions import has_cap
 from apps.bookings import availability
 from apps.bookings.models import Booking, BookingStatus
 from apps.catalogue.models import Resource, ResourceType, SavedResource
 from apps.checkins.services import active_restriction, checkin_state
+from apps.core.branding import brand_assets
 from apps.core.timeutil import ceil_to
 
 
@@ -151,3 +156,26 @@ def _desk(user):
         live = live.filter(resource__custodians__user=user)
     desk["in_use"] = live.count()
     return desk
+
+
+@require_GET
+@cache_control(max_age=3600, public=True)
+def manifest(request):
+    """Web app manifest: the official icons once they are in static/img/brand/, else the placeholder."""
+    assets = brand_assets()
+    icons = [
+        {"src": static(assets[slot]), "sizes": size, "type": "image/png", "purpose": "any"}
+        for slot, size in (("icon_192", "192x192"), ("icon_512", "512x512"))
+        if slot in assets
+    ] or [{"src": static(assets.get("favicon", "img/favicon.svg")), "sizes": "any", "type": "image/svg+xml"}]
+    body = {
+        "name": "LPU Reserve",
+        "short_name": "LPU Reserve",
+        "start_url": "/home/",
+        "scope": "/",
+        "display": "standalone",
+        "background_color": "#ffffff",
+        "theme_color": "#f68121",
+        "icons": icons,
+    }
+    return JsonResponse(body, content_type="application/manifest+json")

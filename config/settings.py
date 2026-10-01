@@ -5,6 +5,7 @@ All configuration comes from environment variables (see docs/environment.md).
 Nothing secret lives in this file.
 """
 
+import os
 from pathlib import Path
 
 import environ
@@ -22,6 +23,11 @@ env = environ.Env(
     LOG_JSON=(bool, False),
 )
 environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
+# An empty variable means "not set": Railway resolves a reference to a shared variable that was
+# never defined (an optional email key, SENTRY_DSN, ...) to "", which must fall back to the
+# default rather than become an empty backend name or an empty host.
+for _name in [k for k, v in os.environ.items() if v == ""]:
+    del os.environ[_name]
 
 DEBUG = env("DEBUG")
 # The dev fallback exists only so `DEBUG=1` works out of the box. With DEBUG off the key signs
@@ -33,16 +39,29 @@ DEMO_MODE = env("DEMO_MODE")
 _DEV_SECRET_KEY = "dev-only-insecure-key-change-me"
 _PLACEHOLDER_SECRET_KEYS = {_DEV_SECRET_KEY, "replace-me-with-a-long-random-string", "changeme", "secret"}
 SECRET_KEY = env("DJANGO_SECRET_KEY", default=_DEV_SECRET_KEY if DEBUG else "")
-if not DEBUG and (
-    SECRET_KEY in _PLACEHOLDER_SECRET_KEYS
-    or len(SECRET_KEY) < 32
-    or SECRET_KEY.startswith("django-insecure-")
-    or (SECRET_KEY.startswith("dev-only-") and not DEMO_MODE)
-):
+# Previous keys, newest first, while rotating (Django's SECRET_KEY_FALLBACKS). Sessions and tokens
+# signed with them stay valid, and TOTP secrets encrypted under them stay readable; each is
+# re-encrypted with the current key at its next sign-in, or all at once by
+# `manage.py mfa_keys --rotate`. Remove a fallback once `manage.py mfa_keys` reports none left on it.
+SECRET_KEY_FALLBACKS = env.list("DJANGO_SECRET_KEY_FALLBACKS", default=[])
+
+
+def _weak_secret_key(key: str) -> bool:
+    return (
+        key in _PLACEHOLDER_SECRET_KEYS
+        or len(key) < 32
+        or key.startswith("django-insecure-")
+        or (key.startswith("dev-only-") and not DEMO_MODE)
+    )
+
+
+if not DEBUG and (_weak_secret_key(SECRET_KEY) or any(_weak_secret_key(k) for k in SECRET_KEY_FALLBACKS)):
     from django.core.exceptions import ImproperlyConfigured
 
+    # A weak fallback is as dangerous as a weak key: signatures made with it are still accepted.
     raise ImproperlyConfigured(
-        "DJANGO_SECRET_KEY must be set to a private random value of at least 32 characters when DEBUG is off. "
+        "DJANGO_SECRET_KEY (and every DJANGO_SECRET_KEY_FALLBACKS entry) must be a private random value of at "
+        "least 32 characters when DEBUG is off. "
         'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(50))"'
     )
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
@@ -106,6 +125,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.core.context_processors.shell",
+                "apps.core.context_processors.brand",
             ],
             "builtins": ["apps.core.templatetags.ui", "django.templatetags.i18n"],
         },
@@ -155,18 +175,32 @@ STORAGES = {
         )
     },
 }
-# Uploaded media: local disk outside the static root in development. In production
-# set USE_S3=1 to route uploads to S3-compatible storage with pre-signed URLs.
+# Uploaded media (resource photos). Development: local disk outside the static root, served by
+# runserver only when DEBUG is on. Production: S3-compatible object storage (USE_S3=1). Container
+# filesystems are ephemeral on every platform we target, so a production deployment without
+# USE_S3 fails `check --deploy` (lpu.E001). The bucket stays private: every photo URL is a
+# pre-signed GET that expires (CES §1.4 "served only via pre-signed URL"). On Railway, wire the
+# bucket's BUCKET, ACCESS_KEY_ID, SECRET_ACCESS_KEY, ENDPOINT and REGION into the S3_* variables
+# below (docs/deployment-railway.md).
 MEDIA_URL = "media/"
 MEDIA_ROOT = Path(env("MEDIA_ROOT", default=str(BASE_DIR / ".media")))
-if env.bool("USE_S3", default=False):  # pragma: no cover - production only
+USE_S3 = env.bool("USE_S3", default=False)
+if USE_S3:
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {
             "bucket_name": env("S3_BUCKET"),
             "endpoint_url": env("S3_ENDPOINT_URL", default=None),
+            "access_key": env("S3_ACCESS_KEY_ID", default=None),
+            "secret_key": env("S3_SECRET_ACCESS_KEY", default=None),
+            "region_name": env("S3_REGION", default=None),
+            # Railway buckets use virtual-hosted-style URLs; some older buckets and MinIO need "path".
+            "addressing_style": env("S3_ADDRESSING_STYLE", default="virtual"),
+            "signature_version": "s3v4",
+            "location": env("S3_MEDIA_PREFIX", default="media"),
+            "default_acl": None,  # the bucket's own (private) policy; never public-read
             "querystring_auth": True,
-            "querystring_expire": 900,
+            "querystring_expire": env.int("S3_URL_EXPIRY_SECONDS", default=900),
             "file_overwrite": False,
         },
     }
@@ -211,9 +245,14 @@ CELERY_BEAT_SCHEDULE = {
 # balancer: 1). 0 means clients connect directly and the header is ignored (SEC-07). The audit
 # log, the sign-in rate limiter and the API throttle all derive the client address from it.
 TRUSTED_PROXY_HOPS = env.int("TRUSTED_PROXY_HOPS", default=0)
+# Alternatively, name a header that the edge proxy *sets* (overwriting anything the client sent).
+# Railway documents X-Real-IP as its client-address header and does not document how it treats
+# X-Forwarded-For, so on Railway use TRUSTED_CLIENT_IP_HEADER=X-Real-IP and leave the hop count
+# at 0. Never set this when clients can reach the app without passing through that proxy.
+TRUSTED_CLIENT_IP_HEADER = env("TRUSTED_CLIENT_IP_HEADER", default="")
 
 REST_FRAMEWORK = {
-    # Without this DRF's throttles key anonymous callers on the raw, client-supplied header.
+    # DRF's own X-Forwarded-For handling, for any throttle other than apps.core.throttling's.
     "NUM_PROXIES": TRUSTED_PROXY_HOPS,
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
@@ -222,8 +261,9 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 25,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.UserRateThrottle",
-        "rest_framework.throttling.AnonRateThrottle",
+        # Same client address as the sign-in limiter and the audit log (apps.core.http.client_ip).
+        "apps.core.throttling.ClientUserRateThrottle",
+        "apps.core.throttling.ClientAnonRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {"user": env("API_USER_RATE", default="600/min"), "anon": "60/min"},
     "EXCEPTION_HANDLER": "apps.core.api.exception_handler",
@@ -281,9 +321,65 @@ MFA_ENFORCED = env.bool("MFA_ENFORCED", default=True)
 LOGIN_LOCKOUT_MINUTES = 15
 
 # ── Email ───────────────────────────────────────────────────────────────────
+# Two delivery paths, chosen by EMAIL_BACKEND:
+#   * SMTP  — django.core.mail.backends.smtp.EmailBackend with the EMAIL_HOST* settings below.
+#   * HTTPS API — anymail.backends.{resend,postmark,sendgrid,mailgun}.EmailBackend with that
+#     provider's key. Railway disables outbound SMTP on its Free, Trial and Hobby plans, so an
+#     HTTPS provider is the portable choice there (docs/deployment-railway.md#email).
+# Console output is the default for development; production with it fails check --deploy (lpu.E002).
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="LPU Reserve <reserve@lpu.example>")
-SITE_URL = env("SITE_URL", default="http://localhost:8000")
+SERVER_EMAIL = env("SERVER_EMAIL", default=DEFAULT_FROM_EMAIL)
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=15)
+ANYMAIL = {
+    k: v
+    for k, v in {
+        "RESEND_API_KEY": env("RESEND_API_KEY", default=""),
+        "POSTMARK_SERVER_TOKEN": env("POSTMARK_SERVER_TOKEN", default=""),
+        "SENDGRID_API_KEY": env("SENDGRID_API_KEY", default=""),
+        "MAILGUN_API_KEY": env("MAILGUN_API_KEY", default=""),
+        "MAILGUN_SENDER_DOMAIN": env("MAILGUN_SENDER_DOMAIN", default=""),
+    }.items()
+    if v
+}
+
+# Railway injects the service's public hostname. Trust it automatically (it is ours), so a fresh
+# deployment answers on its *.up.railway.app domain without hand-editing ALLOWED_HOSTS and
+# CSRF_TRUSTED_ORIGINS; custom domains still go in those variables explicitly.
+RAILWAY_PUBLIC_DOMAIN = env("RAILWAY_PUBLIC_DOMAIN", default="")
+if RAILWAY_PUBLIC_DOMAIN:
+    if RAILWAY_PUBLIC_DOMAIN not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS = [*ALLOWED_HOSTS, RAILWAY_PUBLIC_DOMAIN]
+    if f"https://{RAILWAY_PUBLIC_DOMAIN}" not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS = [*CSRF_TRUSTED_ORIGINS, f"https://{RAILWAY_PUBLIC_DOMAIN}"]
+SITE_URL = env(
+    "SITE_URL", default=f"https://{RAILWAY_PUBLIC_DOMAIN}" if RAILWAY_PUBLIC_DOMAIN else "http://localhost:8000"
+)
+
+# ── Error tracking (optional) ───────────────────────────────────────────────
+# CES §1.1 asks for Sentry. Off unless SENTRY_DSN is set. No personal data is sent: no request
+# bodies, cookies, user details or IP addresses (CES §1.4 "no personal data in logs").
+SENTRY_DSN = env("SENTRY_DSN", default="")
+if SENTRY_DSN:  # pragma: no cover - exercised only with a real DSN
+    import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=env("SENTRY_ENVIRONMENT", default=env("RAILWAY_ENVIRONMENT_NAME", default="production")),
+        release=env("RAILWAY_GIT_COMMIT_SHA", default=None),
+        integrations=[DjangoIntegration(), CeleryIntegration()],
+        send_default_pii=False,
+        max_request_body_size="never",
+        traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+    )
 
 # ── Logging ─────────────────────────────────────────────────────────────────
 LOGGING = {

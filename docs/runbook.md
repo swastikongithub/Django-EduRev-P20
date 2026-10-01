@@ -15,12 +15,14 @@ for LPU Reserve. Environment variables are described in [environment.md](environ
 |---|---|---|---|
 | web | `gunicorn config.wsgi:application` (image default `CMD`) | 1..n | Liveness `/health/`, readiness `/ready/`; static files served by WhiteNoise |
 | worker | `celery -A config worker -l info --concurrency N` | 1..n | Runs sweeps and notification email |
-| beat | `celery -A config beat -l info --schedule /var/lib/celery/celerybeat-schedule` | **exactly 1** | Never scale; a second Beat doubles every scheduled sweep |
+| beat | `python manage.py run_beat` | 1 | Celery Beat behind a PostgreSQL advisory lock: an extra instance (scaling, or an overlapping redeploy) waits instead of doubling every sweep, and takes over if the leader dies ([deployment-railway.md](deployment-railway.md#celery-worker-and-exactly-one-beat)) |
 | PostgreSQL 16 | managed service | 1 primary | `max_connections` must cover web workers + Celery + headroom |
 | Redis 7 | managed service | 1 | Django cache (db 0) and Celery broker (db 1); no persistence required |
 
-All three application processes use the same image. Only one process per release runs
-migrations (`RUN_MIGRATIONS=1`).
+All three application processes use the same image. Migrations run once per release, before
+the new web process takes traffic: `docker/predeploy.sh` as the platform's release step (the
+Railway pre-deploy command; it runs `check --deploy` first), or `RUN_MIGRATIONS=1` on the docker
+compose `web` service.
 
 Connection budget: each gunicorn worker and each Celery worker process holds up to one
 persistent connection (`DB_CONN_MAX_AGE=60`). With 2 web containers x 3 workers + 2 Celery
@@ -130,9 +132,9 @@ release. Then image rollback alone is always safe.
 | Data | Where | How |
 |---|---|---|
 | PostgreSQL database (all application data, including the audit log) | managed PostgreSQL or the compose `pgdata` volume | `pg_dump -Fc` daily, plus platform point-in-time recovery if offered |
-| Uploaded resource photos | `MEDIA_ROOT` (compose volume `media`) | Archive the directory daily |
+| Uploaded resource photos | Production: the private object-storage bucket (`USE_S3=1`). Compose: `MEDIA_ROOT` (volume `media`) | Production: the bucket is outside every container; Railway buckets have no versioning, so copy the bucket if a second copy is required. Compose: archive the directory daily |
 | Redis | compose `redis` service | Not backed up. It holds cache entries and queued tasks only; persistence is off by design |
-| Beat schedule file | compose volume `beat-schedule` | Not needed; Beat recreates it |
+| Beat schedule file | the container's temporary directory | Not needed: `run_beat` recreates it, and the nightly analytics job catches up any missed day |
 
 ### Schedule and retention
 
@@ -142,8 +144,10 @@ release. Then image rollback alone is always safe.
 - Run the [tested restore](#tested-restore-procedure) monthly and after every PostgreSQL
   major-version change. CES §1.3 requires a documented, tested restore.
 
-Automating the schedule depends on the hosting platform and is not yet configured
-([known issues](known-issues.md#operations)).
+On Railway this is automated: the `backup` cron service writes an encrypted `pg_dump` to a
+private bucket every night, and the platform's volume backups run alongside it. CI restores such
+a dump on every push ([backup-restore.md](backup-restore.md)). On other platforms, schedule the
+`docker/backup` image (or the commands below) with the platform's scheduler.
 
 ### Commands
 
@@ -235,11 +239,11 @@ and every check passed.
 
 | Secret | Procedure | Side effects |
 |---|---|---|
-| `DJANGO_SECRET_KEY` | Generate 50+ random characters; update the secret for web, worker and beat; redeploy all three | Every session ends (everyone signs in again); password-reset links in flight stop working. **Stored TOTP secrets become undecryptable**: users with MFA cannot complete sign-in until re-enrolled. Before or immediately after the switch, clear enrolment so they enrol again at next sign-in: `UPDATE accounts_user SET mfa_enabled = false, mfa_secret = '' WHERE mfa_enabled;` and tell the affected staff. Booking QR tokens, calendar feed tokens and door QR codes are database values and are not affected |
+| `DJANGO_SECRET_KEY` | Generate 50+ random characters. Set `DJANGO_SECRET_KEY_FALLBACKS` to the **old** key and `DJANGO_SECRET_KEY` to the new one for web, worker and beat; redeploy all three. Run `python manage.py mfa_keys --rotate`, which moves every stored TOTP secret to the new key, and repeat it until it reports `fallback key only: 0` (each sign-in also moves that person's secret). Then remove the fallback and redeploy | While the fallback is set, sessions, password-reset links and TOTP secrets made with the old key keep working. Removing the fallback ends the remaining old sessions. **Never change the key without a fallback**: every stored TOTP secret becomes unreadable, and those people cannot sign in (they see "this server can no longer read the key your authenticator app was set up with"; `manage.py mfa_keys` lists them and exits 1). Recovery: put the old key back as a fallback. If it is lost, reset their enrolment (last row). Booking QR tokens, calendar feed tokens and door QR codes are database values and are not affected |
 | Database password | Create the new password on the server, update `DATABASE_URL` everywhere, redeploy, then revoke the old one | Brief reconnects |
 | Redis password / URL | Update `REDIS_URL` and `CELERY_BROKER_URL`, redeploy web, worker and beat together | Cached rate-limit counters and Insights cache reset; queued emails in the old broker are lost |
 | A person's calendar feed link (leaked) | `UPDATE accounts_user SET calendar_token = gen_random_uuid() WHERE username = '<username>';` | Their old subscription URL stops working; they copy the new link from their profile |
-| An administrator's MFA device (lost) | Verify identity out of band, then `UPDATE accounts_user SET mfa_enabled = false, mfa_secret = '' WHERE username = '<username>';` | They enrol a new device at next sign-in. There are no recovery codes yet |
+| An administrator's MFA device (lost) | Verify identity out of band, then `UPDATE accounts_user SET mfa_enabled = false, mfa_secret = '' WHERE username = '<username>';` | They enrol a new device at next sign-in. There are no recovery codes yet. In local development, `python manage.py mfa_reenroll <username>` does the same safely: it also ends that person's sessions, keeps the replay counter and records `auth.mfa_reset`. It refuses to run unless `DEBUG` is on and the database is on this machine |
 
 Every manual SQL change to `accounts_user` should be noted in the operations log; it does not
 appear in the application audit log.
@@ -256,8 +260,9 @@ appear in the application audit log.
 | Unsent email | `SELECT count(*) FROM notifications_notification n JOIN accounts_user u ON u.id = n.user_id WHERE n.emailed_at IS NULL AND u.email <> '' AND n.created_at < now() - interval '15 minutes' AND n.kind <> 'checkin_open';` | growing steadily |
 | Database | provider metrics | connections near `max_connections`, replication lag, disk |
 
-Error tracking (Sentry) and an external uptime monitor are not configured yet
-([known issues](known-issues.md#operations)).
+Error tracking: set `SENTRY_DSN` ([environment.md](environment.md#error-tracking)). An external
+uptime monitor on `/health/` still has to be set up once a deployment exists
+([OPS-3](known-issues.md#operations)).
 
 ## Incident playbooks
 

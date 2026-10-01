@@ -103,7 +103,7 @@ Status: **Met**; **Partial** (works, with a gap recorded in [known-issues.md](kn
 | Reminder before start; check-in required with grace countdown | Met | `test_checkins.py::test_checkin_nudge_and_reminder_are_sent_once` |
 | Auto-released | Met | `test_checkins.py::test_sweep_releases_exactly_after_the_grace_period` |
 | Maintenance scheduled; resource unavailable | Met | `test_api.py::test_custodian_schedules_maintenance_and_displaces_bookings`; `test_timetable.py::test_publish_displaces_a_colliding_booking_and_tells_the_owner` |
-| Channels: in-app and email | Partial | Email needs environment-driven SMTP (CFG-1); SMS not built (INT-4) |
+| Channels: in-app and email | Partial | Email over SMTP or an HTTPS API (django-anymail), delivered by the worker; CI delivers a test message ([environment.md](environment.md#email)). SMS not built (INT-4) |
 
 ## P20 §12 Integrations
 
@@ -113,7 +113,7 @@ Status: **Met**; **Partial** (works, with a gap recorded in [known-issues.md](kn
 | ERP and SSO for identity and role | Not yet | INT-1 |
 | Calendar export: iCal, Google, Outlook | Met | Per-booking `.ics` and a private subscription feed that Google and Outlook subscribe to; `test_pages.py::test_ics_export`, `::test_personal_feed_needs_the_token` |
 | Door access and IoT occupancy (optional) | Not yet | INT-5, a v2 item |
-| Email and SMS | Partial | INT-4, CFG-1 |
+| Email and SMS | Partial | Email met; SMS not built (INT-4) |
 
 ## P20 §13 and §17 Deliverables
 
@@ -128,7 +128,7 @@ Status: **Met**; **Partial** (works, with a gap recorded in [known-issues.md](kn
 |---|---|---|
 | 2,000 sustained and 5,000 peak concurrent users | Partial | The 500-simultaneous-booking peak passes on a production-like stack ([load-test-report.md](load-test-report.md)); sustained 2,000 and peak 5,000 users are not measured, which needs staging (OPS-8) |
 | API p95 under 400 ms reads and 800 ms writes; dashboards under 3 s | Partial | Constant-query board and dashboards (`test_rules_availability.py::test_board_query_count_is_constant`, `test_insights.py::test_dashboard_query_count_is_bounded`); unloaded per-request timings and burst behaviour measured locally ([load-test-report.md](load-test-report.md)); p95 under steady load not measured, which needs staging (OPS-8) |
-| Availability 99.5%; daily backups with a tested restore | Partial | Probes `/health/` and `/ready/` (`test_health.py`); restore tested ([runbook](runbook.md#tested-restore-procedure)); scheduling not automated (OPS-2) |
+| Availability 99.5%; daily backups with a tested restore | Partial | Probes `/health/` and `/ready/` (`test_health.py`, Railway host `test_production_readiness.py`); nightly encrypted backups and a restore drill in CI ([backup-restore.md](backup-restore.md)); availability unmeasured until deployed (OPS-1, OPS-3) |
 | Seven-year retention, configurable per entity | Not yet | DATA-1 |
 | WCAG 2.2 AA for all student-facing screens | Met | axe in Chromium, light and dark: `e2e/test_accessibility.py` |
 | Last two versions of major browsers; responsive to 360 px | Met | e2e `test_journeys.py::test_no_horizontal_overflow_on_a_phone` |
@@ -147,7 +147,7 @@ Status: **Met**; **Partial** (works, with a gap recorded in [known-issues.md](kn
 | DPDP: purpose limitation, data-subject access and deletion | Partial | Access: `/me/export/` (`test_pages.py::test_data_export_contains_only_my_bookings`); deletion is administrator-handled (SEC-R3) |
 | No personal data in logs or error messages | Met | Branded error pages; `test_health.py::test_check_database_reports_failure_without_leaking_details` |
 | Dependency scanning (pip-audit), no High or Critical at handover | Met | CI `security` job |
-| Upload validation, size caps, malware scanning, stored outside the web root, pre-signed URLs | Partial | Validation, caps and re-encoding (`test_console_setup.py::test_photo_upload_*`); no malware scanning (FS-3); serving and pre-signed URLs pending (FS-1, FS-2) |
+| Upload validation, size caps, malware scanning, stored outside the web root, pre-signed URLs | Partial | Validation, caps and re-encoding (`test_console_setup.py::test_photo_upload_*`); stored in a private bucket and served only through 15-minute pre-signed URLs (`verify_storage` in the CI smoke test); no malware scanning (FS-3) |
 
 ## CES §1.5 Testing
 
@@ -172,7 +172,9 @@ Status: **Met**; **Partial** (works, with a gap recorded in [known-issues.md](kn
 | Database schema documentation with an ERD | [database.md](database.md) |
 | Environment variable reference | [environment.md](environment.md) |
 | Deployment and rollback runbook | [runbook.md](runbook.md) |
-| Backup and restore procedure | [runbook.md](runbook.md#backup) |
+| Backup and restore procedure | [backup-restore.md](backup-restore.md), [runbook.md](runbook.md#backup) |
+| Production deployment guide (Railway) | [deployment-railway.md](deployment-railway.md) |
+| Official LPU branding | [branding.md](branding.md) |
 | Role and permission matrix | [roles.md](roles.md) |
 | Admin user guide | [guide-admin.md](guide-admin.md) |
 | End-user quick-start guide | [guide-user.md](guide-user.md) |
@@ -186,5 +188,5 @@ Status: **Met**; **Partial** (works, with a gap recorded in [known-issues.md](kn
 |---|---|
 | Merged to main via reviewed pull request; CI green | Met for Phase 1 (PR #2) |
 | Tests written and passing; API specification updated; migrations committed and reversible | Met |
-| Deployed to staging and demoed live | Not yet (OPS-1) |
+| Deployed to staging and demoed live | Not yet (OPS-1): the Railway configuration is ready and checked in CI ([deployment-railway.md](deployment-railway.md)) |
 | No High or Critical vulnerabilities; accessibility check on new screens | Met |

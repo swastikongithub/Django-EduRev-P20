@@ -10,7 +10,6 @@ same gates on a laptop.
 |---|---|
 | Push to `main` | All jobs, then the deploy placeholder |
 | Pull request into `main` | All jobs |
-| Push to a development branch listed under `on.push.branches` (during Phase 3: `feat/phase3-ci-qa`) | All jobs |
 | Manual (`workflow_dispatch`) | All jobs |
 
 A newer push to the same pull request or branch cancels the run already in progress.
@@ -21,15 +20,17 @@ A newer push to the same pull request or branch cancels the run already in progr
 |---|---|---|
 | **Lint (ruff)** | `ruff check`, `ruff format --check` | Any lint error or unformatted file |
 | **Django checks + tests** | `manage.py check --fail-level WARNING` | Any system-check warning |
-| | `check --deploy --fail-level WARNING` with production-like settings (random 64-character key, `SECURE_SSL_REDIRECT=1`) | Any deployment warning. `security.W021` (HSTS preload) is silenced only while `SECURE_HSTS_PRELOAD` is off; see [environment.md](environment.md) |
+| | `check --deploy --fail-level WARNING` with a complete production configuration (random key, `SECURE_SSL_REDIRECT=1`, HTTPS `SITE_URL`, Redis, `USE_S3=1`, an email API backend) | Any deployment warning. `security.W021` (HSTS preload) is silenced only while `SECURE_HSTS_PRELOAD` is off; see [environment.md](environment.md) |
+| | `check --deploy --fail-level ERROR` *without* object storage or an email backend | The check accepts a configuration that would lose uploads or never send mail (`lpu.E001`, `lpu.E002`) |
 | | `makemigrations --check --dry-run`, `migrate` | A model change without a migration, or a migration that does not apply |
 | | `collectstatic` with the production manifest storage | A missing or unresolvable static reference |
 | | OpenAPI drift: a fresh `spectacular --validate --fail-on-warn` must equal `docs/openapi.yaml` | The committed API specification is stale, or the schema has warnings |
 | | `pytest -m "not e2e"` with `--cov-fail-under=75` | Any failing test, or statement coverage of `apps/` below 75% |
 | **Browser journeys + accessibility** | `pytest -m e2e` (Playwright + Chromium) | Any journey fails, or axe-core finds a *serious* or *critical* WCAG 2.2 AA violation on a student page in light or dark theme |
+| **Railway IaC** | `npm ci` and `tsc --noEmit` on `.railway/railway.ts` against the pinned `railway` SDK; `npm audit --omit=dev --audit-level=high` | An unknown option, a wrong reference or a type error in the platform configuration; a High vulnerability in the SDK |
 | **Security** | `pip-audit -r requirements.txt` | Any known vulnerability in a runtime dependency |
 | | gitleaks over the full history | A committed secret |
-| **Docker image** | Build the production image; validate `docker-compose.yml`; start the production-like stack; `scripts/ci/smoke.sh` | The image does not build or boot, or any smoke check fails (list below) |
+| **Docker image** | Build the production image; validate `docker-compose.yml`; start the production-like stack; `scripts/ci/smoke.sh`; `scripts/ci/beat_failover.sh`; `scripts/ci/backup_roundtrip.sh` | The image does not build or boot, any smoke check fails (list below), two schedulers run at once or the follower never takes over, or a backup does not restore to identical row counts |
 | **OWASP ZAP baseline** | Passive scan of the running stack; `scripts/ci/zap_gate.py` | Any High alert, or a Medium alert not accepted with a reason (see [ZAP baseline](#owasp-zap-baseline)) |
 
 The concurrency proofs (500 simultaneous attempts on one slot, and the lockout race) run in the
@@ -38,8 +39,10 @@ tests job against PostgreSQL with `max_connections=700`.
 ### Production smoke test
 
 `scripts/ci/stack.sh up` starts the built image as deployed: gunicorn, `DEBUG=0`,
-`DEMO_MODE=0`, a random secret key, PostgreSQL 16, Redis, migrations on start-up, and
-`SECURE_SSL_REDIRECT=1` behind a simulated TLS proxy (clients send `X-Forwarded-Proto: https`).
+`DEMO_MODE=0`, a random secret key, PostgreSQL 16, Redis, uploads in a private S3-compatible
+bucket (the moto server), mail over SMTP (Mailpit), and `SECURE_SSL_REDIRECT=1` behind a
+simulated TLS proxy (clients send `X-Forwarded-Proto: https`). Migrations run first, in a one-off
+container through `docker/predeploy.sh`, as Railway's pre-deploy command runs them.
 `scripts/ci/smoke.sh` then checks, over HTTP:
 
 - `/health/` and `/ready/` answer 200 (database and Redis reachable);
@@ -49,7 +52,15 @@ tests job against PostgreSQL with `max_connections=700`.
 - static files are served by WhiteNoise under manifest-hashed names with immutable caching;
 - the API and its live schema refuse anonymous callers;
 - `/django-admin/login/` is the product sign-in (lockout and MFA apply);
-- the container runs as a non-root user and `manage.py check --deploy` reports no warnings.
+- the container runs as a non-root user and `manage.py check --deploy` reports no warnings;
+- `manage.py verify_storage` writes a photo-sized object to the bucket, reads it back through the
+  pre-signed URL a browser would get, and deletes it;
+- `manage.py sendtestemail` is delivered to the SMTP relay.
+
+Then `scripts/ci/beat_failover.sh` starts two `run_beat` containers. It checks that only one
+schedules, kills it, and checks that the other takes over. `scripts/ci/backup_roundtrip.sh` seeds
+the demo campus, takes an age-encrypted backup with the real backup image, restores it into a
+fresh database and compares row counts ([backup-restore.md](backup-restore.md#the-drill-in-ci)).
 
 ## Artifacts
 
@@ -120,7 +131,9 @@ pytest -m e2e                                  # browser journeys and axe (pytho
 docker build -t lpu-reserve:ci .               # the production image
 scripts/ci/stack.sh up                         # production-like stack on 127.0.0.1:8000
 scripts/ci/smoke.sh
+scripts/ci/beat_failover.sh                    # exactly one Celery Beat
 scripts/ci/stack.sh seed
+scripts/ci/backup_roundtrip.sh                 # encrypted backup -> restore -> compare
 OUT=zap-out scripts/ci/zap_baseline.sh         # ZAP_IMAGE=zaproxy/zap-stable to pull from Docker Hub instead
 scripts/ci/stack.sh down
 ```

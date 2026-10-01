@@ -71,8 +71,9 @@ Tracked in [known-issues.md](known-issues.md#security-and-privacy):
 - The ZAP baseline is passive and does not cover staff pages or TLS (OPS-10).
 - An approval request whose only eligible approver is the requester waits for a campus-wide
   approver; there is no automatic re-routing (SEC-R5).
-- Rotating `DJANGO_SECRET_KEY` makes stored TOTP secrets undecryptable; the runbook describes
-  re-enrolment (SEC-R2).
+- Rotating `DJANGO_SECRET_KEY` used to make stored TOTP secrets undecryptable (SEC-R2, resolved in
+  production readiness): old keys now go in `DJANGO_SECRET_KEY_FALLBACKS`, secrets move to the new
+  key, and an unreadable secret is reported and audited instead of being counted as wrong codes.
 
 ## Running the suite
 
