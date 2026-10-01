@@ -66,7 +66,8 @@
 .typecard:has(input:checked) { border-color: var(--saffron-500); background: var(--saffron-50); box-shadow: inset 0 0 0 1px var(--saffron-500); }
 .typecard:has(input:checked) .typecard__icon { background: var(--saffron-500); color: #fff; border-color: var(--saffron-500); }
 .typecard:has(input:focus-visible) { outline: 2.5px solid var(--focus); outline-offset: 2px; }
-.composer__when { display: grid; grid-template-columns: auto 1fr 1fr 110px auto; gap: 12px; align-items: end; }
+.composer__when { display: grid; grid-template-columns: auto minmax(104px, 1fr) minmax(104px, 1fr) minmax(84px, 100px) auto; gap: 12px; align-items: end; }
+.composer__when .select { padding-right: 30px; font-variant-numeric: tabular-nums; }
 .seg--fill { display: flex; height: 44px; align-items: stretch; }
 .seg--fill label { display: grid; place-items: center; padding: 0 14px; }
 .composer__go { height: 44px; }
@@ -391,3 +392,10 @@ a.inbox__title:hover { color: var(--link); text-decoration: underline; }
 .errorpage__card { max-width: 480px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .errorpage__code { font-size: 4.5rem; font-weight: 800; letter-spacing: -0.05em; color: var(--saffron-500); line-height: 1; }
 .errorpage h1 { font-size: var(--fs-2xl); }
+
+/* ── MFA ──────────────────────────────────────────────────────────────── */
+.auth-panel--solo { min-height: 100dvh; }
+.mfa-qr { background: #fff; border-radius: var(--r-md); border: 1px solid var(--line); padding: 12px; width: 220px; margin: 0 auto; }
+.mfa-qr svg.qr path { fill: #13233a; }
+.mfa-key { display: block; margin-top: 8px; padding: 8px 10px; border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--fs-sm); letter-spacing: .12em; word-break: break-all; }
+.mfa-code { letter-spacing: .4em; text-align: center; font-variant-numeric: tabular-nums; font-size: var(--fs-2xl); font-weight: 750; }

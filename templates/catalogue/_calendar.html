@@ -26,7 +26,7 @@
       {% for s, runs in columns %}
       <div class="cal__dayhead{% if s.day == today %} is-today{% endif %}{% if not s.is_open %} is-closed{% endif %}">
         <span>{{ s.day|date:"D" }}</span><strong class="tnum">{{ s.day|date:"j" }}</strong>
-        <em class="tnum">{% if s.is_open %}{{ s.free_minutes|duration }} free{% else %}Closed{% endif %}</em>
+        <em class="tnum">{% if s.day < today %}Past{% elif s.is_open %}{{ s.free_minutes|duration }} free{% else %}Closed{% endif %}</em>
       </div>
       {% endfor %}
     </div>
@@ -40,7 +40,7 @@
           {% elif run.state == "past" or run.state == "closed" %}
           <div class="cal__off cal__off--{{ run.state }}" style="grid-row: {{ run.row }} / span {{ run.span }}" aria-hidden="true"></div>
           {% else %}
-          <div class="cal__block st-{{ run.state }}{% if run.span < 2 %} is-short{% endif %}" style="grid-row: {{ run.row }} / span {{ run.span }}" data-why="{{ run.start|hm }}–{{ run.end|hm }}: {{ run.reason }}" tabindex="0" role="note" aria-label="{{ run.start|hm }} to {{ run.end|hm }}, unavailable: {{ run.reason }}">
+          <div class="cal__block st-{{ run.state }}{% if run.span < 2 %} is-short{% endif %}" style="grid-row: {{ run.row }} / span {{ run.span }}" data-why="{{ run.start|hm }}–{{ run.end|hm }}: {% if run.state == 'class' %}timetabled class, {% elif run.state == 'maintenance' %}maintenance, {% elif run.state == 'blackout' %}blackout, {% elif run.state == 'pending' %}held for an approval request, {% endif %}{{ run.reason }}" tabindex="0" role="note" aria-label="{{ run.start|hm }} to {{ run.end|hm }}, unavailable: {{ run.reason }}">
             <span class="cal__label">{{ run.reason }}</span>
             {% if run.span > 1 %}<span class="cal__time tnum">{{ run.start|hm }}–{{ run.end|hm }}</span>{% endif %}
           </div>

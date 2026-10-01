@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Verify it's you{% endblock %}
+{% block body_class %}auth{% endblock %}
+{% block shell %}
+<main id="main" class="auth-panel auth-panel--solo">
+  <div class="auth-card">
+    <div class="auth-card__head">
+      <span class="brandmark">{% include "components/brandmark.html" %}</span>
+      <h2>{% if enrolling %}Set up two-step sign-in{% else %}Enter your 6-digit code{% endif %}</h2>
+      <p class="muted">{% if enrolling %}{{ user_name }}, your role can change campus settings, so it needs a second step. Scan this with Google Authenticator, Microsoft Authenticator or any TOTP app, then enter the code it shows.{% else %}Open your authenticator app and enter the current code for LPU Reserve.{% endif %}</p>
+    </div>
+    {% if enrolling %}
+      <div class="mfa-qr">{{ qr }}</div>
+      <details class="small"><summary>Can't scan? Enter this key instead</summary><code class="mfa-key">{{ secret }}</code></details>
+    {% endif %}
+    {% if error %}<div class="notice notice--danger" role="alert">{% icon "circle-alert" %}<div>{{ error }}</div></div>{% endif %}
+    <form method="post" class="stack">
+      {% csrf_token %}
+      <div class="field">
+        <label for="code">Code</label>
+        <input class="input input--lg mfa-code" id="code" name="code" inputmode="numeric" pattern="[0-9 ]{6,7}" maxlength="7" autocomplete="one-time-code" required autofocus>
+      </div>
+      <button class="btn btn--primary btn--lg btn--block" type="submit">{% if enrolling %}Turn on and continue{% else %}Verify{% endif %}</button>
+    </form>
+    <a class="small" href="{% url 'accounts:login' %}">Use a different account</a>
+  </div>
+</main>
+{% endblock %}

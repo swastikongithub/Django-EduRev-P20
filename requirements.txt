@@ -13,3 +13,5 @@ whitenoise>=6.7
 gunicorn>=23.0
 python-json-logger>=3.0
 django-ratelimit>=4.1
+pyotp>=2.9
+cryptography>=43

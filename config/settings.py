@@ -231,6 +231,9 @@ if not DEBUG:  # pragma: no cover - production hardening
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 RATELIMIT_USE_CACHE = "default"
 LOGIN_LOCKOUT_THRESHOLD = 5
+# CES §1.1: TOTP MFA for admin roles. Demo persona sign-in (DEMO_MODE only) skips it.
+MFA_REQUIRED_ROLES = env.list("MFA_REQUIRED_ROLES", default=["admin", "facility_manager"])
+MFA_ENFORCED = env.bool("MFA_ENFORCED", default=True)
 LOGIN_LOCKOUT_MINUTES = 15
 
 # ── Email ───────────────────────────────────────────────────────────────────
