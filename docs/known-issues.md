@@ -83,7 +83,7 @@ but only one tenant (LPU) is served. A second tenant would expose:
 
 | # | Issue | Severity | Plan |
 |---|---|---|---|
-| UI-1 | Internationalisation is partial: the shell, sign-in and home are translated into Hindi and Punjabi; most other screens are English only | Medium | Phase 4 |
+| UI-1 | Hindi and Punjabi translations are partial. English is fully supported and is the launch language, and the infrastructure for Hindi and Punjabi (language switcher, locale catalogues, `LocaleMiddleware`) is in place. Only the navigation shell, sign-in, home and the Language section of **Me** are translated (4 of 63 templates); every other screen is English only and its text is not yet marked for translation, so choosing हिन्दी or ਪੰਜਾਬੀ gives a mixed-language interface | Medium | Deferred: English at launch, with no dedicated translation phase planned. Full application-wide translation (marking the remaining templates and Python messages, then reviewed Hindi and Punjabi translations) is backlog work |
 | UI-2 | The brandmark and favicon are placeholder marks, not the official LPU logo; there is no `favicon.ico`, PNG icon set or web manifest | Medium | Phase 5, once the official artwork is supplied |
 
 ## Test debt
