@@ -48,7 +48,7 @@ class SecurityHeadersMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        if not request.path.startswith(("/api/docs", "/admin/")):
+        if not request.path.startswith(("/api/v1/docs/", "/django-admin/")):
             response.setdefault("Content-Security-Policy", self.CSP)
         response.setdefault("Permissions-Policy", "camera=(self), geolocation=(), microphone=()")
         response.setdefault("Cross-Origin-Opener-Policy", "same-origin")
