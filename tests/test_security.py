@@ -722,6 +722,94 @@ def test_sec10_locked_account_refuses_even_the_right_password(client, student):
 
 
 # ════════════════════════════════════════════════════════════════════════════
+#  Phase 3 security QA (independent re-review; concurrency in test_lockout_race.py)
+# ════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.parametrize(
+    "method,path_fn,data",
+    [
+        ("get", lambda r: "/find/?feature=%C2%B2", None),
+        ("get", lambda r: "/api/v1/resources/%C2%B2/", None),
+        ("get", lambda r: "/api/v1/resources/?features=%C2%B2", None),
+        ("post", lambda r: f"/r/{r.slug}/book/", {"item-²": "1", "start": "10:00", "end": "11:00"}),
+    ],
+)
+def test_superscript_digits_are_not_a_server_error(client, student, room, method, path_fn, data):
+    client.raise_request_exception = False
+    client.force_login(student)
+    resp = getattr(client, method)(path_fn(room), data or {})
+    assert resp.status_code < 500
+
+
+def test_api_booking_items_with_superscript_keys_are_a_400(client, student, room, monday):
+    client.force_login(student)
+    resp = client.post(
+        "/api/v1/bookings/",
+        {
+            "resource": room.pk,
+            "start": at(monday, 10).isoformat(),
+            "end": at(monday, 11).isoformat(),
+            "items": {"²": 1},
+        },
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_restock_rejects_absurd_quantities(client, custodian, room, lpu):
+    from apps.inventory.models import InventoryItem, ItemKind
+
+    item = InventoryItem.objects.create(
+        institution=lpu, name="HDMI cable", sku="HDMI-9", kind=ItemKind.ACCESSORY, resource=room, quantity_total=2
+    )
+    client.force_login(custodian)
+    for qty in ("99999999999", "²", "0", "-3"):
+        resp = client.post(reverse("manage:inventory_restock", args=[item.pk]), {"qty": qty})
+        assert resp.status_code == 302, qty
+    item.refresh_from_db()
+    assert item.quantity_total == 2
+    client.post(reverse("manage:inventory_restock", args=[item.pk]), {"qty": "5", "note": "delivery"})
+    assert AuditLog.objects.filter(action="inventory.restock", target_id=str(item.pk)).exists()
+
+
+def test_acknowledging_and_resolving_a_breakdown_are_audited(client, student, custodian, room):
+    from apps.maintenance import services as maintenance
+
+    report = maintenance.report_breakdown(room, student, summary="Fan noisy", severity=Severity.LOW)
+    client.force_login(custodian)
+    client.post(reverse("manage:maintenance_report", args=[report.pk, "acknowledge"]))
+    client.post(reverse("manage:maintenance_report", args=[report.pk, "resolve"]), {"resolution": "Oiled"})
+    actions = set(AuditLog.objects.filter(target_id=str(report.pk)).values_list("action", flat=True))
+    assert {"maintenance.acknowledge", "maintenance.resolve"} <= actions
+
+
+def test_csv_exports_of_the_audit_log_and_insights_are_audited(client, facility_manager):
+    client.force_login(facility_manager)
+    b"".join(client.get(reverse("manage:audit"), {"format": "csv"}).streaming_content)
+    client.get(reverse("analytics:export", args=["overview"]))
+    actions = set(AuditLog.objects.filter(actor=facility_manager).values_list("action", flat=True))
+    assert "audit.export" in actions and "insights.export" in actions
+
+
+def test_api_throttle_counts_proxies_like_the_rest_of_the_app(settings):
+    assert settings.REST_FRAMEWORK["NUM_PROXIES"] == settings.TRUSTED_PROXY_HOPS
+
+
+def test_a_half_finished_mfa_sign_in_expires(client, admin_user):
+    from apps.accounts.views import MFA_PENDING_SECONDS
+
+    _enrol_mfa(admin_user)
+    _password_login(client, admin_user)
+    session = client.session
+    session["mfa_pending_at"] -= MFA_PENDING_SECONDS + 1
+    session.save()
+    resp = client.get(reverse("accounts:mfa"))
+    assert resp.status_code == 302 and resp.url == reverse("accounts:login")
+    assert "mfa_pending" not in client.session
+
+
+# ════════════════════════════════════════════════════════════════════════════
 #  Regression guards for controls that work today
 # ════════════════════════════════════════════════════════════════════════════
 

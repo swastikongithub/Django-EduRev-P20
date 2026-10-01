@@ -33,8 +33,8 @@ class SecurityHeadersMiddleware:
         [
             "default-src 'self'",
             "img-src 'self' data: blob:",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-            "font-src 'self' https://fonts.gstatic.com",
+            "style-src 'self' 'unsafe-inline'",
+            "font-src 'self'",
             "script-src 'self'",
             "connect-src 'self'",
             "media-src 'self' blob:",

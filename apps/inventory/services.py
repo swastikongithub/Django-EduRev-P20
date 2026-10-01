@@ -133,7 +133,7 @@ def can_manage_item(user, item: InventoryItem) -> bool:
     return bool(item.resource_id and can_manage_resource(user, item.resource))
 
 
-def restock(item: InventoryItem, qty: int, actor, note=""):
+def restock(item: InventoryItem, qty: int, actor, note="", *, request=None):
     if not can_manage_item(actor, item):
         raise NotPermitted("You don't manage this item.")
     if qty <= 0:
@@ -145,8 +145,19 @@ def restock(item: InventoryItem, qty: int, actor, note=""):
             item.quantity_total += qty
         else:
             item.quantity_total = max(item.quantity_total, item.quantity_available)
+        before = {"available": item.quantity_available - qty}
         item.save(update_fields=["quantity_available", "quantity_total", "updated_at"])
         _move(item, qty, "restock", actor=actor, note=note)
+        from apps.audit.services import record
+
+        record(
+            actor,
+            "inventory.restock",
+            item,
+            before=before,
+            after={"available": item.quantity_available, "added": qty, "note": note},
+            request=request,
+        )
     return item
 
 

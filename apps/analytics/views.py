@@ -904,6 +904,16 @@ def export(request, report: str):
         raise Http404
     head, rows = builder(report_data(f.scope, f.group), f)
     scope = slugify(f.department.code) if f.department else "campus"
+    # Some exports name people (no-show rates), so every download is on the audit trail.
+    from apps.audit.services import record
+
+    record(
+        request.user,
+        "insights.export",
+        request.user,
+        after={"report": report, "scope": scope, "from": f"{f.scope.start}", "to": f"{f.scope.end}"},
+        request=request,
+    )
     name = f"insights-{report}-{scope}-{f.scope.start:%Y%m%d}-{f.scope.end:%Y%m%d}.csv"
     resp = HttpResponse(content_type="text/csv; charset=utf-8")
     resp["Content-Disposition"] = f'attachment; filename="{name}"'

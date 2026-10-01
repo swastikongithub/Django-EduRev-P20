@@ -85,7 +85,8 @@ def _nav(user, counts):
 
 def shell(request):
     user = getattr(request, "user", None)
-    ctx = {"DEMO_MODE": settings.DEMO_MODE, "SITE_NAME": "LPU Reserve"}
+    # campus_tz: the zone bookings are in; client-side clocks (calendar now-line, "Today") use it.
+    ctx = {"DEMO_MODE": settings.DEMO_MODE, "SITE_NAME": "LPU Reserve", "campus_tz": settings.TIME_ZONE}
     if not user or not user.is_authenticated:
         return ctx
     counts = {}

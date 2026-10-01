@@ -53,7 +53,7 @@ def provisioning_uri(user, secret: str) -> str:
 def matched_step(secret: str | None, code: str, *, for_time: float | None = None) -> int | None:
     """The TOTP time step `code` belongs to (current step ± 1 for clock drift), or None."""
     code = (code or "").replace(" ", "")
-    if not secret or not code.isdigit() or len(code) != 6:
+    if not secret or not code.isascii() or not code.isdigit() or len(code) != 6:
         return None
     totp = pyotp.TOTP(secret)
     now = for_time if for_time is not None else time.time()

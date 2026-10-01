@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from apps.bookings import availability
 from apps.bookings.models import BookingSlot
 from apps.core.api import StandardPagination, error_responses
+from apps.core.http import is_digits
 from apps.core.timeutil import trange
 
 from .models import Feature, Resource, ResourceStatus
@@ -36,7 +37,7 @@ def institution_resources(user):
 def get_resource(user, key: str) -> Resource:
     """Look a resource up by numeric id or slug, within the user's institution."""
     qs = institution_resources(user).select_related("type", "building", "department")
-    if key.isdigit():
+    if is_digits(key):
         found = qs.filter(pk=int(key)).first()
         if found:
             return found
@@ -73,7 +74,9 @@ class ResourceFilter(django_filters.FilterSet):
             if not token:
                 continue
             match = (
-                Feature.objects.filter(pk=int(token)) if token.isdigit() else Feature.objects.filter(name__iexact=token)
+                Feature.objects.filter(pk=int(token))
+                if is_digits(token)
+                else Feature.objects.filter(name__iexact=token)
             )
             queryset = queryset.filter(features__in=match)
         return queryset.distinct()

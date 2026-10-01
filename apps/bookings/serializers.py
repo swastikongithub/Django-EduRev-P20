@@ -5,6 +5,7 @@ from rest_framework import serializers
 from apps.accounts.models import User
 from apps.catalogue.models import Resource, ResourceStatus
 from apps.catalogue.serializers import ResourceRefSerializer
+from apps.core.http import is_digits
 
 from .models import Booking, BookingSeries, Frequency
 
@@ -119,7 +120,7 @@ class BookingCreateSerializer(InstitutionScopedMixin, serializers.Serializer):
         self.scope_field("booked_for", self.fields["booked_for"].queryset)
 
     def validate_items(self, value):
-        if any(not str(k).isdigit() for k in value):
+        if any(not is_digits(str(k)) for k in value):
             raise serializers.ValidationError("Item keys must be numeric item ids.")
         return {int(k): v for k, v in value.items()}
 
