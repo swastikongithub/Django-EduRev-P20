@@ -57,6 +57,8 @@ VARIANTS = {
     "calendar_start": {"date_value": "0001-01-01", "number_value": "abc"},
     "calendar_end": {"date_value": "9999-12-31", "number_value": "99999999999999999999"},
     "nonsense": {"date_value": "2026-13-45", "number_value": "-1"},
+    # str.isdigit() is True for "²" and full-width digits, but int() rejects "²".
+    "unicode_digits": {"date_value": "２０２６-10-01", "number_value": "²"},
 }
 
 PAGES = [

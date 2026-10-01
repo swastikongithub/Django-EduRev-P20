@@ -1,11 +1,13 @@
 """Sign-in (with lockout), demo personas, profile and booking standing."""
 
+import time
 from datetime import timedelta
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -31,6 +33,31 @@ DEMO_PERSONAS = [
 
 
 BAD_CREDENTIALS = "That VID / username and password don't match."
+# How long a correct password stays "half signed in" waiting for the TOTP code.
+MFA_PENDING_SECONDS = 10 * 60
+
+
+def _count_failure(user_pk, request) -> bool:
+    """
+    Add one failed attempt (password or TOTP code) and lock the account at the threshold.
+
+    The count is changed under a row lock: concurrent wrong answers each see the previous one's
+    count. A read-modify-write on a stale copy let a burst of simultaneous guesses overwrite each
+    other and never reach the lockout. Returns True when this attempt locked the account.
+    """
+    with transaction.atomic():
+        account = User.objects.select_for_update().get(pk=user_pk)
+        account.failed_logins += 1
+        fields = ["failed_logins"]
+        locked = account.failed_logins >= settings.LOGIN_LOCKOUT_THRESHOLD
+        if locked:
+            account.locked_until = timezone.now() + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
+            account.failed_logins = 0
+            fields.append("locked_until")
+        account.save(update_fields=fields)
+    if locked:
+        record(None, "auth.lockout", account, request=request)
+    return locked
 
 
 def _safe_next(request, fallback="core:home"):
@@ -73,6 +100,7 @@ def login_view(request):
                         # The failure count is left alone until the code is right too, so wrong
                         # codes add up across password re-entries (SEC-03).
                         request.session["mfa_pending"] = user.pk
+                        request.session["mfa_pending_at"] = int(time.time())
                         request.session["mfa_next"] = _safe_next(request, fallback="/home/")
                         return redirect("accounts:mfa")
                     User.objects.filter(pk=user.pk).update(failed_logins=0, locked_until=None)
@@ -80,14 +108,7 @@ def login_view(request):
                     record(user, "auth.login", user, request=request)
                     return redirect(_safe_next(request))
                 if account:
-                    account.failed_logins += 1
-                    fields = ["failed_logins"]
-                    if account.failed_logins >= settings.LOGIN_LOCKOUT_THRESHOLD:
-                        account.locked_until = timezone.now() + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
-                        account.failed_logins = 0
-                        fields.append("locked_until")
-                        record(None, "auth.lockout", account, request=request)
-                    account.save(update_fields=fields)
+                    _count_failure(account.pk, request)
                 error = BAD_CREDENTIALS
     personas = []
     if settings.DEMO_MODE:
@@ -258,6 +279,13 @@ def export_my_data(request):
 def mfa_view(request):
     """Second step for privileged roles: verify a TOTP code, or enrol on first sign-in."""
     pk = request.session.get("mfa_pending")
+    started = request.session.get("mfa_pending_at") or 0
+    if pk and time.time() - started > MFA_PENDING_SECONDS:
+        # A password entered long ago no longer vouches for whoever is at the keyboard now.
+        for k in ("mfa_pending", "mfa_pending_at", "mfa_new_secret", "mfa_next"):
+            request.session.pop(k, None)
+        messages.info(request, "Sign-in timed out. Enter your password again.")
+        return redirect("accounts:login")
     user = User.objects.filter(pk=pk, is_active=True).first() if pk else None
     if user is None:
         return redirect("accounts:login")
@@ -284,7 +312,7 @@ def mfa_view(request):
                     user.save(update_fields=["mfa_secret", "mfa_enabled"])
                     record(user, "auth.mfa_enrolled", user, request=request)
                 nxt = request.session.get("mfa_next") or "/home/"
-                for k in ("mfa_pending", "mfa_new_secret", "mfa_next"):
+                for k in ("mfa_pending", "mfa_pending_at", "mfa_new_secret", "mfa_next"):
                     request.session.pop(k, None)
                 User.objects.filter(pk=user.pk).update(failed_logins=0, locked_until=None)
                 login(request, user, backend="django.contrib.auth.backends.ModelBackend")
@@ -292,15 +320,9 @@ def mfa_view(request):
                 record(user, "auth.login", user, after={"mfa": True}, request=request)
                 return redirect(nxt)
             # A wrong code and a replayed one (SEC-11) both count towards the lockout.
-            user.failed_logins += 1
-            fields = ["failed_logins"]
-            if user.failed_logins >= settings.LOGIN_LOCKOUT_THRESHOLD:
-                user.locked_until = timezone.now() + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
-                user.failed_logins = 0
-                fields.append("locked_until")
+            if _count_failure(user.pk, request):
                 for k in ("mfa_pending", "mfa_new_secret"):
                     request.session.pop(k, None)
-            user.save(update_fields=fields)
             if step is not None:
                 error = "That code has already been used. Wait for the next one, then enter it."
             else:

@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 from apps.accounts.permissions import can_manage_resource, has_cap
 from apps.catalogue.models import Resource
 from apps.core.errors import DomainError
-from apps.core.http import MAX_PK, date_param, int_param
+from apps.core.http import MAX_PK, date_param, int_param, is_digits
 from apps.core.timeutil import aware, trange
 
 from . import services
@@ -60,7 +60,7 @@ def create(request, slug):
     else:
         items = {}
         for k, v in p.items():
-            if k.startswith("item-") and k[5:].isdigit():
+            if k.startswith("item-") and is_digits(k[5:]):
                 try:
                     qty = int(v or 0)
                 except ValueError:
@@ -340,7 +340,7 @@ def series_new(request):
     start_date = _date(g.get("start_date"), _date(g.get("date"), today + timedelta(days=1)))
     until_date = _date(g.get("until_date"), start_date + timedelta(weeks=6))
     t1, t2 = _time(g.get("start") or g.get("from")) or time(10), _time(g.get("end") or g.get("to")) or time(11)
-    weekdays = [int(x) for x in g.getlist("weekday") if x.isdigit() and 0 <= int(x) <= 6] or [start_date.weekday()]
+    weekdays = [int(x) for x in g.getlist("weekday") if is_digits(x) and 0 <= int(x) <= 6] or [start_date.weekday()]
     ctx = {
         "resource": resource,
         "resources": resources,

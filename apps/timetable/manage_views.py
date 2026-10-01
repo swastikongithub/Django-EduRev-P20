@@ -13,7 +13,7 @@ from django.views.decorators.http import require_http_methods
 from apps.audit.services import record
 from apps.catalogue.manage_forms import read_csv_upload
 from apps.core.errors import DomainError
-from apps.core.http import MAX_PK, date_param, int_param, pk_param
+from apps.core.http import MAX_PK, date_param, int_param, is_digits, pk_param
 from apps.core.manage_views import staff_required
 
 from .models import AcademicTerm, PublicationStatus, TimetablePublication
@@ -53,7 +53,7 @@ def timetable(request):
     inst = request.user.institution_id
     if request.GET.get("sample"):
         return _csv(SAMPLE, "lpu-reserve-timetable-template.csv")
-    if request.GET.get("download", "").isdigit():
+    if is_digits(request.GET.get("download", "")):
         pub = get_object_or_404(TimetablePublication, institution_id=inst, pk=request.GET["download"])
         return _csv(export_csv(pub), f"timetable-{pub.term.code}-v{pub.version}.csv")
 
@@ -73,7 +73,7 @@ def timetable(request):
     terms = _terms(inst)
     draft_id = request.GET.get("draft")
     draft = None
-    if draft_id and draft_id.isdigit():
+    if is_digits(draft_id):
         draft = (
             TimetablePublication.objects.filter(institution_id=inst, pk=draft_id, status=PublicationStatus.DRAFT)
             .select_related("term")
@@ -91,7 +91,7 @@ def timetable(request):
         ctx["impact"] = displacement_preview(draft)
         ctx["draft_current"] = next((t.current for t in terms if t.pk == draft.term_id), None)
     published = request.GET.get("published")
-    if published and published.isdigit():
+    if is_digits(published):
         ctx["published"] = (
             TimetablePublication.objects.filter(institution_id=inst, pk=published).select_related("term").first()
         )

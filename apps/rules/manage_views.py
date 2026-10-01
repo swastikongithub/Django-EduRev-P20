@@ -17,7 +17,7 @@ from apps.accounts.models import Role, User
 from apps.accounts.permissions import has_cap, is_campus_wide
 from apps.audit.services import record, snapshot
 from apps.catalogue.models import Resource, ResourceStatus, ResourceType
-from apps.core.http import pk_param
+from apps.core.http import is_digits, pk_param
 from apps.core.manage_views import staff_required
 
 from .manage_forms import (
@@ -499,7 +499,7 @@ def policies(request):
 
 def _edit_instance(request, qs):
     pk = request.GET.get("edit")
-    if pk and pk.isdigit():
+    if is_digits(pk):
         return qs.filter(pk=pk).first()
     return None
 
@@ -526,7 +526,7 @@ def build_booking(request, bound):
     kw = {"institution_id": inst}
     new_form, edit_form, autoopen = _forms(request, bound, BookingPolicyForm, qs, **kw)
     target = request.GET.get("resource")
-    if not bound and target and target.isdigit():
+    if not bound and is_digits(target):
         existing = qs.filter(scope=Scope.RESOURCE, resource_id=target).first()
         if existing:
             edit_form, autoopen = BookingPolicyForm(instance=existing, **kw), "edit-sheet"

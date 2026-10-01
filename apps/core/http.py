@@ -50,6 +50,14 @@ def safe_next(request, fallback: str) -> str:
     return fallback
 
 
+def is_digits(value) -> bool:
+    """
+    True for a plain ASCII run of 0-9. `str.isdigit()` alone also accepts characters such as
+    "²" that int() rejects, which turned a guard into a 500 (SEC-13 follow-up).
+    """
+    return isinstance(value, str) and value.isascii() and value.isdigit()
+
+
 def int_param(value, default=None, *, lo=None, hi=None):
     """`int(value)` clamped to [lo, hi], or `default` when it is not a whole number."""
     try:
