@@ -336,10 +336,10 @@ def set_status(booking: Booking, new_status: str, *, reason: str = "", actor=Non
     return booking
 
 
-def can_cancel(user, booking: Booking) -> bool:
+def can_cancel(user, booking: Booking, now=None) -> bool:
     if booking.status not in (BookingStatus.PENDING, BookingStatus.APPROVED):
         return False
-    if booking.end <= timezone.now():
+    if booking.end <= (now or timezone.now()):
         return False
     return user.pk in (booking.requester_id, booking.booked_for_id) or can_manage_resource(user, booking.resource)
 
@@ -348,7 +348,7 @@ def cancel_booking(booking: Booking, actor, *, reason: str = "", request=None, n
     now = now or timezone.now()
     with transaction.atomic():
         booking = Booking.objects.select_for_update().select_related("resource").get(pk=booking.pk)
-        if not can_cancel(actor, booking):
+        if not can_cancel(actor, booking, now=now):
             raise NotPermitted("This booking can't be cancelled.")
         before = booking.status
         set_status(booking, BookingStatus.CANCELLED, reason=reason or "Cancelled by requester", actor=actor, now=now)

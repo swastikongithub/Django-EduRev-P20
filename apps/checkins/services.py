@@ -216,27 +216,28 @@ def apply_ladder(user, now=None) -> Restriction | None:
     return None
 
 
-def forgive(no_show: NoShow, actor, reason: str, *, request=None) -> NoShow:
+def forgive(no_show: NoShow, actor, reason: str, *, request=None, now=None) -> NoShow:
     if not has_cap(actor, "forgive_no_shows") or not can_manage_resource(actor, no_show.resource):
         raise NotPermitted("You can't forgive no-shows for this resource.")
+    now = now or timezone.now()
     with transaction.atomic():
         no_show.forgiven = True
         no_show.forgiven_by = actor
         no_show.forgiven_reason = reason[:240]
         no_show.save(update_fields=["forgiven", "forgiven_by", "forgiven_reason"])
-        # Re-evaluate: lift an automatic restriction the user no longer qualifies for.
+        # Re-evaluate: lift the automatic restrictions the user no longer qualifies for. Every
+        # tier reached leaves its own row (3rd, 4th, 5th no-show...), so lift them all, not just
+        # the longest — otherwise an older, shorter pause keeps blocking the user.
         from apps.rules.models import RestrictionTier
 
-        current = active_restriction(no_show.user)
-        if current and current.automatic:
-            still = any(
-                recent_no_shows(no_show.user, t.window_days) >= t.no_shows
-                for t in RestrictionTier.objects.filter(institution_id=no_show.institution_id, restrict_days__gt=0)
-            )
-            if not still:
-                current.lifted_at = timezone.now()
-                current.lifted_by = actor
-                current.save(update_fields=["lifted_at", "lifted_by"])
+        still = any(
+            recent_no_shows(no_show.user, t.window_days, now) >= t.no_shows
+            for t in RestrictionTier.objects.filter(institution_id=no_show.institution_id, restrict_days__gt=0)
+        )
+        if not still:
+            Restriction.objects.filter(
+                user=no_show.user, automatic=True, lifted_at__isnull=True, starts_at__lte=now, ends_at__gt=now
+            ).update(lifted_at=now, lifted_by=actor)
         from apps.audit.services import record
 
         record(actor, "no_show.forgive", no_show.booking, after={"reason": reason}, request=request)
@@ -277,8 +278,8 @@ def sweep_no_shows(now=None) -> list[Booking]:
             .select_related("resource", "booked_for")
         )
         for b in due:
-            if b.checkin_deadline > now:
-                continue
+            if b.checkin_deadline >= now:
+                continue  # check_in() still accepts the deadline minute itself (now <= closes)
             freed = minutes_between(max(now, b.start), b.end)
             set_status(
                 b, BookingStatus.NO_SHOW, reason=f"Not checked in within {b.checkin_grace_minutes} minutes", now=now
