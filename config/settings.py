@@ -23,11 +23,30 @@ env = environ.Env(
 )
 environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
 
-SECRET_KEY = env("DJANGO_SECRET_KEY", default="dev-only-insecure-key-change-me")
 DEBUG = env("DEBUG")
+# The dev fallback exists only so `DEBUG=1` works out of the box. With DEBUG off the key signs
+# sessions, CSRF and password-reset tokens and derives the MFA encryption key, so a missing,
+# placeholder or short key is a start-up error, never a silent fallback (SEC-05).
+# The public `dev-only-*` keys (this file, docker-compose.yml) are tolerated with DEBUG off only on
+# a DEMO_MODE stack, which offers one-click sign-in and is never a real deployment.
+DEMO_MODE = env("DEMO_MODE")
+_DEV_SECRET_KEY = "dev-only-insecure-key-change-me"
+_PLACEHOLDER_SECRET_KEYS = {_DEV_SECRET_KEY, "replace-me-with-a-long-random-string", "changeme", "secret"}
+SECRET_KEY = env("DJANGO_SECRET_KEY", default=_DEV_SECRET_KEY if DEBUG else "")
+if not DEBUG and (
+    SECRET_KEY in _PLACEHOLDER_SECRET_KEYS
+    or len(SECRET_KEY) < 32
+    or SECRET_KEY.startswith("django-insecure-")
+    or (SECRET_KEY.startswith("dev-only-") and not DEMO_MODE)
+):
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY must be set to a private random value of at least 32 characters when DEBUG is off. "
+        'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(50))"'
+    )
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
-DEMO_MODE = env("DEMO_MODE")
 
 INSTALLED_APPS = [
     "django.contrib.admin",

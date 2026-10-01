@@ -13,7 +13,7 @@ Booleans accept `1/0`, `true/false`, `yes/no`, `on/off`. Lists are comma-separat
 
 | Variable | Default | Purpose | Production guidance |
 |---|---|---|---|
-| `DJANGO_SECRET_KEY` | `dev-only-insecure-key-change-me` | Django signing key (sessions, CSRF, password reset tokens) and the source of the MFA encryption key | **Required.** 50+ random characters from a secrets store. The default is not rejected at start-up, so check it in deployment. Rotating it signs everyone out and makes every stored MFA secret undecryptable (see [runbook](runbook.md#secret-rotation)) |
+| `DJANGO_SECRET_KEY` | `dev-only-insecure-key-change-me` with `DEBUG=1`; none otherwise | Django signing key (sessions, CSRF, password reset tokens) and the source of the MFA encryption key | **Required.** 50+ random characters from a secrets store. With `DEBUG=0` start-up fails (`ImproperlyConfigured`) if the key is missing, shorter than 32 characters, a known placeholder, `django-insecure-*`, or a public `dev-only-*` key outside `DEMO_MODE=1`. Rotating it signs everyone out and makes every stored MFA secret undecryptable (see [runbook](runbook.md#secret-rotation)) |
 | `DEBUG` | `False` | Debug pages, plain static storage, insecure cookies | `0`. With `0`, secure cookies, HSTS (30 days) and proxy SSL header handling are switched on |
 | `ALLOWED_HOSTS` | `localhost,127.0.0.1` | Host header allow-list | The public host name(s). Probes on `/health/` and `/ready/` work without it |
 | `CSRF_TRUSTED_ORIGINS` | empty | Origins allowed to POST over HTTPS | `https://reserve.example.edu` (scheme included) |

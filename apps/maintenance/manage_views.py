@@ -230,7 +230,7 @@ def window_action(request, pk, action):
 @staff_required("manage_maintenance")
 @require_POST
 def report_action(request, pk, action):
-    if action not in ("acknowledge", "resolve"):
+    if action not in ("acknowledge", "confirm", "resolve"):
         raise Http404
     try:
         report = _reports(request.user).select_related("resource", "window").get(pk=pk)
@@ -244,6 +244,9 @@ def report_action(request, pk, action):
         if action == "acknowledge":
             services.acknowledge(report, request.user)
             msg = "Acknowledged. The report stays open until you mark it resolved."
+        elif action == "confirm":
+            services.confirm_critical(report, request.user, request=request)
+            msg = f"{report.resource.name} is out of service and blocked for repair for the next 24 hours."
         else:
             resolution = request.POST.get("resolution", "").strip()
             if not resolution:
@@ -251,7 +254,7 @@ def report_action(request, pk, action):
                 return redirect(back)
             services.resolve(report, request.user, resolution, request=request)
             report.resource.refresh_from_db(fields=["status"])
-            msg = f"Resolved. {report.resource.name} is {'back in service' if report.resource.status == 'active' else 'still out of service: another critical report is open'}."
+            msg = f"Resolved. {report.resource.name} is {'back in service' if report.resource.status == 'active' else 'still out of service: another confirmed critical report is open'}."
     except DomainError as exc:
         messages.error(request, exc.message)
     else:

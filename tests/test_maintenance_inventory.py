@@ -60,10 +60,14 @@ def test_maintenance_never_displaces_a_class(room, custodian, monday):
 
 
 def test_critical_breakdown_takes_resource_offline_until_resolved(room, custodian, student, monday, now):
+    # A student's critical report alerts the custodian; it takes the room offline once confirmed (SEC-02).
     report = maintenance.report_breakdown(room, student, summary="Projector sparking", severity="critical")
     room.refresh_from_db()
-    assert room.status == "out_of_service"
+    assert room.status == "active"
     assert Notification.objects.filter(user=custodian, kind=Kind.BREAKDOWN).exists()
+    maintenance.confirm_critical(report, custodian)
+    room.refresh_from_db()
+    assert room.status == "out_of_service"
     with pytest.raises(BookingRejected, match="out of service"):
         book(student, room, monday, 10, 11, now)
     maintenance.resolve(report, custodian, "Replaced the lamp")
