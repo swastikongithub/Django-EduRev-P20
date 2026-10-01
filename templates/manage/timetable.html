@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Timetable{% endblock %}
+{% block topbar_title %}Setup<small>Timetable</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+{% include "manage/setup/_crumbs.html" with here="Timetable" %}
+<div class="pagehead">
+  <div>
+    <h1>Timetable</h1>
+    <p>The published timetable is a hard constraint: every class blocks its room for the rest of the term, and bookings that clash are cancelled with alternatives offered. Republishing replaces the old version in one step.</p>
+  </div>
+  <button class="btn" type="button" data-open="term-sheet">{% icon "plus" %}Add a term</button>
+</div>
+
+{% if published %}
+<section class="celebrate" role="status">
+  <svg class="celebrate__tick" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg>
+  <div><strong>{{ published.term.name }} v{{ published.version }} is live</strong>
+    <span>{{ published.occurrence_count }} class sessions written into room availability{% if published.displaced_count %}, {{ published.displaced_count }} clashing booking{{ published.displaced_count|pluralize }} cancelled and the owners notified{% else %}; no bookings had to be cancelled{% endif %}.</span></div>
+</section>
+{% endif %}
+
+<div class="split split--wide-side">
+  <div class="stack" style="--gap: var(--s6)">
+
+    {% if draft %}
+    <section class="panel panel--flagged panel--warm" id="draft" aria-labelledby="draft-h">
+      <span class="flag">{% icon "file-up" %}<span id="draft-h">Draft v{{ draft.version }}, not live yet</span></span>
+      <h2 class="h-sm">{{ draft.term.name }}: {{ impact.entries }} class{{ impact.entries|pluralize:"es" }} in {{ impact.rooms }} room{{ impact.rooms|pluralize }}</h2>
+      <dl class="kv">
+        <dt>Replaces</dt><dd>{% if draft_current %}v{{ draft_current.version }} ({{ draft_current.entry_count }} classes, published {{ draft_current.published_at|dayname }}){% else %}Nothing, this is the first timetable for the term{% endif %}</dd>
+        <dt>Uploaded</dt><dd>{{ draft.created_at|dayname }} {{ draft.created_at|hm }}{% if draft.published_by %} by {{ draft.published_by.display_name }}{% endif %}</dd>
+        <dt>Bookings affected</dt><dd>{% if impact.count %}<span class="ember">{{ impact.count }} booking{{ impact.count|pluralize }} would be cancelled</span>{% else %}None. No existing booking clashes with these classes{% endif %}</dd>
+      </dl>
+      {% if impact.sample %}
+      <ul class="list cfg-gap">
+        {% for b, e in impact.sample %}<li class="row row--between small"><span><strong>{{ b.resource.name }}</strong>, {{ b.start|dayname }} {{ b.start|hm }}–{{ b.end|hm }}, {{ b.booked_for.display_name }}</span><span class="badge badge--class">{{ e.course_code }}</span></li>{% endfor %}
+        {% if impact.count > impact.sample|length %}<li class="xsmall faint">and {{ impact.count|add:"-8" }} more.</li>{% endif %}
+      </ul>
+      {% endif %}
+      <div class="row row--wrap cfg-gap">
+        <form method="post" data-confirm="Publish v{{ draft.version }}? Classes block their rooms immediately{% if impact.count %} and {{ impact.count }} booking{{ impact.count|pluralize }} will be cancelled{% endif %}.">{% csrf_token %}
+          <input type="hidden" name="action" value="publish"><input type="hidden" name="pub" value="{{ draft.pk }}">
+          <button class="btn btn--primary btn--lg" type="submit">{% icon "calendar-check" %}Publish v{{ draft.version }}</button>
+        </form>
+        <a class="btn btn--ghost" href="?download={{ draft.pk }}">{% icon "download" %}Download draft</a>
+        <form method="post" data-confirm="Discard draft v{{ draft.version }}? The published timetable stays as it is.">{% csrf_token %}
+          <input type="hidden" name="action" value="discard"><input type="hidden" name="pub" value="{{ draft.pk }}">
+          <button class="btn btn--ghost" type="submit">{% icon "trash-2" %}Discard</button>
+        </form>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="panel" aria-labelledby="up-h">
+      <h2 id="up-h" class="h-sm">Upload a new version</h2>
+      <ol class="cfg-steps" aria-label="Publishing steps">
+        <li class="{% if check %}is-done{% else %}is-current{% endif %}"><span>1</span>Upload or paste</li>
+        <li class="{% if check and not check.ok %}is-current{% elif check.ok %}is-done{% endif %}"><span>2</span>Check every row</li>
+        <li class="{% if check.ok %}is-current{% elif draft %}is-done{% endif %}"><span>3</span>Save as draft</li>
+        <li class="{% if draft and not check %}is-current{% endif %}"><span>4</span>Publish</li>
+      </ol>
+      {% if upload_error %}<div class="notice notice--danger cfg-gap-b" role="alert">{% icon "circle-alert" %}<div><strong>{{ upload_error }}</strong></div></div>{% endif %}
+      {% if terms %}
+      <form method="post" enctype="multipart/form-data" class="stack" style="--gap: var(--s4)">{% csrf_token %}
+        <input type="hidden" name="action" value="check">
+        <div class="form-grid">
+          <div class="field"><label for="tt-term">Term</label>
+            <select class="select" id="tt-term" name="term" required>{% for t in terms %}<option value="{{ t.pk }}"{% if selected_term.pk == t.pk or check.term.pk == t.pk %} selected{% endif %}>{{ t.name }} ({{ t.code }})</option>{% endfor %}</select></div>
+          <div class="field"><label for="tt-file">CSV file</label><input class="cfg-file" type="file" id="tt-file" name="file" accept=".csv,text/csv"><span class="hint">UMS export or the template, up to 1 MB.</span></div>
+        </div>
+        <details class="cfg-paste"{% if csv_text %} open{% endif %}>
+          <summary class="small">Or paste the rows instead</summary>
+          <label class="sr-only" for="tt-paste">CSV rows</label>
+          <textarea class="textarea cfg-mono" id="tt-paste" name="csv_text" rows="6" placeholder="{{ columns|join:',' }}">{{ csv_text|default:'' }}</textarea>
+        </details>
+        <div class="row"><button class="btn btn--ink" type="submit">{% icon "list-checks" %}Check the timetable</button></div>
+      </form>
+      {% else %}
+      <div class="empty empty--compact"><div class="empty__icon">{% icon "calendar-days" %}</div><h3>Add a term first</h3><p>A timetable belongs to a term (for example 26271, July to December 2026).</p><button class="btn" type="button" data-open="term-sheet">{% icon "plus" %}Add a term</button></div>
+      {% endif %}
+    </section>
+
+    {% if check %}
+    <section class="stack" id="check" aria-labelledby="check-h" style="--gap: var(--s4)">
+      <h2 id="check-h" class="h-sm">Check: {{ check.term.name }}</h2>
+      {% if check.missing %}
+        <div class="notice notice--danger" role="alert">{% icon "circle-alert" %}<div><strong>The file is missing column{{ check.missing|length|pluralize }}: {{ check.missing|join:", " }}.</strong>The first row must name the columns: {{ columns|join:", " }}.</div></div>
+      {% elif check.ok %}
+        <div class="notice notice--success" role="status">{% icon "circle-check" %}<div><strong>All {{ check.entries }} classes in {{ check.rooms }} room{{ check.rooms|pluralize }} look right.</strong>Save it as a draft to see which bookings it would affect before anything goes live.</div></div>
+        <form method="post" class="row row--wrap">{% csrf_token %}
+          <input type="hidden" name="action" value="stage"><input type="hidden" name="term" value="{{ check.term.pk }}">
+          <textarea name="csv_text" hidden aria-hidden="true">{{ check.text }}</textarea>
+          <button class="btn btn--primary" type="submit">{% icon "file-up" %}Save as draft</button>
+        </form>
+      {% else %}
+        <div class="notice notice--warn" role="status">{% icon "triangle-alert" %}<div><strong>{{ check.errors|length }} problem{{ check.errors|length|pluralize }} to fix{% if check.bad %} on {{ check.bad }} row{{ check.bad|pluralize }}{% endif %}.</strong>Nothing can be saved until every row is right. Correct the file and check it again.</div></div>
+      {% endif %}
+      {% if check.rows %}
+      <div class="tablewrap cfg-scrolltable">
+        <table class="table cfg-table cfg-preview">
+          <caption class="sr-only">Rows in the timetable file</caption>
+          <thead><tr><th scope="col" class="num">Row</th><th scope="col">Room</th><th scope="col">Day</th><th scope="col">Time</th><th scope="col">Course</th><th scope="col">Section</th><th scope="col">Faculty</th><th scope="col">Check</th></tr></thead>
+          <tbody>
+          {% for r in check.rows %}
+            <tr class="{% if r.errors %}is-bad{% else %}is-ok{% endif %}">
+              <td class="num faint">{{ r.line }}</td>
+              <td class="tnum strong">{{ r.data.room_code|default:"—" }}</td>
+              <td>{{ r.day_label }}</td>
+              <td class="tnum nowrap">{{ r.data.start }}–{{ r.data.end }}</td>
+              <td><strong>{{ r.data.course_code }}</strong>{% if r.data.course_title %}<div class="xsmall faint">{{ r.data.course_title }}</div>{% endif %}</td>
+              <td>{{ r.data.section }}</td>
+              <td class="small">{{ r.data.faculty }}</td>
+              <td>{% if r.errors %}<ul class="cfg-rowerrs">{% for e in r.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% else %}<span class="badge badge--success">{% icon "check" %}OK</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <section aria-labelledby="terms-h">
+      <div class="section-head cfg-sechead"><h2 id="terms-h" class="h-sm">Terms</h2></div>
+      {% for t in terms %}
+      <article class="panel cfg-term">
+        <div class="row row--between row--top row--wrap">
+          <div><h3>{{ t.name }} <span class="small faint tnum">{{ t.code }}</span></h3><p class="xsmall faint">{{ t.starts|date:"j M Y" }} to {{ t.ends|date:"j M Y" }}</p></div>
+          {% if t.current %}<span class="badge badge--success">{% icon "circle-check" %}v{{ t.current.version }} live</span>{% else %}<span class="badge badge--warn">{% icon "triangle-alert" %}Nothing published</span>{% endif %}
+        </div>
+        {% if t.current %}
+        <div class="grid grid-4 cfg-termstats">
+          <div class="kpi"><span class="kpi__label">Classes</span><span class="kpi__value cfg-kpi-sm">{{ t.current.entry_count }}</span></div>
+          <div class="kpi"><span class="kpi__label">Sessions blocked</span><span class="kpi__value cfg-kpi-sm">{{ t.current.occurrence_count }}</span></div>
+          <div class="kpi"><span class="kpi__label">Bookings displaced</span><span class="kpi__value cfg-kpi-sm">{{ t.current.displaced_count }}</span></div>
+          <div class="kpi"><span class="kpi__label">Published</span><span class="small strong">{{ t.current.published_at|dayname }}{% if t.current.published_by %}<br><span class="faint">by {{ t.current.published_by.display_name }}</span>{% endif %}</span></div>
+        </div>
+        <div class="row row--wrap"><a class="btn btn--sm" href="?download={{ t.current.pk }}">{% icon "download" %}Download v{{ t.current.version }} as CSV</a><span class="xsmall faint">Source: {{ t.current.source }}</span></div>
+        {% endif %}
+        {% if t.history %}
+        <details class="cfg-history">
+          <summary class="small">Version history ({{ t.history|length }})</summary>
+          <div class="tablewrap">
+            <table class="table cfg-table">
+              <thead><tr><th scope="col">Version</th><th scope="col">Status</th><th scope="col">Source</th><th scope="col" class="num">Classes</th><th scope="col" class="num">Sessions</th><th scope="col" class="num">Displaced</th><th scope="col">When</th><th scope="col"><span class="sr-only">Download</span></th></tr></thead>
+              <tbody>{% for p in t.history %}<tr>
+                <td class="tnum strong">v{{ p.version }}</td>
+                <td>{% if p.status == "published" %}<span class="badge badge--success">Live</span>{% elif p.status == "draft" %}<span class="badge badge--pending">Draft</span>{% elif p.status == "failed" %}<span class="badge badge--danger">Failed</span>{% else %}<span class="badge badge--plain">Replaced</span>{% endif %}</td>
+                <td class="small">{{ p.source }}</td>
+                <td class="num">{{ p.entry_count }}</td><td class="num">{{ p.occurrence_count }}</td><td class="num">{{ p.displaced_count }}</td>
+                <td class="small nowrap">{% if p.published_at %}{{ p.published_at|dayname }} {{ p.published_at|hm }}{% else %}{{ p.created_at|dayname }}{% endif %}{% if p.published_by %}<br><span class="faint">{{ p.published_by.display_name }}</span>{% endif %}</td>
+                <td><a class="btn btn--sm btn--ghost" href="?download={{ p.pk }}" aria-label="Download v{{ p.version }}">{% icon "download" %}</a></td>
+              </tr>{% endfor %}</tbody>
+            </table>
+          </div>
+        </details>
+        {% endif %}
+      </article>
+      {% empty %}
+      <p class="small muted">No terms yet.</p>
+      {% endfor %}
+    </section>
+  </div>
+
+  <aside class="stack sticky-side" style="--gap: var(--s5)">
+    <section class="panel" aria-labelledby="fmt-h">
+      <h2 id="fmt-h" class="h-sm">File format</h2>
+      <p class="small muted">One class per row. Days are Mon to Sun; times are 24-hour (09:00) or 2:30 PM. Rooms use their resource codes.</p>
+      <ul class="cfg-collist">{% for c in columns %}<li><code>{{ c }}</code>{% if forloop.counter <= 5 %}<span class="badge badge--plain">required</span>{% endif %}</li>{% endfor %}</ul>
+      <a class="btn btn--sm cfg-gap" href="?sample=1">{% icon "download" %}Download the template</a>
+    </section>
+    <section class="panel panel--sunk" aria-labelledby="api-h">
+      <h2 id="api-h" class="h-sm">For integrators: push from P13</h2>
+      <p class="small muted">The timetable system can publish directly. A service account with timetable rights sends the whole term; it's validated and published in one transaction, or rejected with every row error (HTTP 422) and nothing changes.</p>
+      <pre class="cfg-code"><code>POST /api/v1/timetable/publications/
+Content-Type: application/json
+
+{
+  "term": "{{ terms.0.code|default:'26271' }}",
+  "entries": [
+    {"room_code": "34-301", "day": "Mon",
+     "start": "09:00", "end": "10:00",
+     "course_code": "CSE326", "section": "K23KF",
+     "faculty": "Dr. A. Sharma", "kind": "Lecture"}
+  ]
+}</code></pre>
+      <p class="xsmall faint">Returns 201 with the publication, occurrences and displaced counts. Full schema in <a href="/api/v1/docs/">the API docs</a>.</p>
+    </section>
+  </aside>
+</div>
+
+<dialog id="term-sheet" class="sheet" aria-labelledby="term-h"{% if term_error %} data-autoopen{% endif %}>
+  <div class="sheet__head"><h2 id="term-h" class="h-sm">Add a term</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <div class="sheet__body">
+    <form method="post" class="stack" style="--gap: var(--s4)">{% csrf_token %}
+      <input type="hidden" name="action" value="term">
+      {% if term_error %}<div class="notice notice--danger" role="alert">{% icon "circle-alert" %}<div><strong>{{ term_error }}</strong></div></div>{% endif %}
+      <div class="form-grid">
+        <div class="field"><label for="tm-code">UMS term code</label><input class="input" id="tm-code" name="code" maxlength="16" placeholder="26271" required></div>
+        <div class="field"><label for="tm-name">Name</label><input class="input" id="tm-name" name="name" maxlength="80" placeholder="Autumn 2026" required></div>
+        <div class="field"><label for="tm-s">Starts</label><input class="input" id="tm-s" type="date" name="starts" required></div>
+        <div class="field"><label for="tm-e">Ends</label><input class="input" id="tm-e" type="date" name="ends" required></div>
+      </div>
+      <div class="row"><button class="btn btn--primary" type="submit">{% icon "plus" %}Add term</button><button class="btn btn--ghost" type="button" data-close>Cancel</button></div>
+    </form>
+  </div>
+</dialog>
+{% include "manage/setup/_confirm.html" with confirm_yes="Yes, go ahead" %}
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/setup.js' %}" defer></script>{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block topbar_title %}Setup<small>Audit log</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+{% include "manage/setup/_crumbs.html" with here="Audit log" %}
+<div class="pagehead">
+  <div>
+    <h1>Audit log</h1>
+    <p>Every privileged action: who did it, what changed, and from where. Entries can't be edited or deleted, not even by administrators; the database itself refuses.</p>
+  </div>
+  <a class="btn" href="?{{ querystring }}{% if querystring %}&amp;{% endif %}format=csv">{% icon "download" %}Export {% if filtered %}these{% else %}all{% endif %} as CSV</a>
+</div>
+
+<form class="cfg-filters cfg-filters--audit" method="get" data-autosubmit role="search" aria-label="Filter the audit log">
+  <label class="inputgroup cfg-filters__q">{% icon "user" %}<span class="sr-only">Who</span>
+    <input class="input" type="search" name="actor" value="{{ filters.actor }}" placeholder="Who, e.g. Priya" data-no-autosubmit></label>
+  <label class="sr-only" for="a-act">Action</label>
+  <select class="select" id="a-act" name="action"><option value="">Every action</option>{% for p in action_prefixes %}<option value="{{ p }}"{% if filters.action == p %} selected{% endif %}>{{ p }}*</option>{% endfor %}</select>
+  <label class="sr-only" for="a-tt">Target</label>
+  <select class="select" id="a-tt" name="target"><option value="">Every kind of record</option>{% for t in target_types %}<option value="{{ t }}"{% if filters.target == t %} selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+  <label class="cfg-datefield"><span class="xsmall faint">From</span><input class="input" type="date" name="since" value="{{ filters.since }}"></label>
+  <label class="cfg-datefield"><span class="xsmall faint">To</span><input class="input" type="date" name="until" value="{{ filters.until }}"></label>
+  <button class="btn" type="submit">Filter</button>
+  {% if filtered %}<a class="btn btn--ghost" href="{% url 'manage:audit' %}">Clear</a>{% endif %}
+</form>
+
+{% if page.object_list %}
+<p class="small muted cfg-gap-b tnum">{{ page.paginator.count }} entr{{ page.paginator.count|pluralize:"y,ies" }}{% if filtered %} match{{ page.paginator.count|pluralize:"es," }}{% endif %}. Open a row to see what changed.</p>
+<ol class="auditlist" aria-label="Audit entries">
+  {% for e in page %}
+  <li>
+    <details class="auditrow">
+      <summary>
+        <time class="auditrow__time tnum" datetime="{{ e.created_at|date:'c' }}">{{ e.created_at|dayname }}<br><span class="faint">{{ e.created_at|date:"H:i:s" }}</span></time>
+        <span class="auditrow__who"><strong>{{ e.actor_label|default:"system" }}</strong><span class="xsmall faint tnum">{{ e.ip|default:"" }}</span></span>
+        <span class="auditrow__what"><code class="auditrow__action">{{ e.action }}</code><span class="small">{{ e.target_label|default:e.target_id }}</span><span class="xsmall faint">{{ e.target_type }} #{{ e.target_id }}</span></span>
+        <span class="auditrow__count xsmall faint">{% if e.rows %}{% if e.changed %}{{ e.changed }} change{{ e.changed|pluralize }}{% else %}{{ e.rows|length }} field{{ e.rows|length|pluralize }}{% endif %}{% else %}No details{% endif %}{% icon "chevron-down" 16 %}</span>
+      </summary>
+      {% if e.rows %}
+      <div class="tablewrap auditrow__diff">
+        <table class="table diff">
+          <thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+          <tbody>{% for r in e.rows %}<tr class="{% if r.changed %}is-changed{% endif %}"><th scope="row">{{ r.field }}</th><td class="diff__before">{% if r.only == "after" %}<span class="faint">—</span>{% else %}{{ r.before|default:"(empty)" }}{% endif %}</td><td class="diff__after">{% if r.only == "before" %}<span class="faint">—</span>{% else %}{{ r.after|default:"(empty)" }}{% endif %}</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+      {% else %}<p class="small muted auditrow__none">This action records no field values, only that it happened.</p>{% endif %}
+    </details>
+  </li>
+  {% endfor %}
+</ol>
+{% if page.paginator.num_pages > 1 %}
+<nav class="pager" aria-label="Pages">
+  {% if page.has_previous %}<a class="btn btn--sm" href="?{{ querystring }}{% if querystring %}&amp;{% endif %}page={{ page.previous_page_number }}">{% icon "chevron-left" %}Newer</a>{% endif %}
+  <span class="small muted tnum">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a class="btn btn--sm" href="?{{ querystring }}{% if querystring %}&amp;{% endif %}page={{ page.next_page_number }}">Older{% icon "chevron-right" %}</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+<div class="panel empty">
+  <div class="empty__icon">{% icon "history" %}</div>
+  {% if filtered %}<h3>Nothing recorded matches those filters</h3><p>Widen the dates or clear a filter.</p><a class="btn" href="{% url 'manage:audit' %}">Clear filters</a>
+  {% else %}<h3>Nothing recorded yet</h3><p>Privileged actions such as approvals, rule changes and role changes appear here as they happen.</p>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

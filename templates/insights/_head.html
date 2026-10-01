@@ -1,0 +1,7 @@
+<header class="ins-head">
+  <div class="ins-head__text">
+    <h2 id="{{ hid }}">{{ title }}</h2>
+    {% if take %}<p class="ins-take">{{ take }}</p>{% endif %}
+  </div>
+  {% if report %}<a class="btn btn--sm ins-csv" href="{% url 'analytics:export' report %}?{{ qs }}" download>{% icon "download" %}Download CSV<span class="sr-only"> for {{ title|lower }}</span></a>{% endif %}
+</header>

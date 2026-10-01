@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Approvals{% endblock %}
+{% block topbar_title %}Approvals<small>Staff console</small>{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div>
+    <h1>Approvals</h1>
+    <p>Requests waiting for your decision, soonest first. Each slot stays held for the requester until you decide, and expires if nobody does before it starts.</p>
+  </div>
+  <a class="btn" href="{% url 'manage:board' %}">{% icon "rows-3" %}Live board</a>
+</div>
+
+{% if total %}
+<div class="filterbar" role="navigation" aria-label="Filter requests">
+  <div class="chips">
+    <a class="chip{% if not chosen %} is-on{% endif %}" href="?{% if overdue_only %}overdue=1{% endif %}"{% if not chosen %} aria-current="page"{% endif %}>All <span class="chipcount">{{ total }}</span></a>
+    {% for t in type_filters %}
+    <a class="chip{% if chosen == t.code %} is-on{% endif %}" href="?type={{ t.code }}{% if overdue_only %}&amp;overdue=1{% endif %}"{% if chosen == t.code %} aria-current="page"{% endif %}>{% icon t.icon %}{{ t.label }} <span class="chipcount">{{ t.count }}</span></a>
+    {% endfor %}
+  </div>
+  {% if overdue or overdue_only %}
+  <a class="chip chip--alert{% if overdue_only %} is-on{% endif %}" href="?{% if chosen %}type={{ chosen }}&amp;{% endif %}{% if not overdue_only %}overdue=1{% endif %}"{% if overdue_only %} aria-current="page"{% endif %}>{% icon "timer" %}Overdue <span class="chipcount">{{ overdue }}</span></a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if groups %}
+<div class="daygroups">
+  {% for day, cards in groups %}
+  <section class="daygroup" aria-labelledby="d-{{ day|date:'Ymd' }}">
+    <h2 id="d-{{ day|date:'Ymd' }}" class="daygroup__day"><span>{{ day|dayname }}</span>{% if day|dayname|length < 10 %}<small>{{ day|date:"j F" }}</small>{% endif %}<small>{{ cards|length }} request{{ cards|length|pluralize }}</small></h2>
+    <div class="stack">
+      {% for c in cards %}{% include "manage/_approval_card.html" %}{% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% if shown < filtered_count %}
+<p class="notice console-note">{% icon "info" %}<span>Showing the {{ shown }} soonest of {{ filtered_count }} requests. Decide these and the next ones move up, or filter by type.</span></p>
+{% endif %}
+{% elif total %}
+<div class="panel empty">
+  <div class="empty__icon">{% icon "filter" %}</div>
+  <h3>Nothing matches this filter</h3>
+  <p>{{ total }} other request{{ total|pluralize }} {{ total|pluralize:"is,are" }} still waiting for you.</p>
+  <a class="btn" href="{% url 'manage:approvals' %}">Show all requests</a>
+</div>
+{% else %}
+<div class="panel empty">
+  <div class="empty__icon">{% icon "circle-check" %}</div>
+  <h3>You're all caught up</h3>
+  <p>New requests for the resources you approve show up here and in your notifications. Bookings that need nobody's approval are confirmed instantly and never land here.</p>
+  <a class="btn" href="{% url 'manage:board' %}">{% icon "rows-3" %}See what's happening today</a>
+</div>
+{% endif %}
+{% endblock %}

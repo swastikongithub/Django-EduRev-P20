@@ -264,3 +264,73 @@ def export_csv(pub: TimetablePublication) -> str:
             ]
         )
     return out.getvalue()
+
+
+# ── Console helpers (preview before staging / publishing) ───────────────────
+
+
+def preview_rows(text: str, institution_id) -> dict:
+    """
+    Row-by-row view of a CSV for the console: every row with its own problems, including which rows
+    clash with each other. Display only; parse_rows() stays the gate for staging.
+    """
+    reader = csv.DictReader(io.StringIO(text.strip()))
+    header = list(reader.fieldnames or [])
+    missing = sorted({"room_code", "day", "start", "end", "course_code"} - set(header))
+    if missing:
+        return {"rows": [], "missing": missing}
+    rooms = {r.code: r for r in Resource.objects.filter(institution_id=institution_id)}
+    rows = []
+    for n, raw in enumerate(reader, start=2):
+        row = {"line": n, "data": {c: str(raw.get(c) or "").strip() for c in COLUMNS}, "errors": [], "resource": None}
+        d = row["data"]
+        row["resource"] = rooms.get(d["room_code"])
+        if not row["resource"]:
+            row["errors"].append(f"Unknown room '{d['room_code']}'." if d["room_code"] else "Room code is empty.")
+        try:
+            row["weekday"] = _day(d["day"])
+        except ValueError:
+            row["errors"].append(f"Unknown day '{d['day']}'. Use Mon to Sun.")
+        try:
+            row["start"], row["end"] = _time(d["start"]), _time(d["end"])
+            if row["start"] >= row["end"]:
+                row["errors"].append("The class must start before it ends.")
+        except ValueError:
+            row["errors"].append("Times must look like 09:00 or 2:30 PM.")
+        if not d["course_code"]:
+            row["errors"].append("Course code is empty.")
+        rows.append(row)
+    by_slot = defaultdict(list)
+    for r in rows:
+        if r["resource"] and "weekday" in r and "start" in r and r["start"] < r["end"]:
+            by_slot[(r["data"]["room_code"], r["weekday"])].append(r)
+    for items in by_slot.values():
+        items.sort(key=lambda r: r["start"])
+        for a, b in zip(items, items[1:], strict=False):
+            if b["start"] < a["end"]:
+                a["errors"].append(f"Clashes with row {b['line']} ({b['data']['course_code']}) in the same room.")
+                b["errors"].append(f"Clashes with row {a['line']} ({a['data']['course_code']}) in the same room.")
+    for r in rows:
+        r["day_label"] = list(DAYS)[r["weekday"]].title() if "weekday" in r else r["data"]["day"]
+    return {"rows": rows, "missing": []}
+
+
+def displacement_preview(pub: TimetablePublication, now=None) -> dict:
+    """Bookings that publishing this draft would cancel (one query for the bookings, overlap in Python)."""
+    now = now or timezone.now()
+    term = pub.term
+    first_day = max(term.starts, timezone.localtime(now).date())
+    entries = list(pub.entries.select_related("resource"))
+    by_resource = defaultdict(list)
+    for e in entries:
+        by_resource[e.resource_id].append(e)
+    span = trange(aware(first_day, time.min), aware(term.ends + timedelta(days=1), time.min))
+    hits = []
+    for b in (Booking.objects.filter(resource_id__in=by_resource, status__in=HOLDING_STATUSES, period__overlap=span)
+              .select_related("resource", "booked_for").order_by("period")):
+        local_s, local_e = timezone.localtime(b.start), timezone.localtime(b.end)
+        for e in by_resource[b.resource_id]:
+            if local_s.weekday() == e.weekday and local_s.time() < e.end_time and e.start_time < local_e.time():
+                hits.append((b, e))
+                break
+    return {"count": len(hits), "sample": hits[:8], "rooms": len(by_resource), "entries": len(entries)}

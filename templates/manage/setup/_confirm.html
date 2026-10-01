@@ -1,0 +1,4 @@
+<dialog id="confirm-dialog" class="sheet" aria-labelledby="confirm-h">
+  <div class="sheet__head"><h2 id="confirm-h" class="h-sm">{{ confirm_title|default:"Are you sure?" }}</h2></div>
+  <div class="sheet__body stack"><p data-confirm-text></p><div class="row"><button class="btn btn--danger-solid" type="button" data-confirm-yes>{{ confirm_yes|default:"Yes, go ahead" }}</button><button class="btn btn--ghost" type="button" data-close>Go back</button></div></div>
+</dialog>

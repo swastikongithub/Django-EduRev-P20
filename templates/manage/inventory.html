@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Stock{% endblock %}
+{% block topbar_title %}Stock<small>{{ scope_label }}</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div>
+    <h1>Stock</h1>
+    <p>Accessories that go out with bookings and come back, and consumables that get used up. Items at or under their reorder level are flagged, and their custodians are notified.</p>
+  </div>
+</div>
+
+<section class="kpis" aria-label="Stock summary">
+  <a class="panel kpi kpi--link{% if low_count %} is-alert{% endif %}" href="?low=1">
+    <span class="kpi__label">{% icon "triangle-alert" 15 %}Low stock</span>
+    <span class="kpi__value">{{ low_count }}</span>
+    <span class="kpi__delta">{% if low_count %}at or under the reorder level{% else %}Everything is above its reorder level{% endif %}</span>
+  </a>
+  <div class="panel kpi">
+    <span class="kpi__label">{% icon "package" 15 %}Items tracked</span>
+    <span class="kpi__value">{{ total }}</span>
+    <span class="kpi__delta">accessories and consumables</span>
+  </div>
+  <div class="panel kpi">
+    <span class="kpi__label">{% icon "log-out" 15 %}Out with people now</span>
+    <span class="kpi__value">{{ out_now }}</span>
+    <span class="kpi__delta">accessory units issued, not yet returned</span>
+  </div>
+  <div class="panel kpi">
+    <span class="kpi__label">{% icon "flame" 15 %}Used up, last {{ recent_days }} days</span>
+    <span class="kpi__value">{{ consumed_week }}</span>
+    <span class="kpi__delta">consumable units</span>
+  </div>
+</section>
+
+<form class="filterbar" method="get" action="{% url 'manage:inventory' %}" data-autosubmit role="search" aria-label="Filter stock">
+  <div class="inputgroup boardfilters__q">{% icon "search" %}
+    <label class="sr-only" for="inv-q">Search items</label>
+    <input class="input" id="inv-q" type="search" name="q" value="{{ q }}" placeholder="Item name or SKU" data-no-autosubmit>
+  </div>
+  <label class="sr-only" for="inv-kind">Kind</label>
+  <select class="select" id="inv-kind" name="kind">
+    <option value="">Accessories and consumables</option>
+    {% for v, label in kinds %}<option value="{{ v }}"{% if kind == v %} selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <label class="chip"><input type="checkbox" name="low" value="1"{% if low_only %} checked{% endif %}>{% icon "triangle-alert" %}Low stock only</label>
+  <button class="btn" type="submit">{% icon "filter" %}Show</button>
+  {% if filtered %}<a class="btn btn--ghost" href="{% url 'manage:inventory' %}">Clear</a>{% endif %}
+</form>
+
+{% if rows %}
+<div class="tablewrap">
+  <table class="table console-table stocktable">
+    <caption class="sr-only">Stock levels</caption>
+    <thead><tr><th scope="col">Item</th><th scope="col">Kind</th><th scope="col">Goes with</th><th scope="col">Available</th><th scope="col" class="num">Reorder at</th><th scope="col">Last {{ recent_days }} days</th><th scope="col"><span class="sr-only">Action</span></th></tr></thead>
+    <tbody>
+      {% for row in rows %}{% with i=row.i %}
+      <tr{% if i.is_low %} class="is-low"{% endif %}>
+        <td>
+          <strong>{{ i.name }}</strong>
+          <div class="xsmall faint">{{ i.sku }}{% if i.description %}, {{ i.description|truncatechars:60 }}{% endif %}</div>
+        </td>
+        <td>{% if i.kind == "accessory" %}<span class="badge badge--info">{% icon "repeat" %}Accessory</span>{% else %}<span class="badge badge--plain">{% icon "flame" %}Consumable</span>{% endif %}</td>
+        <td class="small">{% if i.resource %}<a href="{{ i.resource.get_absolute_url }}">{{ i.resource.name }}</a>{% elif i.resource_type %}Any {{ i.resource_type.name|lower }}{% else %}<span class="faint">Not linked</span>{% endif %}</td>
+        <td class="stockcell">
+          <div class="row row--between" style="--gap: 8px">
+            <span class="tnum"><strong>{{ i.quantity_available }}</strong> <span class="faint">/ {{ i.quantity_total }} {{ i.unit }}</span></span>
+            {% if i.is_low %}<span class="badge badge--danger">{% icon "triangle-alert" %}Low</span>{% endif %}
+          </div>
+          <span class="meter {{ row.tone }}" role="img" aria-label="{{ i.quantity_available }} of {{ i.quantity_total }} available"><span style="width:{% widthratio row.ratio 1 100 %}%"></span></span>
+          {% if row.out %}<span class="xsmall faint">{{ row.out }} out with bookings</span>{% endif %}
+        </td>
+        <td class="num">{{ i.reorder_level }}</td>
+        <td class="small">
+          {% if row.issued or row.returned or row.consumed or row.lost %}
+          <ul class="tally">
+            {% if row.issued %}<li>{{ row.issued }} issued</li>{% endif %}
+            {% if row.returned %}<li>{{ row.returned }} returned</li>{% endif %}
+            {% if row.consumed %}<li>{{ row.consumed }} used</li>{% endif %}
+            {% if row.lost %}<li class="ember">{{ row.lost }} lost</li>{% endif %}
+          </ul>
+          {% else %}<span class="faint">No movement</span>{% endif %}
+        </td>
+        <td class="cellaction">
+          <button class="btn btn--sm{% if i.is_low %} btn--ink{% endif %}" type="button" data-open="restock-{{ i.pk }}">{% icon "plus" %}Restock</button>
+          <dialog id="restock-{{ i.pk }}" class="sheet" aria-labelledby="restock-{{ i.pk }}-h">
+            <div class="sheet__head"><h2 id="restock-{{ i.pk }}-h" class="h-sm">Restock {{ i.name }}</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+            <form class="sheet__body stack" method="post" action="{% url 'manage:inventory_restock' i.pk %}">
+              {% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
+              <p class="small muted">{{ i.quantity_available }} {{ i.unit }} available now, reorder at {{ i.reorder_level }}.{% if i.kind == "accessory" %} Restocked accessories add to the total owned.{% endif %}</p>
+              <div class="field">
+                <label for="restock-{{ i.pk }}-q">Units received</label>
+                <input class="input input--qty-lg" id="restock-{{ i.pk }}-q" name="qty" type="number" min="1" max="100000" inputmode="numeric" required autofocus value="{% if i.reorder_level %}{{ i.reorder_level }}{% else %}1{% endif %}">
+              </div>
+              <div class="field">
+                <label for="restock-{{ i.pk }}-n">Note <span class="faint">(optional)</span></label>
+                <input class="input" id="restock-{{ i.pk }}-n" name="note" maxlength="200" placeholder="e.g. Purchase order 4471">
+              </div>
+              <div class="row"><button class="btn btn--primary" type="submit">Add to stock</button><button class="btn btn--ghost" type="button" data-close>Cancel</button></div>
+            </form>
+          </dialog>
+        </td>
+      </tr>
+      {% endwith %}{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="panel empty">
+  <div class="empty__icon">{% icon "package" %}</div>
+  {% if filtered %}
+    <h3>{% if low_only and not q and not kind %}Nothing is low on stock{% else %}No items match{% endif %}</h3>
+    <p>{% if low_only and not q and not kind %}Every item is above its reorder level. Low items show up here as soon as they dip.{% else %}Try a different name or SKU, or clear the filters.{% endif %}</p>
+    <a class="btn" href="{% url 'manage:inventory' %}">Show all items</a>
+  {% else %}
+    <h3>No stock to track yet</h3>
+    <p>Accessories and consumables linked to the resources you look after appear here, with their levels and what went out with bookings.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<section class="home-section" aria-labelledby="act-h">
+  <div class="section-head"><h2 id="act-h">Recent issues and returns</h2></div>
+  {% if activity %}
+  <div class="tablewrap">
+    <table class="table console-table">
+      <thead><tr><th scope="col">When</th><th scope="col">Item</th><th scope="col" class="num">Qty</th><th scope="col">Booking</th><th scope="col">Status</th></tr></thead>
+      <tbody>
+        {% for a in activity %}
+        <tr>
+          <td class="nowrap tnum">{% with t=a.returned_at|default:a.issued_at|default:a.created_at %}{{ t|dayname }} {{ t|hm }}{% endwith %}</td>
+          <td><strong>{{ a.item.name }}</strong></td>
+          <td class="num">{{ a.quantity }}</td>
+          <td><a class="rowlink" href="{{ a.booking.get_absolute_url }}">{{ a.booking.resource.name }}</a><div class="xsmall faint">{{ a.booking.booked_for.display_name }}</div></td>
+          <td>{% if a.status == "issued" %}<span class="badge badge--live">{% icon "log-out" %}Issued</span>{% elif a.status == "returned" %}<span class="badge badge--success">{% icon "check" %}Returned</span>{% elif a.status == "consumed" %}<span class="badge badge--plain">{% icon "flame" %}Used</span>{% elif a.status == "lost" %}<span class="badge badge--danger">{% icon "circle-x" %}Lost or damaged</span>{% else %}<span class="badge">{{ a.get_status_display }}</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="small muted">Nothing has gone out with a booking yet. Items are issued at check-in and returned at check-out.</p>
+  {% endif %}
+</section>
+{% endblock %}

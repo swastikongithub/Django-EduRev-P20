@@ -1,0 +1,23 @@
+<li class="wfstep" data-row>
+  <span class="wfstep__n" data-step-n aria-hidden="true">{{ forloop.counter|default:"" }}</span>
+  <div class="wfstep__fields">
+    <label class="field"><span class="label">Approver</span>
+      <select class="select" name="step_role" data-step-role>
+        <option value="">Choose who approves</option>
+        {% for v, l in approver_roles %}<option value="{{ v }}"{% if s.role == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
+      </select></label>
+    <label class="field" data-step-user{% if s.role != "user" %} hidden{% endif %}><span class="label">Person</span>
+      <select class="select" name="step_user">
+        <option value="">Choose a person</option>
+        {% regroup people by get_role_display as by_role %}
+        {% for g in by_role %}<optgroup label="{{ g.grouper }}">{% for p in g.list %}<option value="{{ p.pk }}"{% if s.user == p.pk|stringformat:"s" %} selected{% endif %}>{{ p.display_name }}{% if p.designation %}, {{ p.designation }}{% endif %}</option>{% endfor %}</optgroup>{% endfor %}
+      </select></label>
+    <label class="field wfstep__sla"><span class="label">Decides within (h)</span>
+      <input class="input" type="number" name="step_sla" min="1" max="720" value="{{ s.sla|default:24 }}" inputmode="numeric"></label>
+  </div>
+  <div class="wfstep__tools">
+    <button class="btn btn--icon btn--ghost btn--sm" type="button" data-move="-1" aria-label="Move step up">{% icon "chevron-up" %}</button>
+    <button class="btn btn--icon btn--ghost btn--sm" type="button" data-move="1" aria-label="Move step down">{% icon "chevron-down" %}</button>
+    <button class="btn btn--icon btn--ghost btn--sm" type="button" data-remove-row aria-label="Remove step">{% icon "trash-2" %}</button>
+  </div>
+</li>

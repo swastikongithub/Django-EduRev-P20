@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Users and roles{% endblock %}
+{% block topbar_title %}Setup<small>Users and roles</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+{% include "manage/setup/_crumbs.html" with here="Users and roles" %}
+<div class="pagehead">
+  <div>
+    <h1>Users and roles</h1>
+    <p>{% if can_manage %}A role decides what someone can do here. Changes take effect on their next page load. Accounts are never deleted: deactivate them instead, and their bookings and history are kept.{% else %}Who holds which role. Only administrators can change roles or deactivate accounts.{% endif %}</p>
+  </div>
+</div>
+
+<details class="panel cfg-gap-b cfg-roles">
+  <summary><strong>What each role can do</strong></summary>
+  <dl class="cfg-rolelist">
+    {% for v, label, help, n in role_help %}<div><dt>{{ label }} <span class="faint tnum">{{ n }}</span></dt><dd class="small muted">{{ help }}</dd></div>{% endfor %}
+  </dl>
+</details>
+
+<form class="cfg-filters" method="get" data-autosubmit role="search" aria-label="Filter people">
+  <label class="inputgroup cfg-filters__q">{% icon "search" %}<span class="sr-only">Search by name, VID or email</span>
+    <input class="input" type="search" name="q" value="{{ filters.q }}" placeholder="Name, VID, username or email" data-no-autosubmit></label>
+  <label class="sr-only" for="u-role">Role</label>
+  <select class="select" id="u-role" name="role"><option value="">Every role</option>{% for v, l in roles %}<option value="{{ v }}"{% if filters.role == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+  <label class="sr-only" for="u-dept">Department</label>
+  <select class="select" id="u-dept" name="department"><option value="">Every department</option>{% for d in departments %}<option value="{{ d.code }}"{% if filters.department == d.code %} selected{% endif %}>{{ d.name }}</option>{% endfor %}</select>
+  <label class="sr-only" for="u-status">Status</label>
+  <select class="select" id="u-status" name="status"><option value="">Any status</option><option value="active"{% if filters.status == "active" %} selected{% endif %}>Active</option><option value="inactive"{% if filters.status == "inactive" %} selected{% endif %}>Deactivated</option><option value="restricted"{% if filters.status == "restricted" %} selected{% endif %}>Booking paused</option></select>
+  <button class="btn" type="submit">Filter</button>
+  {% if filtered %}<a class="btn btn--ghost" href="{% url 'manage:users' %}">Clear</a>{% endif %}
+</form>
+
+{% if page.object_list %}
+<div class="tablewrap">
+  <table class="table cfg-table">
+    <caption class="sr-only">People, page {{ page.number }} of {{ page.paginator.num_pages }}</caption>
+    <thead><tr><th scope="col">Person</th><th scope="col">VID</th><th scope="col">Role</th><th scope="col">Department</th><th scope="col">Status</th><th scope="col">Last sign-in</th>{% if can_manage %}<th scope="col"><span class="sr-only">Actions</span></th>{% endif %}</tr></thead>
+    <tbody>
+    {% for u in page %}
+      <tr{% if not u.is_active %} class="is-muted"{% endif %}>
+        <td><div class="row" style="--gap:10px">{% initials_avatar u "sm" %}<div><strong>{{ u.display_name }}</strong>{% if u.pk == request.user.pk %} <span class="badge badge--plain">You</span>{% endif %}<div class="xsmall faint">{{ u.email|default:u.username }}</div></div></div></td>
+        <td class="tnum small">{{ u.vid|default:"—" }}</td>
+        <td>
+          {% if can_manage %}
+          <form method="post" class="cfg-roleform" data-confirm="Change {{ u.display_name }}'s role? Their permissions change immediately.">{% csrf_token %}
+            <input type="hidden" name="action" value="role"><input type="hidden" name="user" value="{{ u.pk }}"><input type="hidden" name="next" value="{{ here }}">
+            <label class="sr-only" for="role-{{ u.pk }}">Role for {{ u.display_name }}</label>
+            <select class="select cfg-select-sm" id="role-{{ u.pk }}" name="role" data-submit-on-change>{% for v, l in roles %}<option value="{{ v }}"{% if u.role == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+            <noscript><button class="btn btn--sm" type="submit">Change</button></noscript>
+          </form>
+          {% else %}{{ u.get_role_display }}{% endif %}
+        </td>
+        <td class="small">{{ u.department.code|default:"—" }}</td>
+        <td>
+          {% if not u.is_active %}<span class="badge badge--plain">{% icon "lock" %}Deactivated</span>
+          {% elif u.restriction %}<span class="badge badge--danger" title="{{ u.restriction.reason }}">{% icon "ban" %}Paused until {{ u.restriction.ends_at|date:"j M" }}</span>
+          {% elif u.is_locked %}<span class="badge badge--warn">{% icon "lock" %}Locked out</span>
+          {% else %}<span class="badge badge--success">{% icon "circle-check" %}Active</span>{% endif %}
+        </td>
+        <td class="small nowrap">{% if u.last_login %}{{ u.last_login|dayname }}{% else %}<span class="faint">Never</span>{% endif %}</td>
+        {% if can_manage %}
+        <td>
+          {% if u.pk != request.user.pk %}
+          <form method="post"{% if u.is_active %} data-confirm="Deactivate {{ u.display_name }}? They can't sign in, but their bookings and history are kept."{% endif %}>{% csrf_token %}
+            <input type="hidden" name="user" value="{{ u.pk }}"><input type="hidden" name="next" value="{{ here }}">
+            {% if u.is_active %}<button class="btn btn--sm btn--danger" type="submit" name="action" value="deactivate">Deactivate</button>{% else %}<button class="btn btn--sm" type="submit" name="action" value="activate">Reactivate</button>{% endif %}
+          </form>
+          {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if page.paginator.num_pages > 1 %}
+<nav class="pager" aria-label="Pages">
+  {% if page.has_previous %}<a class="btn btn--sm" href="?{{ querystring }}{% if querystring %}&amp;{% endif %}page={{ page.previous_page_number }}">{% icon "chevron-left" %}Previous</a>{% endif %}
+  <span class="small muted tnum">Page {{ page.number }} of {{ page.paginator.num_pages }}, {{ page.paginator.count }} people</span>
+  {% if page.has_next %}<a class="btn btn--sm" href="?{{ querystring }}{% if querystring %}&amp;{% endif %}page={{ page.next_page_number }}">Next{% icon "chevron-right" %}</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+<div class="panel empty">
+  <div class="empty__icon">{% icon "users" %}</div>
+  <h3>Nobody matches those filters</h3>
+  <p>Search by first name, last name, VID or email, or clear the filters.</p>
+  <a class="btn" href="{% url 'manage:users' %}">Clear filters</a>
+</div>
+{% endif %}
+{% include "manage/setup/_confirm.html" with confirm_yes="Yes, go ahead" %}
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/setup.js' %}" defer></script>{% endblock %}

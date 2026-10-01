@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if creating %}New resource{% else %}Edit {{ r.name }}{% endif %}{% endblock %}
+{% block topbar_title %}Resources<small>{% if creating %}New resource{% else %}{{ r.code }}{% endif %}</small>{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{% url 'manage:resources' %}">Resources</a>{% icon "chevron-right" %}<span>{% if creating %}New resource{% else %}{{ r.name }}{% endif %}</span></nav>
+<div class="pagehead">
+  <div>
+    <h1>{% if creating %}Add a resource{% else %}{{ r.name }}{% endif %}</h1>
+    <p>{% if creating %}It becomes bookable as soon as you save it, under the rules for its type. You can add a photo and details now or later.{% else %}Changes apply to the next booking. Bookings people already hold are kept.{% endif %}</p>
+  </div>
+  {% if not creating %}
+  <div class="row row--wrap">
+    <a class="btn btn--ghost" href="{{ r.get_absolute_url }}">{% icon "eye" %}See public page</a>
+    <a class="btn" href="{% url 'manage:door_qr' r.pk %}">{% icon "qr-code" %}Print door QR</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if error_count %}
+<div class="notice notice--danger cfg-errsum" role="alert">{% icon "circle-alert" %}<div><strong>{{ error_count }} thing{{ error_count|pluralize }} need{{ error_count|pluralize:"s," }} fixing before this can be saved.</strong>
+  <ul>{% for f in form %}{% if f.errors %}<li><a href="#{{ f.id_for_label }}">{{ f.label }}</a>: {{ f.errors.0 }}</li>{% endif %}{% endfor %}{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}{% for e in attr_errors %}<li><a href="#details-h">Details</a>: {{ e }}</li>{% endfor %}</ul>
+</div></div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="split cfg-resform" novalidate>
+  {% csrf_token %}
+  <div class="stack" style="--gap: var(--s5)">
+    <section class="panel" aria-labelledby="basics-h">
+      <h2 id="basics-h" class="h-sm">What it is</h2>
+      <div class="form-grid">
+        {% include "manage/setup/_field.html" with f=form.name span=1 %}
+        {% include "manage/setup/_field.html" with f=form.code %}
+        {% include "manage/setup/_field.html" with f=form.type %}
+        {% include "manage/setup/_field.html" with f=form.tagline span=1 %}
+        {% include "manage/setup/_field.html" with f=form.description span=1 %}
+        {% include "manage/setup/_field.html" with f=form.capacity %}
+        {% include "manage/setup/_field.html" with f=form.acquisition_cost %}
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="where-h">
+      <h2 id="where-h" class="h-sm">Where it is and who owns it</h2>
+      <div class="form-grid">
+        {% include "manage/setup/_field.html" with f=form.building %}
+        {% include "manage/setup/_field.html" with f=form.department %}
+        {% include "manage/setup/_field.html" with f=form.floor %}
+        {% include "manage/setup/_field.html" with f=form.room %}
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="feat-h">
+      <h2 id="feat-h" class="h-sm">Features</h2>
+      <p class="small muted cfg-lead">People filter and search by these, so tick everything that's really there.</p>
+      <div class="chips" role="group" aria-labelledby="feat-h">
+        {% for c in form.features %}<label class="chip">{{ c.tag }}{{ c.choice_label }}</label>{% endfor %}
+      </div>
+      {% if form.features.errors %}<p class="error small">{{ form.features.errors.0 }}</p>{% endif %}
+    </section>
+
+    <section class="panel" aria-labelledby="details-h">
+      <div class="panel__head"><h2 id="details-h">Details</h2><button class="btn btn--sm" type="button" data-add-row="attr">{% icon "plus" %}Add a detail</button></div>
+      <p class="small muted cfg-lead">Facts shown on the resource page, such as "Seating: tiered" or "Software: MATLAB, AutoCAD".</p>
+      <div class="cfg-kvrows" data-rows="attr">
+        {% for k, v in attr_rows %}
+        <div class="cfg-kvrow" data-row>
+          <label class="sr-only" for="attr-k-{{ forloop.counter }}">Detail name {{ forloop.counter }}</label>
+          <input class="input" id="attr-k-{{ forloop.counter }}" name="attr_key" value="{{ k }}" placeholder="e.g. Seating" maxlength="60">
+          <label class="sr-only" for="attr-v-{{ forloop.counter }}">Value {{ forloop.counter }}</label>
+          <input class="input" id="attr-v-{{ forloop.counter }}" name="attr_value" value="{{ v }}" placeholder="e.g. Tiered, 120 seats" maxlength="200">
+          <button class="btn btn--icon btn--ghost" type="button" data-remove-row aria-label="Remove this detail">{% icon "trash-2" %}</button>
+        </div>
+        {% endfor %}
+      </div>
+      <template data-row-template="attr">
+        <div class="cfg-kvrow" data-row>
+          <input class="input" name="attr_key" placeholder="e.g. Seating" maxlength="60" aria-label="Detail name">
+          <input class="input" name="attr_value" placeholder="e.g. Tiered, 120 seats" maxlength="200" aria-label="Value">
+          <button class="btn btn--icon btn--ghost" type="button" data-remove-row aria-label="Remove this detail">{% icon "trash-2" %}</button>
+        </div>
+      </template>
+    </section>
+
+    {% if form.custodians %}
+    <section class="panel" aria-labelledby="cust-h">
+      <h2 id="cust-h" class="h-sm">Custodians</h2>
+      <p class="small muted cfg-lead">Custodians approve requests for this resource (when a workflow asks them), handle breakdown reports and can forgive no-shows. Only people with a staff console role are listed; change someone's role in Users and roles first.</p>
+      <div class="cfg-checklist" role="group" aria-labelledby="cust-h">{% for c in form.custodians %}<label class="checkrow">{{ c.tag }}<span>{{ c.choice_label }}</span></label>{% endfor %}</div>
+      {% if form.custodians.errors %}<p class="error small">{{ form.custodians.errors.0 }}</p>{% endif %}
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="stack sticky-side" style="--gap: var(--s5)">
+    <section class="panel" aria-labelledby="status-h">
+      <h2 id="status-h" class="h-sm">Status</h2>
+      <div class="stack" style="--gap: var(--s3)">
+        <div class="seg cfg-seg-status" role="radiogroup" aria-label="Status">{% for c in form.status %}<label>{{ c.tag }}{{ c.choice_label }}</label>{% endfor %}</div>
+        {% include "manage/setup/_field.html" with f=form.status_note hint="Shown to anyone who opens the resource while it's unavailable." %}
+        <label class="checkrow">{{ form.is_bookable }}<span><strong>Bookable online</strong><br><span class="xsmall faint">Switch off for spaces that are only allocated by the office. They stay visible but can't be booked here.</span></span></label>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="photo-h">
+      <h2 id="photo-h" class="h-sm">Photo</h2>
+      <div class="cfg-photo">
+        {% if r.pk %}<div class="cfg-photo__img">{% resource_photo r "sm" %}</div>{% endif %}
+        <div class="field">
+          <label for="{{ form.photo.id_for_label }}">{% if r.image %}Replace the photo{% else %}Upload a photo{% endif %}</label>
+          <input type="file" name="photo" id="{{ form.photo.id_for_label }}" accept="image/jpeg,image/png,image/webp" class="cfg-file"{% if form.photo.errors %} aria-invalid="true" aria-describedby="photo-err"{% endif %}>
+          {% if form.photo.errors %}<span class="error" id="photo-err">{{ form.photo.errors.0 }}</span>{% else %}<span class="hint">JPEG, PNG or WebP up to 4 MB. We resize it and strip location data before saving.</span>{% endif %}
+        </div>
+        {% if r.image %}<label class="checkrow">{{ form.remove_photo }}<span>Remove the photo and use the illustration</span></label>{% endif %}
+      </div>
+    </section>
+
+    {% if policy %}
+    <section class="panel panel--sunk" aria-labelledby="rules-h">
+      <h2 id="rules-h" class="h-sm">Rules that apply</h2>
+      <dl class="kv">
+        <dt>Per booking</dt><dd>{{ policy.min_duration_minutes|duration }} to {{ policy.max_duration_minutes|duration }}</dd>
+        <dt>Steps</dt><dd>{{ policy.slot_minutes }} min</dd>
+        <dt>Opens</dt><dd>{{ policy.max_advance_days }} days ahead</dd>
+        <dt>Check-in</dt><dd>{% if policy.requires_checkin %}within {{ policy.checkin_grace_minutes }} min{% else %}not needed{% endif %}</dd>
+      </dl>
+      <p class="xsmall faint cfg-gap">From: {% if policy.source == "default" %}built-in defaults{% else %}{{ policy.source }}{% endif %}</p>
+      <dl class="kv cfg-hours">{% for d, spans in hours %}<dt>{{ d }}</dt><dd class="tnum">{{ spans }}</dd>{% endfor %}</dl>
+      {% if perms.accounts.configure_policy %}<a class="btn btn--sm cfg-gap" href="{% url 'manage:policies' %}?tab=booking&amp;resource={{ r.pk }}">{% icon "sliders-horizontal" %}Set rules just for this resource</a>{% endif %}
+    </section>
+    {% endif %}
+
+    <div class="cfg-savebar">
+      <button class="btn btn--primary btn--lg btn--block" type="submit">{% icon "check" %}{% if creating %}Add resource{% else %}Save changes{% endif %}</button>
+      <a class="btn btn--ghost btn--block" href="{% url 'manage:resources' %}">Cancel</a>
+    </div>
+  </aside>
+</form>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/setup.js' %}" defer></script>{% endblock %}

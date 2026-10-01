@@ -1,0 +1,50 @@
+<div class="section-head cfg-sechead">
+  <p class="small muted">Periods when new bookings are refused, such as holidays, exams or convocation. Bookings already made inside a new blackout are kept; cancel them from the board if needed.</p>
+  {% if can_edit %}<button class="btn btn--primary" type="button" data-open="new-sheet">{% icon "plus" %}New blackout</button>{% endif %}
+</div>
+
+{% if upcoming %}
+<div class="tablewrap cfg-gap-b">
+  <table class="table cfg-table">
+    <caption class="sr-only">Current and upcoming blackouts</caption>
+    <thead><tr><th scope="col">Blackout</th><th scope="col">When</th><th scope="col">What it means</th>{% if can_edit %}<th scope="col"><span class="sr-only">Actions</span></th>{% endif %}</tr></thead>
+    <tbody>
+    {% for b in upcoming %}
+      <tr>
+        <td><strong>{{ b.title }}</strong><div class="row row--wrap cfg-badges">{% if b.live %}<span class="badge badge--live">{% icon "zap" %}In effect</span>{% endif %}<span class="badge badge--plain">{{ b.get_kind_display }}</span></div></td>
+        <td class="nowrap tnum small">{{ b.start|date:"D j M, H:i" }}<br><span class="faint">to {{ b.end|date:"D j M, H:i" }}</span></td>
+        <td class="cfg-summarycell small">{{ b.summary }}{% if b.note %}<div class="faint">{{ b.note }}</div>{% endif %}</td>
+        {% if can_edit %}<td class="nowrap"><div class="row cfg-rowactions"><a class="btn btn--sm" href="?tab=blackouts&amp;edit={{ b.pk }}">{% icon "pencil" %}Edit</a>
+          <form method="post" action="{% url 'manage:policies' %}" data-confirm="Remove the {{ b.title }} blackout? Bookings open again for that time straight away.">{% csrf_token %}<input type="hidden" name="action" value="blackout.delete"><input type="hidden" name="pk" value="{{ b.pk }}"><button class="btn btn--sm btn--ghost" type="submit" aria-label="Remove {{ b.title }}">{% icon "trash-2" %}</button></form></div></td>{% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="panel empty empty--compact cfg-gap-b">
+  <div class="empty__icon">{% icon "calendar-x" %}</div>
+  <h3>No blackouts coming up</h3>
+  <p>Add the next holiday or exam period so nobody books a room that will be locked.</p>
+</div>
+{% endif %}
+
+{% if past %}
+<details class="panel cfg-past">
+  <summary><strong>Past blackouts</strong> <span class="small faint">({{ past|length }} most recent)</span></summary>
+  <ul class="list">{% for b in past %}<li class="row row--between small"><span><strong>{{ b.title }}</strong>, {{ b.start|date:"j M Y" }} to {{ b.end|date:"j M Y" }}</span><span class="badge badge--plain">{{ b.get_kind_display }}</span></li>{% endfor %}</ul>
+</details>
+{% endif %}
+
+{% if can_edit %}
+<dialog id="new-sheet" class="sheet cfg-sheet" aria-labelledby="new-h"{% if autoopen == "new-sheet" %} data-autoopen{% endif %}>
+  <div class="sheet__head"><h2 id="new-h" class="h-sm">New blackout</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <div class="sheet__body">{% include "manage/setup/form_blackout.html" with form=new_form %}</div>
+</dialog>
+{% if edit_form %}
+<dialog id="edit-sheet" class="sheet cfg-sheet" aria-labelledby="edit-h"{% if autoopen == "edit-sheet" %} data-autoopen{% endif %}>
+  <div class="sheet__head"><h2 id="edit-h" class="h-sm">Edit blackout</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <div class="sheet__body">{% include "manage/setup/form_blackout.html" with form=edit_form %}</div>
+</dialog>
+{% endif %}
+{% endif %}

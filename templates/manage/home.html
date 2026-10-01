@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Console{% endblock %}
+{% block topbar_title %}Console<small>{{ scope_label }}</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div>
+    <h1>{{ title }}</h1>
+    <p>{% now "l, j F" %}. {% if campus_wide %}All {{ resource_count }} bookable resources.{% else %}{{ resource_count }} resource{{ resource_count|pluralize }} in your care.{% endif %}</p>
+  </div>
+  {% if can_board %}<a class="btn btn--primary" href="{% url 'manage:board' %}">{% icon "rows-3" %}Open live board</a>{% endif %}
+</div>
+
+<section class="kpis" aria-label="Right now">
+  {% for k in kpis %}
+  {% if k.url %}<a class="panel kpi kpi--link{% if k.alert %} is-alert{% endif %}" href="{{ k.url }}">{% else %}<div class="panel kpi">{% endif %}
+    <span class="kpi__label">{% icon k.icon 15 %}{{ k.label }}</span>
+    <span class="kpi__value">{{ k.value }}</span>
+    <span class="kpi__delta">{{ k.note }}</span>
+  {% if k.url %}</a>{% else %}</div>{% endif %}
+  {% endfor %}
+</section>
+
+<div class="split console-split">
+  <div class="stack" style="--gap: var(--s6)">
+    <section class="panel panel--flagged" aria-labelledby="needs-h">
+      <span class="flag">{% icon "bell" %}<span id="needs-h">Needs you</span></span>
+      {% if needs %}
+      <ul class="needs">
+        {% for n in needs %}
+        <li><a class="needs__item tone-{{ n.tone }}" href="{{ n.url }}">
+          <span class="needs__icon" aria-hidden="true">{% icon n.icon %}</span>
+          <span class="needs__text"><strong>{{ n.title }}</strong><span class="small muted">{{ n.text }}</span></span>
+          <span class="needs__cta small">{{ n.cta }}{% icon "chevron-right" 15 %}</span>
+        </a></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty empty--compact">
+        <div class="empty__icon">{% icon "circle-check" %}</div>
+        <h3>Nothing needs you right now</h3>
+        <p class="small">No requests waiting, no open breakdowns, nothing low on stock. This list fills up as things come in.</p>
+      </div>
+      {% endif %}
+    </section>
+
+    {% if can_board %}
+    <section class="panel panel--flush board board--preview" aria-labelledby="prev-h">
+      <header class="board__bar">
+        <h2 id="prev-h" class="h-sm">Right now</h2>
+        <span class="board__live xsmall"><span class="live-dot" aria-hidden="true"></span>As of {{ now|hm }}</span>
+        <a class="small board__count" href="{% url 'manage:board' %}">See the full board</a>
+      </header>
+      {% if preview %}
+      <div class="board__grid">
+        <ol class="board__rows">
+          {% for row in preview %}
+          <li class="board__row">
+            <div class="board__label">
+              <a class="board__name truncate" href="{{ row.r.get_absolute_url }}">{{ row.r.name }}</a>
+              <span class="xsmall faint truncate">{{ row.r.code }}{% if row.r.building %}, {{ row.r.building.name }}{% endif %}</span>
+            </div>
+            <div class="board__state">{% if row.status %}<span class="badge badge--{{ row.status.tone }}">{% icon row.status.icon %}{{ row.status.text }}</span>{% endif %}</div>
+            <div class="board__track">{% daystrip row.sched start_hour=7 end_hour=22 %}</div>
+          </li>
+          {% endfor %}
+        </ol>
+      </div>
+      {% else %}
+      <div class="empty empty--compact">
+        <div class="empty__icon">{% icon "rows-3" %}</div>
+        <h3>No resources in your care yet</h3>
+        <p class="small">Once you're named custodian of a room, lab or piece of equipment, its day shows up here.</p>
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="stack sticky-side" style="--gap: var(--s5)" aria-label="In use and starting soon">
+    <section class="panel panel--flagged">
+      <span class="flag flag--ink">{% icon "zap" %}In use now</span>
+      {% if live %}
+      <ul class="list livelist">{% for b, s in live %}{% include "manage/_live_row.html" %}{% endfor %}</ul>
+      {% else %}
+      <p class="small muted">Nobody is checked in right now.</p>
+      {% endif %}
+    </section>
+    <section class="panel">
+      <div class="panel__head"><h3>Starting within the hour</h3></div>
+      {% if soon %}
+      <ul class="list livelist">{% for b, s in soon %}{% include "manage/_live_row.html" %}{% endfor %}</ul>
+      {% else %}
+      <p class="small muted">Nothing starts in the next hour.{% if can_board %} The <a href="{% url 'manage:board' %}">live board</a> shows the rest of the day.{% endif %}</p>
+      {% endif %}
+    </section>
+  </aside>
+</div>
+
+<dialog id="confirm-dialog" class="sheet" aria-labelledby="confirm-h">
+  <div class="sheet__head"><h2 id="confirm-h" class="h-sm">Check out now?</h2></div>
+  <div class="sheet__body stack"><p data-confirm-text></p><div class="row"><button class="btn btn--ink" type="button" data-confirm-yes>Yes, check out</button><button class="btn btn--ghost" type="button" data-close>Not yet</button></div></div>
+</dialog>
+{% endblock %}

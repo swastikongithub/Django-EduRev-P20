@@ -1,0 +1,31 @@
+{% if not test %}
+<p class="xsmall faint">Pick a resource to see the result.</p>
+{% else %}
+<div class="wftest">
+  <p class="xsmall faint">{{ test.role_label }} booking {{ test.resource.name }} for {{ test.attendees }} {{ test.attendees|pluralize:"person,people" }}, {{ test.minutes|duration }}:</p>
+  {% if not test.chosen %}
+    <div class="wftest__result is-instant">{% icon "zap" %}<div><strong>Confirmed instantly</strong><span class="xsmall">No active workflow matches this request.</span></div></div>
+  {% elif test.chosen.auto_approve %}
+    <div class="wftest__result is-instant">{% icon "zap" %}<div><strong>Confirmed instantly</strong><span class="xsmall">by {{ test.chosen.name }}.</span></div></div>
+  {% else %}
+    <div class="wftest__result">{% icon "hourglass" %}<div><strong>Held for approval</strong><span class="xsmall">by {{ test.chosen.name }}, {{ test.steps|length }} step{{ test.steps|length|pluralize }}.</span></div></div>
+    <ol class="chain chain--vertical">
+      {% for s in test.steps %}
+      <li class="chain__step"><span class="chain__n">{{ forloop.counter }}</span><span>
+        <strong>{% if s.approver_role == "user" and s.approver_user %}{{ s.approver_user.display_name }}{% else %}{{ s.get_approver_role_display }}{% endif %}</strong>
+        <span class="xsmall faint">within {{ s.sla_hours }} h</span>
+        {% if s.asked %}<span class="xsmall">Asks {{ s.asked|join:", " }}</span>{% else %}<span class="xsmall cfg-warntext">{% icon "triangle-alert" 13 %} Nobody holds this role for {{ test.resource.name }}. Only facility managers and admins could decide.</span>{% endif %}
+      </span></li>
+      {% endfor %}
+    </ol>
+  {% endif %}
+  {% if test.rows %}
+  <details class="wftest__others">
+    <summary class="xsmall">How it was chosen ({{ test.rows|length }} workflow{{ test.rows|length|pluralize }} considered)</summary>
+    <ul class="list">
+      {% for r in test.rows %}<li class="xsmall"><strong>{{ r.w.name }}</strong>{% if r.chosen %} <span class="badge badge--success">Picked</span>{% else %}<span class="faint">: skipped, {{ r.why|join:"; " }}.</span>{% endif %}</li>{% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+</div>
+{% endif %}

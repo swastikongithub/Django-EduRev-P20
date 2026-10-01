@@ -1,0 +1,62 @@
+{% if form.errors or step_errors %}
+<div class="notice notice--danger" role="alert">{% icon "circle-alert" %}<div><strong>A few things need fixing before this workflow can be saved.</strong>
+  <ul>{% for f in form %}{% if f.errors %}<li>{{ f.label }}: {{ f.errors.0 }}</li>{% endif %}{% endfor %}{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}{% for e in step_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div></div>
+{% endif %}
+
+<form method="post" action="{% url 'manage:workflows' %}" class="stack" style="--gap: var(--s5)" data-switches data-steps novalidate>{% csrf_token %}
+  <input type="hidden" name="action" value="save">{% if form.instance.pk %}<input type="hidden" name="pk" value="{{ form.instance.pk }}">{% endif %}
+
+  <section class="panel" aria-labelledby="wf-what-h">
+    <h2 id="wf-what-h" class="h-sm">When it applies</h2>
+    <div class="stack" style="--gap: var(--s4)">
+      {% include "manage/setup/_field.html" with f=form.name %}
+      <div class="field"><span class="label">Applies to</span>
+        <div class="seg" role="radiogroup" aria-label="Applies to">{% for c in form.applies %}<label>{{ c.tag }}{{ c.choice_label }}</label>{% endfor %}</div></div>
+      <div data-show-when="applies=type">{% include "manage/setup/_field.html" with f=form.resource_type req=1 %}</div>
+      <div data-show-when="applies=resource">{% include "manage/setup/_field.html" with f=form.resource req=1 %}</div>
+      <div class="field"><span class="label">{{ form.requester_roles.label }}</span>
+        <div class="chips chips--sm" role="group" aria-label="{{ form.requester_roles.label }}">{% for c in form.requester_roles %}<label class="chip">{{ c.tag }}{{ c.choice_label }}</label>{% endfor %}</div>
+        <span class="hint">Leave all unticked to apply to anyone.</span></div>
+      <div class="form-grid">
+        {% include "manage/setup/_field.html" with f=form.min_attendees %}
+        {% include "manage/setup/_field.html" with f=form.min_duration_minutes %}
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="wf-who-h">
+    <h2 id="wf-who-h" class="h-sm">Who approves</h2>
+    <label class="checkrow cfg-gap-b">{{ form.auto_approve }}<span><strong>Confirm instantly</strong><br><span class="xsmall faint">Use this to exempt a group (for example faculty) from a broader workflow. Steps are ignored.</span></span></label>
+    <div data-show-when="auto_approve=off">
+      <p class="small muted cfg-lead">Each step must approve before the next is asked. If anyone rejects, the request ends there. The slot is held for the requester throughout.</p>
+      <ol class="wfsteps" data-rows="step">
+        {% for s in step_rows %}{% include "manage/setup/_workflow_step.html" %}{% endfor %}
+      </ol>
+      <template data-row-template="step">{% include "manage/setup/_workflow_step.html" with s=None %}</template>
+      <button class="btn btn--sm cfg-gap" type="button" data-add-row="step" data-max="{{ max_steps }}">{% icon "plus" %}Add a step</button>
+    </div>
+  </section>
+
+  <details class="panel cfg-more"{% if form.priority.errors or form.description.value %} open{% endif %}>
+    <summary><strong>More options</strong></summary>
+    <div class="form-grid cfg-gap">
+      {% include "manage/setup/_field.html" with f=form.priority %}
+      <div class="field"><span class="label">Status</span><label class="checkrow">{{ form.active }}<span>Active</span></label></div>
+      {% include "manage/setup/_field.html" with f=form.description span=1 %}
+    </div>
+  </details>
+
+  <div class="row row--wrap">
+    <button class="btn btn--primary btn--lg" type="submit">{% icon "check" %}{% if form.instance.pk %}Save workflow{% else %}Add workflow{% endif %}</button>
+    <a class="btn btn--ghost" href="{% url 'manage:workflows' %}">Cancel</a>
+  </div>
+</form>
+
+{% if form.instance.pk %}
+<form method="post" action="{% url 'manage:workflows' %}" class="cfg-dangerzone" data-confirm="Delete {{ form.instance.name }}? New bookings it covered fall to the next matching workflow. Requests already waiting keep their approvers.">{% csrf_token %}
+  <input type="hidden" name="action" value="delete"><input type="hidden" name="pk" value="{{ form.instance.pk }}">
+  <button class="btn btn--danger btn--sm" type="submit">{% icon "trash-2" %}Delete this workflow</button>
+  <span class="xsmall faint">Turning it off keeps it for later instead.</span>
+</form>
+{% endif %}

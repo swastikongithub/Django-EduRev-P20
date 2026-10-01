@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Import resources{% endblock %}
+{% block topbar_title %}Resources<small>Import from CSV</small>{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{% url 'manage:resources' %}">Resources</a>{% icon "chevron-right" %}<span>Import from CSV</span></nav>
+<div class="pagehead">
+  <div>
+    <h1>Import resources from a spreadsheet</h1>
+    <p>Check the file first. Every row is validated and shown below; nothing is added until you confirm, and then either every row is added or none are.</p>
+  </div>
+</div>
+
+<ol class="cfg-steps" aria-label="Import steps">
+  <li class="{% if not preview %}is-current{% else %}is-done{% endif %}"><span>1</span>Choose the file</li>
+  <li class="{% if preview and not preview.ok %}is-current{% elif preview.ok %}is-done{% endif %}"><span>2</span>Check every row</li>
+  <li class="{% if preview.ok %}is-current{% endif %}"><span>3</span>Import</li>
+</ol>
+
+{% if error %}<div class="notice notice--danger cfg-gap-b" role="alert">{% icon "circle-alert" %}<div><strong>{{ error }}</strong></div></div>{% endif %}
+
+{% if preview %}
+  {% if preview.problems %}
+    <div class="notice notice--danger cfg-gap-b" role="alert">{% icon "circle-alert" %}<div><strong>The file can't be read as a resource list.</strong>{% for p in preview.problems %}{{ p }} {% endfor %}</div></div>
+  {% elif preview.ok %}
+    <div class="notice notice--success cfg-gap-b" role="status">{% icon "circle-check" %}<div><strong>All {{ preview.rows|length }} row{{ preview.rows|pluralize }} look right.</strong>Review them below, then import. They'll be bookable straight away under each type's rules.</div></div>
+  {% else %}
+    <div class="notice notice--warn cfg-gap-b" role="status">{% icon "triangle-alert" %}<div><strong>{{ preview.bad_rows|length }} of {{ preview.rows|length }} row{{ preview.rows|pluralize }} need{{ preview.bad_rows|length|pluralize:"s," }} fixing.</strong>Correct them in your spreadsheet and check the file again. Nothing has been imported.</div></div>
+  {% endif %}
+
+  {% if preview.rows %}
+  <div class="tablewrap cfg-gap-b">
+    <table class="table cfg-table cfg-preview">
+      <caption class="sr-only">Rows in the file</caption>
+      <thead><tr><th scope="col" class="num">Row</th><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Block</th><th scope="col" class="num">Capacity</th><th scope="col">Department</th><th scope="col">Features</th><th scope="col">Check</th></tr></thead>
+      <tbody>
+      {% for row in preview.rows %}
+        <tr class="{% if row.ok %}is-ok{% else %}is-bad{% endif %}">
+          <td class="num faint">{{ row.line }}</td>
+          <td class="tnum strong">{{ row.data.code|default:"—" }}</td>
+          <td>{{ row.data.name|default:"—" }}</td>
+          <td>{% if row.type %}{{ row.type.name }}{% else %}{{ row.data.type_code|default:"—" }}{% endif %}</td>
+          <td>{% if row.building %}{{ row.building.name }}{% else %}{{ row.data.building_code|default:"—" }}{% endif %}</td>
+          <td class="num">{{ row.data.capacity }}</td>
+          <td>{{ row.data.department_code|default:"—" }}</td>
+          <td class="small">{{ row.data.features|default:"—" }}</td>
+          <td>{% if row.ok %}<span class="badge badge--success">{% icon "check" %}Ready</span>{% else %}<ul class="cfg-rowerrs">{% for e in row.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if preview.ok %}
+  <form method="post" class="row row--wrap cfg-gap-b">{% csrf_token %}
+    <input type="hidden" name="action" value="import_confirm">
+    <textarea name="csv_text" hidden aria-hidden="true">{{ text }}</textarea>
+    <button class="btn btn--primary btn--lg" type="submit">{% icon "file-up" %}Import {{ preview.rows|length }} resource{{ preview.rows|pluralize }}</button>
+    <a class="btn btn--ghost" href="{% url 'manage:resources' %}?import=1">Choose a different file</a>
+  </form>
+  {% endif %}
+{% endif %}
+
+{% if not preview.ok %}
+<div class="split">
+  <form method="post" enctype="multipart/form-data" class="panel stack" style="--gap: var(--s4)" aria-labelledby="up-h">{% csrf_token %}
+    <h2 id="up-h" class="h-sm">{% if preview %}Check a corrected file{% else %}Choose the file{% endif %}</h2>
+    <input type="hidden" name="action" value="import_preview">
+    <div class="field">
+      <label for="imp-file">CSV file</label>
+      <input class="cfg-file" type="file" id="imp-file" name="file" accept=".csv,text/csv" required>
+      <span class="hint">Up to 1 MB and 1,000 rows. In Excel or Google Sheets use "Save as CSV UTF-8".</span>
+    </div>
+    <div class="row"><button class="btn btn--ink" type="submit">{% icon "list-checks" %}Check the file</button></div>
+  </form>
+
+  <aside class="panel panel--sunk" aria-labelledby="fmt-h">
+    <h2 id="fmt-h" class="h-sm">What the file needs</h2>
+    <p class="small muted">One resource per row, with these columns in the first row:</p>
+    <ul class="cfg-collist">
+      {% for c in columns %}<li><code>{{ c }}</code>{% if c == "code" or c == "name" or c == "type_code" or c == "capacity" %}<span class="badge badge--plain">required</span>{% endif %}</li>{% endfor %}
+    </ul>
+    <p class="small muted cfg-gap">Type, block and department use their codes (for example <code>computer-lab</code>, <code>34</code>, <code>CSE</code>). Separate features with semicolons: <code>Projector;Wi-Fi</code>.</p>
+    <a class="btn btn--sm cfg-gap" href="{% url 'manage:resources' %}?import=1&amp;sample=1">{% icon "download" %}Download a template</a>
+  </aside>
+</div>
+{% endif %}
+{% endblock %}

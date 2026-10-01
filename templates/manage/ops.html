@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Operations{% endblock %}
+{% block topbar_title %}Setup<small>Operations</small>{% endblock %}
+{% block content %}
+{% include "manage/setup/_crumbs.html" with here="Operations" %}
+<div class="pagehead">
+  <div>
+    <h1>Operations</h1>
+    <p>Is the system healthy, and is background work happening on time? Bookings never depend on Redis or Celery for correctness, but no-shows are only released when the sweep runs.</p>
+  </div>
+</div>
+
+{% if stalled %}
+<div class="notice notice--warn cfg-gap-b" role="status">{% icon "triangle-alert" %}<div><strong>{{ stalled|length }} background job{{ stalled|length|pluralize }} {{ stalled|length|pluralize:"hasn't,haven't" }} run for over three times {{ stalled|length|pluralize:"its,their" }} schedule.</strong>Check that the Celery worker and beat processes are running{% if demo %}, or use Run now below for the demo{% endif %}.</div></div>
+{% endif %}
+
+<div class="grid grid-3 cfg-gap-b">
+  <section class="panel checktile is-{{ checks.database.status }}" aria-labelledby="db-h">
+    <span class="checktile__icon">{% if checks.database.status == "ok" %}{% icon "circle-check" 22 %}{% else %}{% icon "circle-x" 22 %}{% endif %}</span>
+    <div><h2 id="db-h" class="checktile__title">Database</h2>
+      <p class="small">{% if checks.database.status == "ok" %}PostgreSQL answered in <span class="tnum">{{ checks.database.ms }}</span> ms.{% else %}Not reachable ({{ checks.database.error }}).{% endif %}</p></div>
+  </section>
+  <section class="panel checktile is-{{ checks.redis.status }}" aria-labelledby="redis-h">
+    <span class="checktile__icon">{% if checks.redis.status == "ok" %}{% icon "circle-check" 22 %}{% elif checks.redis.status == "off" %}{% icon "circle-dot" 22 %}{% else %}{% icon "circle-x" 22 %}{% endif %}</span>
+    <div><h2 id="redis-h" class="checktile__title">Redis</h2>
+      <p class="small">{% if checks.redis.status == "ok" %}Answered in <span class="tnum">{{ checks.redis.ms }}</span> ms.{% elif checks.redis.status == "off" %}Not configured. The cache is in-process, which is fine for one server.{% else %}Not reachable ({{ checks.redis.error }}). Caching and background jobs are affected; bookings are not.{% endif %}</p></div>
+  </section>
+  <section class="panel checktile is-{{ celery.tone }}" aria-labelledby="cel-h">
+    <span class="checktile__icon">{% if celery.tone == "ok" %}{% icon "circle-check" 22 %}{% else %}{% icon "info" 22 %}{% endif %}</span>
+    <div><h2 id="cel-h" class="checktile__title">Celery: {{ celery.label }}</h2>
+      <p class="small">{{ celery.text }}</p>{% if celery.broker %}<p class="xsmall faint tnum">{{ celery.broker }}</p>{% endif %}</div>
+  </section>
+</div>
+
+<section aria-labelledby="sw-h" class="cfg-gap-b">
+  <div class="section-head cfg-sechead"><h2 id="sw-h" class="h-sm">Background sweeps</h2><a class="small" href="/ready/">Raw readiness check</a></div>
+  <div class="tablewrap">
+    <table class="table cfg-table">
+      <thead><tr><th scope="col">Job</th><th scope="col">Runs</th><th scope="col">Last run</th><th scope="col" class="num">Changed</th><th scope="col">Last 24 h</th><th scope="col"><span class="sr-only">Run now</span></th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr{% if r.stalled or r.failed %} class="is-warn"{% endif %}>
+          <td><strong>{{ r.sweep.label }}</strong><div class="xsmall faint cfg-sweepwhat">{{ r.sweep.what }}</div></td>
+          <td class="small nowrap">{{ r.every|capfirst }}</td>
+          <td class="small nowrap">
+            {% if r.last %}{{ r.last.started_at|timesince }} ago
+              {% if r.failed %}<div><span class="badge badge--danger">{% icon "circle-x" %}Failed</span></div>{% elif r.stalled %}<div><span class="badge badge--warn">{% icon "triangle-alert" %}Overdue</span></div>{% else %}<div><span class="badge badge--success">{% icon "circle-check" %}On time</span></div>{% endif %}
+            {% else %}<span class="faint">Never</span>{% if r.stalled %}<div><span class="badge badge--warn">{% icon "triangle-alert" %}Not running</span></div>{% endif %}{% endif %}
+          </td>
+          <td class="num">{{ r.last.affected|default:"0" }}</td>
+          <td class="small nowrap tnum">{{ r.day.runs }} run{{ r.day.runs|pluralize }}{% if r.day.failed %}, <span class="cfg-warntext">{{ r.day.failed }} failed</span>{% endif %}<div class="xsmall faint">{{ r.day.affected|default:"0" }} changed</div></td>
+          <td>
+            <form method="post">{% csrf_token %}<input type="hidden" name="task" value="{{ r.sweep.task }}">
+              <button class="btn btn--sm{% if r.sweep.task == 'checkins.sweep_no_shows' %} btn--ink{% endif %}" type="submit">{% icon "rotate-ccw" %}Run now</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if demo %}<p class="xsmall faint cfg-gap">Demo tip: run Release no-shows to free bookings whose check-in window has closed. Owners are notified straight away.</p>{% endif %}
+</section>
+
+<section aria-labelledby="recent-h">
+  <h2 id="recent-h" class="h-sm">Recent runs</h2>
+  {% if recent %}
+  <div class="tablewrap">
+    <table class="table cfg-table">
+      <thead><tr><th scope="col">Job</th><th scope="col">Started</th><th scope="col" class="num">Took</th><th scope="col" class="num">Changed</th><th scope="col">Result</th></tr></thead>
+      <tbody>{% for run in recent %}<tr>
+        <td class="small">{{ labels|get_item:run.task|default:run.task }}</td>
+        <td class="small nowrap tnum">{{ run.started_at|dayname }} {{ run.started_at|date:"H:i:s" }}</td>
+        <td class="num small">{% if run.took is not None %}{{ run.took|floatformat:2 }} s{% else %}running{% endif %}</td>
+        <td class="num">{{ run.affected }}</td>
+        <td>{% if run.ok %}<span class="badge badge--success">{% icon "check" %}OK</span>{% else %}<span class="badge badge--danger" title="{{ run.detail.error }}">{% icon "circle-x" %}Failed</span>{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="small muted">No sweep has run yet. Start the Celery worker and beat, or use Run now.</p>
+  {% endif %}
+</section>
+{% endblock %}
