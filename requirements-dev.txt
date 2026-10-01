@@ -6,3 +6,5 @@ factory-boy>=3.3
 ruff>=0.6
 pip-audit>=2.7
 locust>=2.29
+playwright>=1.48
+pytest-playwright>=0.5
