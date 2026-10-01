@@ -202,7 +202,7 @@ def detail(request, slug):
         "next_day": day + timedelta(days=1),
         "hours_rows": [(h, f"{h:02d}:00") for h in range(window[0].hour, window[1].hour)],
         "policy": policy,
-        "hours": [(wd, hours.get(wd, [])) for wd in range(7)],
+        "hours": [(wd, name, hours.get(wd, [])) for wd, name in enumerate(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])],
         "weekday_names": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
         "legend": availability.LEGEND,
         "items": items_for(resource),

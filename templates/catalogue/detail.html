@@ -35,12 +35,19 @@
   </div>
 </section>
 
-<div class="split split--wide-side detail-body">
-  <div class="stack" style="--gap: var(--s6)">
+<div class="detail-body">
+  <div class="detail-cal">
     <section class="panel panel--flagged calpanel" aria-labelledby="cal-h">
       <span class="flag flag--ink">{% icon "calendar-days" %}<span id="cal-h">Availability</span></span>
       {% include "catalogue/_calendar.html" %}
     </section>
+  </div>
+
+  <aside class="detail-side">
+    {% include "bookings/_book_panel.html" %}
+  </aside>
+
+  <div class="detail-info stack" style="--gap: var(--s6)">
 
     <section class="grid grid-2">
       {% if r.description or r.attributes.all %}
@@ -52,7 +59,7 @@
       {% endif %}
       <div class="panel">
         <h2 class="h-sm">Opening hours</h2>
-        <dl class="kv hours">{% for wd, spans in hours %}<dt{% if wd == today.weekday %} class="strong"{% endif %}>{{ weekday_names|slice:wd|last|default:"" }}</dt><dd>{% for o, c in spans %}{{ o|time:"H:i" }}–{{ c|time:"H:i" }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="faint">Closed</span>{% endfor %}</dd>{% endfor %}</dl>
+        <dl class="kv hours">{% for wd, name, spans in hours %}<dt{% if wd == today.weekday %} class="strong"{% endif %}>{{ name }}</dt><dd>{% for o, c in spans %}{{ o|time:"H:i" }}–{{ c|time:"H:i" }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="faint">Closed</span>{% endfor %}</dd>{% endfor %}</dl>
         <hr class="divider">
         <h2 class="h-sm">Looked after by</h2>
         <ul class="list">{% for c in r.custodians.all %}<li class="row">{% initials_avatar c.user "sm" %}<div><strong class="small">{{ c.user.display_name }}</strong><div class="xsmall faint">{{ c.user.designation|default:c.user.get_role_display }}</div></div></li>{% empty %}<li class="small faint">Facilities office</li>{% endfor %}</ul>
@@ -70,11 +77,8 @@
       <button type="button" class="linkbtn small" data-open="report-dialog">{% icon "triangle-alert" 15 %} Something broken here? Report it</button>
     </section>
   </div>
-
-  <aside class="sticky-side">
-    {% include "bookings/_book_panel.html" %}
-  </aside>
 </div>
+<div class="mobilebook" data-mobilebook hidden><span data-mobilebook-label>Selected</span><a class="btn btn--primary" href="#book-panel">Review and book</a></div>
 
 <dialog id="report-dialog" class="sheet" aria-labelledby="report-h">
   <div class="sheet__head"><h2 id="report-h" class="h-sm">Report a problem with {{ r.name }}</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
