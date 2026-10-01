@@ -134,10 +134,7 @@ def can_decide(user, approval: Approval) -> bool:
 
 
 def decide(approval: Approval, user, *, approve: bool, comment: str = "", request=None, now=None) -> Booking:
-    from apps.audit.services import record
     from apps.bookings.services import set_status
-    from apps.notifications.models import Kind
-    from apps.notifications.services import notify
 
     now = now or timezone.now()
     with transaction.atomic():
@@ -149,59 +146,74 @@ def decide(approval: Approval, user, *, approve: bool, comment: str = "", reques
             raise NotPermitted("You can't decide this approval.")
         if booking.status != BookingStatus.PENDING:
             raise InvalidTransition(f"This request is already {booking.get_status_display().lower()}.")
-        if booking.start <= now:
-            set_status(booking, BookingStatus.EXPIRED, reason="Start time passed before a decision", now=now)
-            close_open_steps(booking)
-            raise InvalidTransition("The start time has passed; the request expired.")
-        if not approve and not comment.strip():
-            raise InvalidTransition("Please give the requester a reason for rejecting.")
+        if booking.start > now:
+            return _apply_decision(booking, approval, user, approve=approve, comment=comment, request=request, now=now)
+        # Expire, commit, *then* tell the caller: raising inside this atomic block would roll the
+        # release back and leave a stale pending request holding the slot.
+        from apps.inventory.services import cancel_reservations
 
-        approval.decision = Decision.APPROVED if approve else Decision.REJECTED
-        approval.decided_by = user
-        approval.decided_at = now
-        approval.comment = comment.strip()[:500]
-        approval.save(update_fields=["decision", "decided_by", "decided_at", "comment"])
-        record(
-            user,
-            "approval.approve" if approve else "approval.reject",
-            booking,
-            after={"step": approval.step_order, "comment": approval.comment},
-            request=request,
-        )
+        set_status(booking, BookingStatus.EXPIRED, reason="Start time passed before a decision", now=now)
+        close_open_steps(booking)
+        cancel_reservations(booking)
+    raise InvalidTransition("The start time has passed; the request expired.")
 
-        if not approve:
-            set_status(booking, BookingStatus.REJECTED, reason=approval.comment, now=now)
-            close_open_steps(booking)
-            from apps.inventory.services import cancel_reservations
 
-            cancel_reservations(booking)
-            notify(
-                booking.booked_for,
-                Kind.REJECTED,
-                f"Not approved · {booking.resource.name}",
-                f"{user.display_name}: {approval.comment}",
-                booking.get_absolute_url(),
-            )
-            return booking
+def _apply_decision(booking, approval, user, *, approve, comment, request, now) -> Booking:
+    """Record one step's decision. Runs inside decide()'s transaction with both rows locked."""
+    from apps.audit.services import record
+    from apps.bookings.services import set_status
+    from apps.notifications.models import Kind
+    from apps.notifications.services import notify
 
-        nxt = booking.approvals.filter(decision=Decision.WAITING).order_by("step_order").first()
-        if nxt:
-            step = nxt.workflow.steps.filter(order=nxt.step_order).first() if nxt.workflow_id else None
-            nxt.decision = Decision.PENDING
-            nxt.due_at = now + timedelta(hours=step.sla_hours if step else 24)
-            nxt.save(update_fields=["decision", "due_at"])
-            _ask(nxt)
-            return booking
+    if not approve and not comment.strip():
+        raise InvalidTransition("Please give the requester a reason for rejecting.")
 
-        set_status(booking, BookingStatus.APPROVED, reason="Approved", now=now)
+    approval.decision = Decision.APPROVED if approve else Decision.REJECTED
+    approval.decided_by = user
+    approval.decided_at = now
+    approval.comment = comment.strip()[:500]
+    approval.save(update_fields=["decision", "decided_by", "decided_at", "comment"])
+    record(
+        user,
+        "approval.approve" if approve else "approval.reject",
+        booking,
+        after={"step": approval.step_order, "comment": approval.comment},
+        request=request,
+    )
+
+    if not approve:
+        set_status(booking, BookingStatus.REJECTED, reason=approval.comment, now=now)
+        close_open_steps(booking)
+        from apps.inventory.services import cancel_reservations
+
+        cancel_reservations(booking)
         notify(
             booking.booked_for,
-            Kind.APPROVED,
-            f"Approved · {booking.resource.name}",
-            f"{timezone.localtime(booking.start):%a %d %b, %H:%M}. Your QR pass is ready.",
+            Kind.REJECTED,
+            f"Not approved · {booking.resource.name}",
+            f"{user.display_name}: {approval.comment}",
             booking.get_absolute_url(),
         )
         return booking
+
+    nxt = booking.approvals.filter(decision=Decision.WAITING).order_by("step_order").first()
+    if nxt:
+        step = nxt.workflow.steps.filter(order=nxt.step_order).first() if nxt.workflow_id else None
+        nxt.decision = Decision.PENDING
+        nxt.due_at = now + timedelta(hours=step.sla_hours if step else 24)
+        nxt.save(update_fields=["decision", "due_at"])
+        _ask(nxt)
+        return booking
+
+    set_status(booking, BookingStatus.APPROVED, reason="Approved", now=now)
+    notify(
+        booking.booked_for,
+        Kind.APPROVED,
+        f"Approved · {booking.resource.name}",
+        f"{timezone.localtime(booking.start):%a %d %b, %H:%M}. Your QR pass is ready.",
+        booking.get_absolute_url(),
+    )
+    return booking
 
 
 def close_open_steps(booking: Booking):
@@ -227,6 +239,7 @@ def queue_for(user):
 
 def expire_stale(now=None) -> int:
     from apps.bookings.services import set_status
+    from apps.inventory.services import cancel_reservations
     from apps.notifications.models import Kind
     from apps.notifications.services import notify
 
@@ -241,6 +254,7 @@ def expire_stale(now=None) -> int:
         for b in stale:
             set_status(b, BookingStatus.EXPIRED, reason="No decision before the start time", now=now)
             close_open_steps(b)
+            cancel_reservations(b)
             notify(
                 b.booked_for,
                 Kind.EXPIRED,
