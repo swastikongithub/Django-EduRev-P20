@@ -21,16 +21,60 @@ from django.utils import timezone
 
 # Words that name a resource type (matched against ResourceType.code). Longest phrases first.
 TYPE_WORDS = [
-    ("computer lab", "computer-lab"), ("electronics lab", "electronics-lab"), ("seminar hall", "seminar-hall"),
-    ("lecture theatre", "lecture-theatre"), ("lecture hall", "lecture-theatre"), ("meeting room", "meeting-room"),
-    ("conference room", "meeting-room"), ("auditorium", "seminar-hall"), ("seminar", "seminar-hall"),
-    ("classroom", "classroom"), ("class room", "classroom"), ("lab", "computer-lab"), ("labs", "computer-lab"),
-    ("court", "sports"), ("ground", "sports"), ("sports", "sports"), ("gym", "sports"), ("basketball", "sports"),
-    ("badminton", "sports"), ("football", "sports"), ("tennis", "sports"), ("cricket", "sports"),
-    ("camera", "equipment"), ("equipment", "equipment"), ("printer", "equipment"), ("3d printer", "equipment"),
-    ("drone", "equipment"), ("vr", "equipment"), ("oscilloscope", "equipment"), ("microscope", "equipment"),
-    ("bus", "vehicle"), ("van", "vehicle"), ("vehicle", "vehicle"), ("studio", "studio"), ("room", "classroom"),
+    ("computer lab", "computer-lab"),
+    ("electronics lab", "electronics-lab"),
+    ("seminar hall", "seminar-hall"),
+    ("lecture theatre", "lecture-theatre"),
+    ("lecture hall", "lecture-theatre"),
+    ("meeting room", "meeting-room"),
+    ("conference room", "meeting-room"),
+    ("auditorium", "seminar-hall"),
+    ("seminar", "seminar-hall"),
+    ("classroom", "classroom"),
+    ("class room", "classroom"),
+    ("lab", "computer-lab"),
+    ("labs", "computer-lab"),
+    ("court", "sports"),
+    ("ground", "sports"),
+    ("sports", "sports"),
+    ("gym", "sports"),
+    ("basketball", "sports"),
+    ("badminton", "sports"),
+    ("football", "sports"),
+    ("tennis", "sports"),
+    ("cricket", "sports"),
+    ("camera", "equipment"),
+    ("equipment", "equipment"),
+    ("printer", "equipment"),
+    ("3d printer", "equipment"),
+    ("drone", "equipment"),
+    ("vr", "equipment"),
+    ("oscilloscope", "equipment"),
+    ("microscope", "equipment"),
+    ("bus", "vehicle"),
+    ("van", "vehicle"),
+    ("vehicle", "vehicle"),
+    ("studio", "studio"),
+    ("room", "classroom"),
 ]
+SPECIFIC_WORDS = {
+    "basketball",
+    "badminton",
+    "football",
+    "tennis",
+    "cricket",
+    "gym",
+    "camera",
+    "printer",
+    "3d printer",
+    "drone",
+    "vr",
+    "oscilloscope",
+    "microscope",
+    "bus",
+    "van",
+    "auditorium",
+}
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
 
@@ -76,14 +120,16 @@ def parse(text: str, *, today: date | None = None, feature_names: list[str] | No
         nonlocal s
         m = re.search(pattern, s)
         if m:
-            s = s[: m.start()] + " " + s[m.end():]
+            s = s[: m.start()] + " " + s[m.end() :]
         return m
 
     if cut(r"\b(free|available|open)\s+(right\s+)?now\b|\bright now\b|\bnow\b"):
         it.free_now = True
         it.understood.append(("now", "Free right now"))
 
-    m = cut(r"\b(?:for|seats?|capacity|of)\s+(\d{1,4})\b(?:\s*(?:people|persons|students|seats|pax))?|\b(\d{1,4})\s*(?:people|persons|students|seats|pax)\b")
+    m = cut(
+        r"\b(?:for|seats?|capacity|of)\s+(\d{1,4})\b(?:\s*(?:people|persons|students|seats|pax))?|\b(\d{1,4})\s*(?:people|persons|students|seats|pax)\b"
+    )
     if m:
         it.capacity = int(m.group(1) or m.group(2))
         it.understood.append(("people", f"{it.capacity}+ people"))
@@ -114,8 +160,16 @@ def parse(text: str, *, today: date | None = None, feature_names: list[str] | No
                 except ValueError:
                     it.day = None
     if it.day:
-        it.understood.append(("date", "Today" if it.day == today else "Tomorrow" if it.day == today + timedelta(days=1)
-                              else it.day.strftime("%a %d %b")))
+        it.understood.append(
+            (
+                "date",
+                "Today"
+                if it.day == today
+                else "Tomorrow"
+                if it.day == today + timedelta(days=1)
+                else it.day.strftime("%a %d %b"),
+            )
+        )
 
     m = cut(r"\b(?:from\s+)?" + TIME + r"\s*(?:-|–|to|till|until)\s*" + TIME + r"\b")
     if m:
@@ -123,7 +177,9 @@ def parse(text: str, *, today: date | None = None, feature_names: list[str] | No
         it.start = _t(m.group(1), m.group(2), m.group(3) or end_ampm)
         it.end = _t(m.group(4), m.group(5), end_ampm)
     else:
-        m = cut(r"\b(?:at|after|from|around)\s+" + TIME + r"\b") or cut(r"\b" + r"(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b")
+        m = cut(r"\b(?:at|after|from|around)\s+" + TIME + r"\b") or cut(
+            r"\b" + r"(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b"
+        )
         if m:
             it.start = _t(m.group(1), m.group(2), m.group(3))
     if it.start:
@@ -133,7 +189,10 @@ def parse(text: str, *, today: date | None = None, feature_names: list[str] | No
 
     for phrase, code in TYPE_WORDS:
         if re.search(r"\b" + re.escape(phrase) + r"s?\b", s):
-            s = re.sub(r"\b" + re.escape(phrase) + r"s?\b", " ", s)
+            # Generic words ("lab", "court") only pick the type. Specific ones ("microscope",
+            # "basketball") pick the type AND stay in the text, so they still narrow the results.
+            if phrase not in SPECIFIC_WORDS:
+                s = re.sub(r"\b" + re.escape(phrase) + r"s?\b", " ", s)
             if code not in it.type_codes:
                 it.type_codes.append(code)
     if it.type_codes:
@@ -144,8 +203,14 @@ def parse(text: str, *, today: date | None = None, feature_names: list[str] | No
         if re.search(r"\b" + re.escape(key) + r"\b", s):
             s = re.sub(r"\b" + re.escape(key) + r"\b", " ", s)
             it.feature_words.append(fname)
-    for alias, fname in (("ac", "Air conditioned"), ("a/c", "Air conditioned"), ("wheelchair", "Wheelchair access"),
-                         ("smartboard", "Smart board"), ("vc", "Video conferencing"), ("pcs", None)):
+    for alias, fname in (
+        ("ac", "Air conditioned"),
+        ("a/c", "Air conditioned"),
+        ("wheelchair", "Wheelchair access"),
+        ("smartboard", "Smart board"),
+        ("vc", "Video conferencing"),
+        ("pcs", None),
+    ):
         if fname and fname in (feature_names or []) and re.search(r"\b" + re.escape(alias) + r"\b", s):
             s = re.sub(r"\b" + re.escape(alias) + r"\b", " ", s)
             if fname not in it.feature_words:
@@ -179,7 +244,8 @@ def refresh_search_vectors(queryset=None):
             + [f"{a.key} {a.value}" for a in r.attributes.all()]
         )
         Resource.objects.filter(pk=r.pk).update(
-            search_vector=search_vector_expression() + SearchVector(Value(extra, output_field=TextField()), weight="B", config="english")
+            search_vector=search_vector_expression()
+            + SearchVector(Value(extra, output_field=TextField()), weight="B", config="english")
         )
 
 
