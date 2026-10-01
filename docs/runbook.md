@@ -348,5 +348,8 @@ outside the system: check the resource's calendar and the audit log for that boo
 
 ### Account locked out
 
-After 5 failed attempts an account is locked for 15 minutes and unlocks by itself. To unlock
-sooner: `UPDATE accounts_user SET failed_logins = 0, locked_until = NULL WHERE username = '<username>';`
+After 5 failed attempts (wrong passwords and wrong or replayed TOTP codes count together) an
+account is locked for 15 minutes and unlocks by itself. The sign-in page deliberately answers
+"don't match" rather than saying the account is locked, so a person who is sure of their
+password is probably locked. For a lost authenticator, see
+[guide-admin.md](guide-admin.md#mfa-and-locked-accounts). To unlock sooner: `UPDATE accounts_user SET failed_logins = 0, locked_until = NULL WHERE username = '<username>';`

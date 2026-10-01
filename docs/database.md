@@ -116,7 +116,7 @@ erDiagram
 
     Resource ||--o{ MaintenanceWindow : "downtime"
     Resource ||--o{ BreakdownReport : "reported"
-    User ||--o{ BreakdownReport : "reported_by"
+    User ||--o{ BreakdownReport : "reported_by / confirmed_by"
     MaintenanceWindow |o--o{ BreakdownReport : "repairs"
 
     Resource |o--o{ InventoryItem : "kit for"
@@ -167,6 +167,7 @@ erDiagram
         uuid calendar_token UK
         text mfa_secret "Fernet-encrypted"
         bool mfa_enabled
+        bigint mfa_last_step "last accepted TOTP step"
         smallint failed_logins
         timestamptz locked_until
     }
@@ -420,6 +421,8 @@ erDiagram
         varchar severity
         varchar status
         bigint window_id FK
+        bigint confirmed_by_id FK
+        timestamptz confirmed_at
     }
     InventoryItem {
         bigint id PK
@@ -531,7 +534,7 @@ erDiagram
 | Table | Purpose | Notable columns |
 |---|---|---|
 | `accounts_department` | Academic or administrative department | `(institution, code)` unique |
-| `accounts_user` | Custom user (`AUTH_USER_MODEL`) | `role` (student, faculty, staff, custodian, dept_head, facility_manager, admin), `vid` (UMS registration / employee number), `department`, `section`, `calendar_token` (private feed credential), `mfa_secret` (encrypted), `failed_logins`, `locked_until` |
+| `accounts_user` | Custom user (`AUTH_USER_MODEL`) | `role` (student, faculty, staff, custodian, dept_head, facility_manager, admin), `vid` (UMS registration / employee number), `department`, `section`, `calendar_token` (private feed credential), `mfa_secret` (encrypted), `mfa_last_step` (last accepted TOTP time step; codes are single-use), `failed_logins`, `locked_until` |
 
 Roles map to Django groups `role:<role>` holding custom permissions declared on `User.Meta`;
 `accounts.permissions.sync_role_groups` refreshes them after every `migrate`, and a
@@ -599,7 +602,7 @@ Roles map to Django groups `role:<role>` holding custom permissions declared on 
 | Table | Purpose |
 |---|---|
 | `maintenance_maintenancewindow` | Planned downtime: `scheduled`, `in_progress`, `completed`, `cancelled`; count of bookings displaced |
-| `maintenance_breakdownreport` | Fault report: severity `low`, `high`, `critical`; status `open`, `acknowledged`, `resolved`; optional repair window |
+| `maintenance_breakdownreport` | Fault report: severity `low`, `high`, `critical`; status `open`, `acknowledged`, `resolved`; optional repair window; `confirmed_by`/`confirmed_at` record who took the resource out of service for a critical report (only someone who manages the resource can) |
 
 ### inventory (M8)
 

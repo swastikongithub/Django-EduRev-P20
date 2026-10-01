@@ -24,7 +24,7 @@ sits idle.
 | **M4 Timetable integration** | CSV / P13 API import, clash validation, atomic publish/republish; class time written to the ledger as a hard constraint and never offered | `apps/timetable` |
 | **M5 Approval workflow** | Multi-step chains chosen by resource / type / requester role / attendees / duration, edited in a builder; changes apply to the next booking, no deploy | `apps/approvals` |
 | **M6 Check-in & auto-release** | QR booking pass + door QR, phone camera or in-app scanner, grace period, auto-release sweep, early check-out hands time back, no-show tracking, progressive restriction | `apps/checkins` |
-| **M7 Maintenance & downtime** | Scheduled windows on the ledger (displacing bookings, refusing class overlaps), breakdown reports from anyone, critical reports take a resource offline | `apps/maintenance` |
+| **M7 Maintenance & downtime** | Scheduled windows on the ledger (displacing bookings, refusing class overlaps), breakdown reports from anyone, critical reports confirmed by a custodian take a resource offline | `apps/maintenance` |
 | **M8 Consumables & accessories** | Stock reserved with a booking, issued at check-in, returned at check-out, low-stock alerts | `apps/inventory` |
 | **M9 Analytics & reporting** | Nightly utilisation snapshots; utilisation by resource/type/department/block, idle-capacity ranking weighted by asset cost, heat map, no-show rates, demand vs supply, approval turnaround, downtime, quota consumption | `apps/analytics` |
 
@@ -130,13 +130,21 @@ maintenance transitions, nightly analytics). Booking correctness never depends o
 
 | Document | Contents |
 |---|---|
+| [docs/guide-user.md](docs/guide-user.md) | Quick start for students, faculty and staff: find, book, check in |
+| [docs/guide-admin.md](docs/guide-admin.md) | Staff console guide: approvals, upkeep, stock, policies and their precedence, workflows, timetable, users |
+| [docs/roles.md](docs/roles.md) | Role and permission matrix, scope rules, console and API access |
+| [docs/architecture.md](docs/architecture.md) | Module map, request flow, the booking ledger, background jobs, security architecture |
+| [docs/adr/](docs/adr/README.md) | Architecture decision records (12) |
 | [docs/booking-concurrency.md](docs/booking-concurrency.md) | How double-booking is made impossible, and the proof |
+| [docs/database.md](docs/database.md) | Schema by module, ERD, constraints, indexes, data lifecycle |
+| [docs/openapi.yaml](docs/openapi.yaml) | API specification (live, for signed-in users: `/api/v1/docs/`) |
+| [docs/environment.md](docs/environment.md) | Every environment variable, with production guidance |
+| [docs/runbook.md](docs/runbook.md) | Deployment, rollback, backup and tested restore, secret rotation, incident playbooks |
+| [docs/security-review.md](docs/security-review.md) | Security findings SEC-01 to SEC-14, their fixes and regression tests |
+| [docs/traceability.md](docs/traceability.md) | Every P20 and CES requirement mapped to implementation and tests |
+| [docs/known-issues.md](docs/known-issues.md) | Known issues and technical debt register |
 | [docs/design-system.md](docs/design-system.md) | The UI contract: what was kept from LPU's portals, what was fixed, tokens, components |
-| [docs/openapi.yaml](docs/openapi.yaml) | API specification (live: `/api/v1/docs/`) |
 | [loadtest/README.md](loadtest/README.md) | Running and reading the 500-user load test |
-
-Further handover documents (architecture decision records, ERD, environment reference, runbook,
-role matrix, user guides, requirements traceability, known issues) live in [`docs/`](docs/).
 
 ## Licence and credits
 
