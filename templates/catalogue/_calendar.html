@@ -20,7 +20,7 @@
 
   <p class="calhint small muted"><span class="only-pointer">Drag across free time to select it.</span><span class="only-touch">Tap a start time, then tap where you want to finish.</span> Greyed and patterned blocks say why they're unavailable.</p>
 
-  <div class="cal cal--{{ view }}" style="--cols: {{ columns|length }}; --rows: {{ rows_total }}" data-calendar data-first-hour="{{ hours_rows.0.0 }}" data-hours="{{ hours_rows|length }}">
+  <div class="cal cal--{{ view }}" style="--cols: {{ columns|length }}; --rows: {{ rows_total }}" data-calendar data-tz="{{ campus_tz }}" data-first-hour="{{ hours_rows.0.0 }}" data-hours="{{ hours_rows|length }}">
     <div class="cal__head">
       <div class="cal__corner"></div>
       {% for s, runs in columns %}

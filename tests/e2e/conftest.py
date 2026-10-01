@@ -7,17 +7,33 @@ import pytest
 
 from apps.rules.models import AvailabilityRule, BookingPolicy
 
-# Only the live server is reachable from the browser. Pages link a Google Fonts stylesheet and
-# `load` waits for it: when the CDN was slow from a CI runner, sign-in timed out waiting for
-# /home/ to load (the axe suite's intermittent 30 s timeout). Every other request is aborted at
-# once, in every context (including those tests open with `browser.new_context`), so journeys
-# are hermetic and fast; text falls back to the system font stack.
+# Only the live server is reachable from the browser. Pages once linked a Google Fonts stylesheet
+# and `load` waited for it: when the CDN was slow from a CI runner, sign-in timed out (the axe
+# suite's intermittent 30 s timeout). Fonts are self-hosted now, and every other request is still
+# aborted at once, in every context (including those tests open with `browser.new_context`), so
+# a future third-party reference cannot make journeys depend on the network again.
 LIVE_SERVER = re.compile(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?(/|$)")
 
 
 def _block_external(context):
     context.route(lambda url: not LIVE_SERVER.match(url), lambda route: route.abort("internetdisconnected"))
     return context
+
+
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args):
+    """
+    The same browser everywhere: campus locale and timezone, a fixed desktop viewport and
+    reduced motion, so screenshots, axe colour checks and anything time-of-day dependent do
+    not vary with the CI runner. Tests that need another zone or a phone open their own context.
+    """
+    return {
+        **browser_context_args,
+        "locale": "en-IN",
+        "timezone_id": "Asia/Kolkata",
+        "viewport": {"width": 1280, "height": 800},
+        "reduced_motion": "reduce",
+    }
 
 
 @pytest.fixture(scope="session", autouse=True)

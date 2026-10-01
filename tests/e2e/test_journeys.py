@@ -36,7 +36,10 @@ def sign_in(page, live_server, user):
     page.fill("#id_username", user.username)
     page.fill("#id_password", PASSWORD)
     page.click("button[type=submit]")
-    page.wait_for_url(f"{live_server.url}/home/")
+    # The DOM is enough: waiting for "load" also waits for fonts and images, which says nothing
+    # about whether sign-in worked and was the source of slow-runner timeouts.
+    page.wait_for_url(f"{live_server.url}/home/", wait_until="domcontentloaded")
+    page.wait_for_selector("main", state="attached")
 
 
 def live_booking(user, room, minutes_ago=5, length=60):
@@ -75,6 +78,40 @@ def test_student_drags_on_the_calendar_and_gets_a_qr_pass(page, live_server, stu
     assert "Booked. It's yours." in page.content()
     assert page.locator("svg.qr").count() == 1
     assert Booking.objects.get(booked_for=student).duration_minutes == 90
+
+
+def test_calendar_uses_campus_time_not_the_browsers(browser, live_server, student, room, open_all_week):
+    """
+    A viewer whose device is 17.5 hours behind campus (UTC-12 vs IST) still sees campus time.
+    The browser clock is frozen at 12:00 IST on the campus's today, which that device reads as
+    18:30 the day before: the now-line must sit at noon and tomorrow's slot must say "Tomorrow".
+    """
+    from datetime import datetime
+    from datetime import time as dtime
+
+    today = timezone.localdate()
+    tomorrow = today + timedelta(days=1)
+    noon_ist = timezone.make_aware(datetime.combine(today, dtime(12, 0)))
+    ctx = browser.new_context(timezone_id="Etc/GMT+12", locale="en-IN", viewport={"width": 1280, "height": 800})
+    page = ctx.new_page()
+    page.clock.set_fixed_time(noon_ist)
+    sign_in(page, live_server, student)
+
+    page.goto(f"{live_server.url}{room.get_absolute_url()}?view=day&date={today.isoformat()}")
+    cal = page.locator("[data-calendar]")
+    assert cal.get_attribute("data-tz") == "Asia/Kolkata"
+    first, hours = int(cal.get_attribute("data-first-hour")), int(cal.get_attribute("data-hours"))
+    expected = (12 - first) / hours
+    now_line = page.locator("[data-now]")
+    assert now_line.is_visible()
+    top = float(now_line.evaluate("el => el.style.top").rstrip("%")) / 100
+    assert abs(top - expected) < 0.01, (top, expected)
+
+    page.goto(f"{live_server.url}{room.get_absolute_url()}?view=day&date={tomorrow.isoformat()}")
+    col = page.locator(f'.cal__col[data-day="{tomorrow.isoformat()}"]')
+    col.locator('.cal__cell[data-hm="10:00"]').click()
+    assert page.locator("[data-sel-day]").inner_text() == "Tomorrow"
+    ctx.close()
 
 
 def test_timetabled_class_is_shown_with_its_reason_and_never_offered(
