@@ -132,7 +132,7 @@ Status: **Met**; **Partial** (works, with a gap recorded in [known-issues.md](kn
 | Seven-year retention, configurable per entity | Not yet | DATA-1 |
 | WCAG 2.2 AA for all student-facing screens | Met | axe in Chromium, light and dark: `e2e/test_accessibility.py` |
 | Last two versions of major browsers; responsive to 360 px | Met | e2e `test_journeys.py::test_no_horizontal_overflow_on_a_phone` |
-| Internationalisation-ready, Hindi and Punjabi externalised | Partial | Shell, sign-in and home translated (`test_pages.py::test_hindi_and_punjabi_shell`); other screens in Phase 4 (UI-1) |
+| Internationalisation-ready, Hindi and Punjabi externalised | Partial | **English is fully supported and is the launch language.** The infrastructure is in place: `USE_I18N`, `LocaleMiddleware`, `LANGUAGES` (English, हिन्दी, ਪੰਜਾਬੀ), the `locale/hi` and `locale/pa` catalogues, and the language switcher on **Me** (`/i18n/setlang/`). Hindi and Punjabi translations are **partial**: only the navigation shell, sign-in, home and the Language section of **Me** are marked for translation and translated (4 of 63 templates, 41 messages; `test_pages.py::test_hindi_and_punjabi_shell`). Every other screen is English only, and its text is not yet marked for translation. Full application-wide translation is deferred (UI-1) |
 
 ## CES §1.4 Security baseline
 
