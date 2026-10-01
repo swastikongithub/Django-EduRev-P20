@@ -44,8 +44,11 @@ shared host.
 
 ### Container platform release checklist
 
-1. **CI is green on `main`**: lint, tests on PostgreSQL 16 (including the 500-way
-   concurrency proof and Playwright journeys), pip-audit, gitleaks, Docker build.
+1. **CI is green on `main`**: lint; Django, deployment and migration checks; OpenAPI drift;
+   tests on PostgreSQL 16 (including the 500-way concurrency proof); Playwright journeys and
+   axe; pip-audit; gitleaks; the Docker build with its production smoke test; the OWASP ZAP
+   baseline ([ci.md](ci.md)). To repeat the smoke test against a candidate image by hand:
+   `IMAGE=lpu-reserve:<sha> scripts/ci/stack.sh up && scripts/ci/smoke.sh && scripts/ci/stack.sh down`.
 2. **Build and tag** the image with the commit SHA (`lpu-reserve:<sha>`). Static files are
    collected at build time.
 3. **Back up** the database ([Backup](#backup)) and note the current image tag and the latest
@@ -62,8 +65,9 @@ shared host.
    ```bash
    docker run --rm --env-file prod.env lpu-reserve:<sha> python manage.py check --deploy
    ```
-   Expect only `security.W021` (HSTS preload not enabled). `security.W009` means the secret
-   key is the default or too short: stop.
+   Expect "no issues (1 silenced)": `security.W021` (HSTS preload) is silenced while
+   `SECURE_HSTS_PRELOAD` is off. A weak or default secret key does not get this far: start-up
+   refuses it with `ImproperlyConfigured`.
 6. **Migrate once**: either a one-off job
    (`docker run --rm --env-file prod.env lpu-reserve:<sha> python manage.py migrate --noinput`)
    or exactly one web instance with `RUN_MIGRATIONS=1`. Do not set it on every replica;

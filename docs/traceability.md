@@ -126,8 +126,8 @@ Status: **Met**; **Partial** (works, with a gap recorded in [known-issues.md](kn
 
 | Requirement | Status | Evidence or gap |
 |---|---|---|
-| 2,000 sustained and 5,000 peak concurrent users | Partial | Load-test scenario exists; no report against a deployed environment yet (OPS-8) |
-| API p95 under 400 ms reads and 800 ms writes; dashboards under 3 s | Partial | Constant-query board and dashboards (`test_rules_availability.py::test_board_query_count_is_constant`, `test_insights.py::test_dashboard_query_count_is_bounded`); latency not yet measured on staging (OPS-8) |
+| 2,000 sustained and 5,000 peak concurrent users | Partial | The 500-simultaneous-booking peak passes on a production-like stack ([load-test-report.md](load-test-report.md)); sustained 2,000 and peak 5,000 users are not measured, which needs staging (OPS-8) |
+| API p95 under 400 ms reads and 800 ms writes; dashboards under 3 s | Partial | Constant-query board and dashboards (`test_rules_availability.py::test_board_query_count_is_constant`, `test_insights.py::test_dashboard_query_count_is_bounded`); unloaded per-request timings and burst behaviour measured locally ([load-test-report.md](load-test-report.md)); p95 under steady load not measured, which needs staging (OPS-8) |
 | Availability 99.5%; daily backups with a tested restore | Partial | Probes `/health/` and `/ready/` (`test_health.py`); restore tested ([runbook](runbook.md#tested-restore-procedure)); scheduling not automated (OPS-2) |
 | Seven-year retention, configurable per entity | Not yet | DATA-1 |
 | WCAG 2.2 AA for all student-facing screens | Met | axe in Chromium, light and dark: `e2e/test_accessibility.py` |
@@ -138,7 +138,7 @@ Status: **Met**; **Partial** (works, with a gap recorded in [known-issues.md](kn
 
 | Requirement | Status | Evidence or gap |
 |---|---|---|
-| OWASP Top 10 addressed and evidenced | Met | [security-review.md](security-review.md); `test_security.py` (136 tests, no open findings) |
+| OWASP Top 10 addressed and evidenced | Met | [security-review.md](security-review.md) (SEC-01 to SEC-14 and the Phase 3 re-review); `test_security.py`, `test_lockout_race.py`, `test_malformed_input.py`; OWASP ZAP baseline in CI ([ci.md](ci.md)) |
 | Input validation on every endpoint (Django forms, DRF serializers) | Met | `test_api.py` validation cases; `test_malformed_input.py` |
 | Rate limiting per IP and per user; brute-force lockout | Met | `test_security.py` lockout and SEC-03/SEC-07 tests; DRF throttles |
 | TLS 1.2+ in transit; encryption at rest | Partial | HSTS and secure cookies with `DEBUG=0`; at rest depends on the database host (Phase 6) |
@@ -157,8 +157,8 @@ Status: **Met**; **Partial** (works, with a gap recorded in [known-issues.md](kn
 | Component | Every form and shared component | Met | `test_pages.py`, `test_console_setup.py`, `test_console_ops.py` |
 | Integration | Every endpoint, including authorisation-failure paths | Met | `test_api.py`, including `::test_anonymous_requests_are_refused_on_every_endpoint` |
 | End-to-end | Every critical journey in the acceptance criteria | Met | `tests/e2e/` (30 browser tests) |
-| Load | Against the concurrency targets, report at M4 | Partial | `loadtest/`; report pending (OPS-8) |
-| Security | OWASP ZAP baseline and pip-audit, clean at handover | Partial | pip-audit and gitleaks in CI; ZAP in Phase 3 (OPS-7) |
+| Load | Against the concurrency targets, report at M4 | Partial | `loadtest/`; [load-test-report.md](load-test-report.md): 500 simultaneous attempts → exactly one booking on a production-like stack, with burst and unloaded latency; no deployed-environment run yet (OPS-8) |
+| Security | OWASP ZAP baseline and pip-audit, clean at handover | Met | ZAP baseline in CI on a production-like stack, public and signed-in student passes, gated: no High alerts, Medium only if accepted with a reason (one accepted: inline `style` attributes). Two Medium findings were fixed. Scope limits (passive; no staff pages or TLS) in [ci.md](ci.md#owasp-zap-baseline) and OPS-10. pip-audit and gitleaks in CI |
 | Accessibility | axe-core in CI, zero critical violations on student pages | Met | `e2e/test_accessibility.py` |
 | Concurrency | Explicit multi-process test wherever the spec names a guarantee | Met | `test_concurrency.py` |
 
@@ -177,6 +177,7 @@ Status: **Met**; **Partial** (works, with a gap recorded in [known-issues.md](kn
 | Admin user guide | [guide-admin.md](guide-admin.md) |
 | End-user quick-start guide | [guide-user.md](guide-user.md) |
 | Known issues and technical debt register | [known-issues.md](known-issues.md) |
+| CI pipeline and QA gates (supporting) | [ci.md](ci.md) |
 | Recorded handover walkthrough (60 to 90 minutes) | Not yet: recorded at handover |
 
 ## CES §1.7 Definition of done
