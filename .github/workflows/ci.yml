@@ -1,12 +1,9 @@
 name: CI
 
-# Every gate runs on pushes to main, on pull requests into main, and on demand. While Phase 3 is
-# under development its branch is tested on every push too; remove it from this list once merged.
+# Every gate runs on pushes to main, on pull requests into main, and on demand.
 on:
   push:
-    branches:
-      - main
-      - feat/phase3-ci-qa
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -65,8 +62,17 @@ jobs:
       - name: Deployment check (production-like settings)
         run: |
           DJANGO_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(50))')" \
-          ALLOWED_HOSTS=reserve.example.edu SECURE_SSL_REDIRECT=1 \
+          ALLOWED_HOSTS=reserve.example.edu SECURE_SSL_REDIRECT=1 SITE_URL=https://reserve.example.edu \
+          REDIS_URL=redis://localhost:6379/0 USE_S3=1 S3_BUCKET=ci-media \
+          EMAIL_BACKEND=anymail.backends.resend.EmailBackend RESEND_API_KEY=ci-dummy \
           python manage.py check --deploy --fail-level WARNING
+      - name: Deployment check refuses ephemeral media and undelivered mail
+        run: |
+          if DJANGO_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(50))')" \
+             ALLOWED_HOSTS=reserve.example.edu python manage.py check --deploy --fail-level ERROR; then
+            echo "::error::check --deploy accepted a production configuration with no bucket and console email"
+            exit 1
+          fi
       - name: Migration check (no missing migrations)
         run: python manage.py makemigrations --check --dry-run
       - name: Apply migrations
@@ -121,6 +127,27 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  infra:
+    name: Railway IaC (type-check against the SDK)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: .railway
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: .railway/package-lock.json
+      - name: Install the pinned Railway SDK
+        run: npm ci --no-audit --no-fund
+      - name: Type-check .railway/railway.ts (unknown options and wrong references fail here)
+        run: npm run typecheck
+      - name: npm audit (IaC SDK)
+        run: npm audit --omit=dev --audit-level=high
+
   security:
     name: Security (pip-audit + gitleaks)
     runs-on: ubuntu-latest
@@ -161,8 +188,14 @@ jobs:
         run: docker compose config --quiet
       - name: Start production-like stack (gunicorn, DEBUG=0, PostgreSQL, Redis, HTTPS proxy)
         run: scripts/ci/stack.sh up
-      - name: Smoke test (probes, HTTPS redirect, headers, cookies, static, access control, check --deploy)
+      - name: Smoke test (probes, HTTPS redirect, headers, cookies, static, check --deploy, S3 media, SMTP)
         run: scripts/ci/smoke.sh
+      - name: Exactly one Celery Beat (two run_beat containers, leader dies, follower takes over)
+        run: scripts/ci/beat_failover.sh
+      - name: Backup and restore drill (encrypted pg_dump to S3, restore into a fresh database, compare)
+        run: |
+          scripts/ci/stack.sh seed >/dev/null
+          scripts/ci/backup_roundtrip.sh
       - name: Web container logs
         if: failure()
         run: scripts/ci/stack.sh logs | tail -200
@@ -207,10 +240,11 @@ jobs:
   deploy:
     name: Deploy (placeholder)
     runs-on: ubuntu-latest
-    needs: [lint, tests, e2e, security, docker, zap]
+    needs: [lint, tests, e2e, infra, security, docker, zap]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Deployment target not configured yet
         run: |
-          echo "All checks passed on main. No deployment target is configured yet, so nothing was deployed."
-          echo "Phase 6 adds the platform configuration and the deploy step."
+          echo "All checks passed on main. Nothing is deployed from this workflow."
+          echo "Railway deploys main itself once these checks pass (github source with checkSuites: true in"
+          echo ".railway/railway.ts); see docs/deployment-railway.md."
