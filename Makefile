@@ -1,7 +1,7 @@
 # LPU Reserve — common tasks. Uses the project virtualenv when present.
 PY ?= $(if $(wildcard .venv/Scripts/python.exe),.venv/Scripts/python,$(if $(wildcard .venv/bin/python),.venv/bin/python,python))
 
-.PHONY: dev devdb migrate seed test test-fast test-race lint fmt check up down logs loadtest openapi
+.PHONY: dev devdb migrate seed sweeps test test-fast test-race lint fmt check up down logs loadtest openapi
 
 devdb:        ## start the local PostgreSQL cluster (scripts/devdb.sh init on first run)
 	scripts/devdb.sh start
@@ -11,6 +11,9 @@ migrate:
 
 dev: migrate  ## run the app locally (Celery tasks eager)
 	CELERY_TASK_ALWAYS_EAGER=1 DEBUG=1 DEMO_MODE=1 $(PY) manage.py runserver
+
+sweeps:       ## no Redis? run the Celery Beat schedule in-process (auto-release, reminders...)
+	CELERY_TASK_ALWAYS_EAGER=1 $(PY) manage.py run_sweeps --loop
 
 seed:         ## load demo data (idempotent; --reset to rebuild)
 	$(PY) manage.py seed_demo

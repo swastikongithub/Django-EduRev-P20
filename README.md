@@ -67,6 +67,7 @@ cp .env.example .env                                # DEBUG=1, DEMO_MODE=1, eage
 python manage.py migrate
 python manage.py seed_demo                          # ~25 s; --reset rebuilds it
 python manage.py runserver
+python manage.py run_sweeps --loop                  # second terminal: Beat schedule without Redis
 ```
 
 ## Demo personas
