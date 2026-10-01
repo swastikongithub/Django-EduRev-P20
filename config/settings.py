@@ -140,6 +140,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+# Static files are only ever used by this site's own pages; no "Access-Control-Allow-Origin: *".
+WHITENOISE_ALLOW_ALL_ORIGINS = False
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STORAGES = {
@@ -251,6 +253,9 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_AGE = 60 * 60 * 10
 CSRF_COOKIE_SAMESITE = "Lax"
+# No script reads the CSRF cookie (htmx sends the token from the page via hx-headers), so it
+# need not be visible to JavaScript.
+CSRF_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
@@ -261,6 +266,12 @@ if not DEBUG:  # pragma: no cover - production hardening
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # Submitting a domain to the browsers' HSTS preload list is a domain-wide, effectively
+    # irreversible decision for whoever owns the university's domain, so it is opt-in. While it
+    # is off, Django's reminder about it (security.W021) is a known, accepted state.
+    SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=False)
+    if not SECURE_HSTS_PRELOAD:
+        SILENCED_SYSTEM_CHECKS = ["security.W021"]
 RATELIMIT_USE_CACHE = "default"
 RATELIMIT_IP_META_KEY = "apps.core.http.client_ip"
 LOGIN_LOCKOUT_THRESHOLD = 5
