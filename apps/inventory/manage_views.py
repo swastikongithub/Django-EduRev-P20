@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 
 from apps.accounts.permissions import is_campus_wide
 from apps.core.errors import DomainError
-from apps.core.http import safe_next
+from apps.core.http import int_param, safe_next
 from apps.core.manage_views import staff_required
 from apps.core.scope import managed_resources, scope_label
 
@@ -116,6 +116,10 @@ def index(request):
     return render(request, "manage/inventory.html", ctx)
 
 
+# One delivery at most; also keeps stock columns (PostgreSQL integer) far from overflow.
+MAX_RESTOCK = 100_000
+
+
 @staff_required("manage_inventory")
 @require_POST
 def restock(request, pk):
@@ -126,14 +130,13 @@ def restock(request, pk):
     if not services.can_manage_item(request.user, item):
         raise Http404
     back = safe_next(request, reverse("manage:inventory"))
-    try:
-        qty = int(request.POST.get("qty", ""))
-    except ValueError:
-        messages.error(request, "Enter how many units arrived, as a whole number.")
+    qty = int_param(request.POST.get("qty"))
+    if qty is None or not 0 < qty <= MAX_RESTOCK:
+        messages.error(request, f"Enter how many units arrived, as a whole number from 1 to {MAX_RESTOCK:,}.")
         return redirect(back)
     note = request.POST.get("note", "").strip()[:200]
     try:
-        item = services.restock(item, qty, request.user, note=note)
+        item = services.restock(item, qty, request.user, note=note, request=request)
     except DomainError as exc:
         messages.error(request, exc.message)
     else:

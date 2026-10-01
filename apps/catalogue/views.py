@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 
 from apps.accounts.permissions import can_manage_resource, has_cap
 from apps.bookings import availability
-from apps.core.http import date_param, int_param
+from apps.core.http import date_param, int_param, is_digits
 from apps.core.timeutil import aware, ceil_to
 
 from . import search
@@ -53,7 +53,7 @@ def find(request):
     day = _parse_date(g.get("date"), intent.day)
     t_from = _parse_time(g.get("from")) or intent.start
     t_to = _parse_time(g.get("to")) or intent.end
-    feature_ids = [int(x) for x in g.getlist("feature") if x.isdigit()] or [
+    feature_ids = [int(x) for x in g.getlist("feature") if is_digits(x)] or [
         f.pk for f in features_all if f.name in intent.feature_words
     ]
     free_now = g.get("now") == "1" or intent.free_now

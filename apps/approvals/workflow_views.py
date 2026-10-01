@@ -12,7 +12,7 @@ from apps.accounts.models import Role, User
 from apps.accounts.permissions import is_campus_wide
 from apps.audit.services import record
 from apps.catalogue.models import Resource
-from apps.core.http import MAX_PK, int_param, pk_param
+from apps.core.http import MAX_PK, int_param, is_digits, pk_param
 from apps.core.manage_views import staff_required
 
 from .models import ApprovalStep, ApprovalWorkflow, ApproverRole
@@ -87,7 +87,7 @@ def workflows(request):
         .order_by("type__sort_order", "code"),
     }
     editing = request.GET.get("edit")
-    if can_edit and (request.GET.get("new") or (editing and editing.isdigit())):
+    if can_edit and (request.GET.get("new") or is_digits(editing)):
         instance = (
             get_object_or_404(ApprovalWorkflow, institution_id=inst, pk=editing)
             if editing

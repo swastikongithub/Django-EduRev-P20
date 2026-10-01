@@ -17,7 +17,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.errors import DomainError
-from apps.core.http import date_param, safe_next
+from apps.core.http import date_param, is_digits, safe_next
 from apps.core.manage_views import staff_required
 from apps.core.scope import managed_resources, resource_q, scope_label
 from apps.core.timeutil import aware, trange
@@ -57,7 +57,7 @@ def _default_form(request, resources):
         "notes": "",
     }
     report_id = request.GET.get("report")
-    if report_id and report_id.isdigit():
+    if is_digits(report_id):
         report = _reports(request.user).filter(pk=report_id).first()
         if report:
             form.update(
@@ -145,7 +145,7 @@ def schedule(request):
     }
     errors = {}
     resource = None
-    if form["resource"].isdigit():
+    if is_digits(form["resource"]):
         resource = managed_resources(user).select_related("type").filter(pk=form["resource"]).first()
     if resource is None:
         errors["resource"] = "Pick one of the resources you look after."
@@ -243,7 +243,7 @@ def report_action(request, pk, action):
         return redirect(back)
     try:
         if action == "acknowledge":
-            services.acknowledge(report, request.user)
+            services.acknowledge(report, request.user, request=request)
             msg = "Acknowledged. The report stays open until you mark it resolved."
         elif action == "confirm":
             services.confirm_critical(report, request.user, request=request)

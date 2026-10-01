@@ -250,10 +250,13 @@ def confirm_critical(report: BreakdownReport, actor, *, request=None, now=None):
     return report
 
 
-def acknowledge(report: BreakdownReport, actor):
+def acknowledge(report: BreakdownReport, actor, *, request=None):
     _require_manager(actor, report.resource)
     report.status = ReportStatus.ACKNOWLEDGED
     report.save(update_fields=["status", "updated_at"])
+    from apps.audit.services import record
+
+    record(actor, "maintenance.acknowledge", report, request=request)
     return report
 
 
@@ -267,6 +270,16 @@ def resolve(report: BreakdownReport, actor, resolution: str, *, request=None):
         if report.window_id and report.window.status in (WindowStatus.SCHEDULED, WindowStatus.IN_PROGRESS):
             complete(report.window, actor, request=request)
         _reopen_if_needed(report.resource)
+        report.resource.refresh_from_db(fields=["status"])
+        from apps.audit.services import record
+
+        record(
+            actor,
+            "maintenance.resolve",
+            report,
+            after={"resolution": report.resolution, "resource_status": report.resource.status},
+            request=request,
+        )
     return report
 
 

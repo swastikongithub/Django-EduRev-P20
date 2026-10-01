@@ -29,6 +29,7 @@ from apps.bookings.models import HOLDING_STATUSES, Booking, BookingSlot, SlotKin
 from apps.catalogue.models import Resource
 from apps.core.errors import BookingRejected, NotPermitted
 from apps.core.exports import spreadsheet_safe, unguard
+from apps.core.http import is_digits
 from apps.core.timeutil import aware, trange
 
 from .models import AcademicTerm, PublicationStatus, TimetableEntry, TimetablePublication
@@ -40,7 +41,7 @@ COLUMNS = ["room_code", "day", "start", "end", "course_code", "course_title", "s
 
 def _day(v: str) -> int:
     v = str(v).strip().lower()
-    if v.isdigit() and 0 <= int(v) <= 6:
+    if is_digits(v) and 0 <= int(v) <= 6:
         return int(v)
     if v[:3] in DAYS:
         return DAYS[v[:3]]
