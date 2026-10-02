@@ -45,7 +45,7 @@ Superusers are treated as campus-wide and always need MFA. They are for break-gl
 | `configure_policy`: rules, hours, blackouts, quotas, ladder, workflows |  |  |  |  | ✓ | ✓ | ✓ |
 | `manage_timetable`: import and publish the timetable |  |  |  |  |  | ✓ | ✓ |
 | `view_audit_log`: read and export the audit log |  |  |  |  |  | ✓ | ✓ |
-| `manage_users`: change roles, deactivate accounts |  |  |  |  |  |  | ✓ |
+| `manage_users`: add people, change roles, deactivate accounts |  |  |  |  |  |  | ✓ |
 | **MFA required at sign-in** (`MFA_REQUIRED_ROLES`) |  |  |  |  |  | ✓ | ✓ |
 
 Notes on the matrix:
@@ -93,6 +93,8 @@ view re-checks the capability (`apps/core/manage_views.staff_required`).
 | Approval workflows | `/manage/workflows/` | `configure_policy` | Institution |
 | Timetable | `/manage/timetable/` | `manage_timetable` | Institution |
 | Users and roles | `/manage/users/` | any staff capability to view; `manage_users` to change | Institution |
+| Add a person | `/manage/users/new/` | `manage_users` | Institution |
+| Catalogue (resource types, blocks, departments) | `/manage/catalogue/` | `manage_resources`, campus-wide (facility managers, administrators) | Institution |
 | Audit log | `/manage/audit/` | `view_audit_log` | Institution |
 | Operations | `/manage/ops/` | campus-wide role (facility manager, administrator) | Institution |
 | Django admin | `/django-admin/` | `is_staff` (superusers); same sign-in and MFA as the product | Break-glass only |

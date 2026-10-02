@@ -131,6 +131,21 @@ CSV import columns (`code`, `name`, `type_code` and `capacity` are required):
 code,name,type_code,building_code,capacity,floor,room,department_code,features,description
 ```
 
+### Catalogue: resource types, blocks and departments
+
+**Setup → Catalogue** (facility managers and administrators) holds the structure every resource
+and person belongs to. Set it up before adding the first resource:
+
+- **Resource types**, for example Classroom or Computer Lab. A type sets the icon, colour and
+  category shown everywhere, and **Who may book** (empty means everyone). Workflows and booking
+  rules can target a type. The code is made from the name if you leave it empty.
+- **Blocks**: the buildings resources are in, as signposted on campus. A resource does not need one.
+- **Departments**: they scope heads of department, shared quotas and departmental insights.
+
+Codes must be unique (ignoring case). Every add, edit and removal is in the audit log. A type,
+block or department can only be removed while nothing uses it; move its resources or people
+first. If there are no resource types yet, **Add a resource** says so and links here.
+
 ## Setup
 
 **Manage → Setup** is the hub for configuration. Its cards depend on your role.
@@ -203,8 +218,16 @@ version as CSV.
 
 ### Users and roles
 
-**Setup → Users** lists everyone. Administrators can change roles and deactivate or
+**Setup → Users** lists everyone. Administrators can add people, change roles and deactivate or
 reactivate accounts; other staff see the list read-only.
+
+**Add a person** (administrators only) creates an active account: name, email, optional VID
+(which also works for signing in), role, department, and an initial password that you give them
+privately. Usernames, emails and VIDs must be unique, and the password must pass the usual rules
+(at least 10 characters, not common, not like their name). It is stored hashed and never shown
+or logged again. Facility managers and administrators set up two-step sign-in with an
+authenticator app at their first sign-in, like every privileged account. Superuser access cannot
+be granted here. There is no public sign-up; university single sign-on is backlog work.
 
 - Role changes take effect immediately and are audited ([roles.md](roles.md#changing-someones-role)).
 - Deactivating stops sign-in but keeps bookings and history; nothing is deleted.

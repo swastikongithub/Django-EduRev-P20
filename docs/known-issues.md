@@ -36,7 +36,7 @@ go-live, **Low** is debt or polish.
 
 | # | Issue | Impact | Severity | Plan |
 |---|---|---|---|---|
-| INT-1 | No university SSO or ERP integration; identities and roles are local Django users | Accounts are created and maintained in the console | Medium | Backlog: an OIDC/SAML backend mapping ERP role to `User.role`; `accounts.permissions` already derives everything from the role |
+| INT-1 | No university SSO or ERP integration; identities and roles are local Django users | Administrators add people and set roles in the console (**Setup → Users → Add a person**); there is no self-service sign-up | Medium | Backlog: an OIDC/SAML backend mapping ERP role to `User.role`; `accounts.permissions` already derives everything from the role |
 | INT-2 | The API uses session authentication only. An unattended client such as the P13 timetable feed must hold a session of a user with `manage_timetable` | No clean machine-to-machine credential | Medium | Backlog: scoped API tokens for integrations ([ADR 0005](adr/0005-server-rendered-htmx-with-drf-api.md)) |
 | INT-3 | Calendar export is one-way: per-booking `.ics` and a private subscription feed; no Google/Outlook API push | Calendars refresh at the subscriber's polling interval | Low | Accepted for v1 |
 | INT-4 | No SMS channel; notifications are in-app and email | §11 notifications arrive by email and in-app only | Low | Backlog |
