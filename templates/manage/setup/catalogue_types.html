@@ -1,0 +1,31 @@
+<div class="section-head cfg-sechead">
+  <p class="small muted">Every resource has exactly one type. The type sets its icon, colour, category and who may book it; approval workflows and booking rules can target a type.</p>
+  <button class="btn btn--primary" type="button" data-open="new-sheet">{% icon "plus" %}New resource type</button>
+</div>
+
+{% if rows %}
+<div class="tablewrap cfg-gap-b">
+  <table class="table cfg-table">
+    <caption class="sr-only">Resource types</caption>
+    <thead><tr><th scope="col">Type</th><th scope="col">Category</th><th scope="col">Who may book</th><th scope="col">Resources</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody>
+    {% for t in rows %}
+      <tr>
+        <td><span class="row" style="--gap: var(--s2)">{% icon t.icon 18 %}<strong>{{ t.name }}</strong></span><div class="small faint">{{ t.code }}</div></td>
+        <td class="small">{{ t.get_category_display }}</td>
+        <td class="small">{% if t.allowed_roles %}{{ t.allowed_roles|join:", " }}{% else %}Everyone{% endif %}</td>
+        <td class="tnum">{{ t.in_use }}</td>
+        <td class="nowrap"><div class="row cfg-rowactions"><a class="btn btn--sm" href="?tab=types&amp;edit={{ t.pk }}">{% icon "pencil" %}Edit</a>
+          {% if not t.in_use %}<form method="post" action="{% url 'manage:catalogue' %}" data-confirm="Remove the {{ t.name }} type?">{% csrf_token %}<input type="hidden" name="action" value="types.delete"><input type="hidden" name="pk" value="{{ t.pk }}"><button class="btn btn--sm btn--ghost" type="submit" aria-label="Remove {{ t.name }}">{% icon "trash-2" %}</button></form>{% endif %}</div></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="panel empty empty--compact cfg-gap-b">
+  <div class="empty__icon">{% icon "grid-3x3" %}</div>
+  <h3>No resource types yet</h3>
+  <p>Add one, for example Classroom or Computer Lab, before adding the first resource.</p>
+</div>
+{% endif %}

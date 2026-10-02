@@ -1,0 +1,30 @@
+<div class="section-head cfg-sechead">
+  <p class="small muted">The blocks resources are in, as signposted on campus. People search and filter by block, and blackouts can close a whole block.</p>
+  <button class="btn btn--primary" type="button" data-open="new-sheet">{% icon "plus" %}New block</button>
+</div>
+
+{% if rows %}
+<div class="tablewrap cfg-gap-b">
+  <table class="table cfg-table">
+    <caption class="sr-only">Blocks</caption>
+    <thead><tr><th scope="col">Block</th><th scope="col">Zone</th><th scope="col">Resources</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody>
+    {% for b in rows %}
+      <tr>
+        <td><strong>{{ b.name }}</strong><div class="small faint">{{ b.code }}</div></td>
+        <td class="small">{{ b.zone|default:"—" }}</td>
+        <td class="tnum">{{ b.in_use }}</td>
+        <td class="nowrap"><div class="row cfg-rowactions"><a class="btn btn--sm" href="?tab=buildings&amp;edit={{ b.pk }}">{% icon "pencil" %}Edit</a>
+          {% if not b.in_use %}<form method="post" action="{% url 'manage:catalogue' %}" data-confirm="Remove block {{ b.code }}?">{% csrf_token %}<input type="hidden" name="action" value="buildings.delete"><input type="hidden" name="pk" value="{{ b.pk }}"><button class="btn btn--sm btn--ghost" type="submit" aria-label="Remove block {{ b.code }}">{% icon "trash-2" %}</button></form>{% endif %}</div></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="panel empty empty--compact cfg-gap-b">
+  <div class="empty__icon">{% icon "building" %}</div>
+  <h3>No blocks yet</h3>
+  <p>Add the blocks your resources are in. Resources can also be added without a block.</p>
+</div>
+{% endif %}

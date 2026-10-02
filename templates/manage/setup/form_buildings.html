@@ -1,0 +1,13 @@
+<form method="post" action="{% url 'manage:catalogue' %}" class="stack" style="--gap: var(--s4)" novalidate>{% csrf_token %}
+  <input type="hidden" name="action" value="buildings.save">{% if form.instance.pk %}<input type="hidden" name="pk" value="{{ form.instance.pk }}">{% endif %}
+  {% include "manage/setup/_sheet_errors.html" %}
+  <div class="form-grid">
+    {% include "manage/setup/_field.html" with f=form.code %}
+    {% include "manage/setup/_field.html" with f=form.name %}
+    {% include "manage/setup/_field.html" with f=form.zone %}
+    {% include "manage/setup/_field.html" with f=form.description %}
+    {% include "manage/setup/_field.html" with f=form.map_x %}
+    {% include "manage/setup/_field.html" with f=form.map_y %}
+  </div>
+  <div class="row"><button class="btn btn--primary" type="submit">{% icon "check" %}{% if form.instance.pk %}Save block{% else %}Add block{% endif %}</button><button class="btn btn--ghost" type="button" data-close>Cancel</button></div>
+</form>

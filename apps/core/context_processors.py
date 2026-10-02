@@ -59,6 +59,7 @@ def _nav(user, counts):
                 "manage:setup",
                 (
                     "/manage/setup",
+                    "/manage/catalogue",
                     "/manage/policies",
                     "/manage/workflows",
                     "/manage/timetable",

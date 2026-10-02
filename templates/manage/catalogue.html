@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Catalogue{% endblock %}
+{% block topbar_title %}Setup<small>Catalogue</small>{% endblock %}
+{% block content %}
+{% include "manage/setup/_crumbs.html" with here="Catalogue" %}
+<div class="pagehead">
+  <div>
+    <h1>Catalogue</h1>
+    <p>The structure everything else hangs off: what kinds of resources exist, the blocks they are in, and the departments people and resources belong to. Every change is recorded in the audit log.</p>
+  </div>
+</div>
+
+<nav class="seg cfg-tabs" aria-label="Catalogue sections">
+  {% for key, label, ic in tabs %}<a href="?tab={{ key }}"{% if key == tab %} aria-current="page"{% endif %}>{% icon ic 16 %}{{ label }}</a>{% endfor %}
+</nav>
+
+{% with "manage/setup/catalogue_"|add:tab|add:".html" as part %}{% include part %}{% endwith %}
+
+<dialog id="new-sheet" class="sheet cfg-sheet" aria-labelledby="new-h"{% if autoopen == "new-sheet" %} data-autoopen{% endif %}>
+  <div class="sheet__head"><h2 id="new-h" class="h-sm">New {{ noun|lower }}</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <div class="sheet__body">{% with "manage/setup/form_"|add:tab|add:".html" as f %}{% include f with form=new_form %}{% endwith %}</div>
+</dialog>
+{% if edit_form %}
+<dialog id="edit-sheet" class="sheet cfg-sheet" aria-labelledby="edit-h"{% if autoopen == "edit-sheet" %} data-autoopen{% endif %}>
+  <div class="sheet__head"><h2 id="edit-h" class="h-sm">Edit {{ noun|lower }}</h2><button class="iconbtn" type="button" data-close aria-label="Close">{% icon "x" %}</button></div>
+  <div class="sheet__body">{% with "manage/setup/form_"|add:tab|add:".html" as f %}{% include f with form=edit_form %}{% endwith %}</div>
+</dialog>
+{% endif %}
+
+{% include "manage/setup/_confirm.html" with confirm_yes="Yes, remove it" %}
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/setup.js' %}" defer></script>{% endblock %}

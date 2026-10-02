@@ -8,6 +8,7 @@ from apps.approvals import workflow_views as workflows
 from apps.audit import manage_views as audit
 from apps.bookings import manage_views as board
 from apps.catalogue import manage_views as resources
+from apps.catalogue import setup_views as catalogue
 from apps.checkins import manage_views as no_shows
 from apps.core import manage_home, manage_ops
 from apps.inventory import manage_views as inventory
@@ -38,10 +39,12 @@ urlpatterns = [
     path("resources/<int:pk>/", resources.resource_edit, name="resource_edit"),
     path("resources/<int:pk>/door-qr/", resources.door_qr, name="door_qr"),
     path("setup/", rules.setup, name="setup"),
+    path("catalogue/", catalogue.catalogue, name="catalogue"),
     path("policies/", rules.policies, name="policies"),
     path("workflows/", workflows.workflows, name="workflows"),
     path("timetable/", timetable.timetable, name="timetable"),
     path("users/", users.users, name="users"),
+    path("users/new/", users.user_new, name="user_new"),
     path("audit/", audit.audit, name="audit"),
     path("ops/", manage_ops.ops, name="ops"),
 ]

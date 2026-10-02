@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Add a person{% endblock %}
+{% block topbar_title %}Setup<small>Add a person</small>{% endblock %}
+{% block content %}
+{% url 'manage:users' as users_url %}
+{% include "manage/setup/_crumbs.html" with here="Add a person" parent_url=users_url parent_label="Users and roles" %}
+<div class="pagehead">
+  <div>
+    <h1>Add a person</h1>
+    <p>Create an account for someone at the university. They sign in with the username or VID and the initial password you set here; give it to them privately. There is no public sign-up.</p>
+  </div>
+</div>
+
+{% if form.errors %}
+<div class="notice notice--danger cfg-errsum" role="alert">{% icon "circle-alert" %}<div><strong>{{ form.errors|length }} thing{{ form.errors|length|pluralize }} need{{ form.errors|length|pluralize:"s," }} fixing. Nobody was added yet.</strong>
+  <ul>{% for f in form %}{% if f.errors %}<li><a href="#{{ f.id_for_label }}">{{ f.label }}</a>: {{ f.errors.0 }}</li>{% endif %}{% endfor %}{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div></div>
+{% endif %}
+
+<form method="post" class="stack" style="--gap: var(--s5)" novalidate>
+  {% csrf_token %}
+  <section class="panel" aria-labelledby="who-h">
+    <h2 id="who-h" class="h-sm">Who they are</h2>
+    <div class="form-grid">
+      {% include "manage/setup/_field.html" with f=form.first_name %}
+      {% include "manage/setup/_field.html" with f=form.last_name %}
+      {% include "manage/setup/_field.html" with f=form.email %}
+      {% include "manage/setup/_field.html" with f=form.vid %}
+      {% include "manage/setup/_field.html" with f=form.designation %}
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="role-h">
+    <h2 id="role-h" class="h-sm">What they can do</h2>
+    <div class="form-grid">
+      {% include "manage/setup/_field.html" with f=form.role %}
+      {% if has_departments %}{% include "manage/setup/_field.html" with f=form.department %}{% else %}
+      <div class="field"><span class="label">Department</span><span class="hint">No departments yet. <a href="{% url 'manage:catalogue' %}?tab=departments">Add departments</a> to assign one.</span></div>{% endif %}
+    </div>
+    <div class="notice cfg-gap-b">{% icon "shield-check" %}<div><strong>Two-step sign-in</strong>{{ mfa_roles|join:" and " }} accounts must set up an authenticator app (such as Google Authenticator) the first time they sign in. Superuser access cannot be granted here.</div></div>
+    <details class="small"><summary>What each role can do</summary>
+      <dl class="cfg-rolelist">{% for v, label, help in role_help %}<div><dt>{{ label }}</dt><dd class="muted">{{ help }}</dd></div>{% endfor %}</dl>
+    </details>
+  </section>
+
+  <section class="panel" aria-labelledby="signin-h">
+    <h2 id="signin-h" class="h-sm">How they sign in</h2>
+    <div class="form-grid">
+      {% include "manage/setup/_field.html" with f=form.username %}
+      <div></div>
+      {% include "manage/setup/_field.html" with f=form.password1 %}
+      {% include "manage/setup/_field.html" with f=form.password2 %}
+    </div>
+  </section>
+
+  <div class="row"><button class="btn btn--primary btn--lg" type="submit">{% icon "user-round-check" %}Add person</button><a class="btn btn--ghost" href="{% url 'manage:users' %}">Cancel</a></div>
+</form>
+{% endblock %}

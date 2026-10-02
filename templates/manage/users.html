@@ -10,6 +10,7 @@
     <h1>Users and roles</h1>
     <p>{% if can_manage %}A role decides what someone can do here. Changes take effect on their next page load. Accounts are never deleted: deactivate them instead, and their bookings and history are kept.{% else %}Who holds which role. Only administrators can change roles or deactivate accounts.{% endif %}</p>
   </div>
+  {% if can_manage %}<a class="btn btn--primary" href="{% url 'manage:user_new' %}">{% icon "plus" %}Add a person</a>{% endif %}
 </div>
 
 <details class="panel cfg-gap-b cfg-roles">

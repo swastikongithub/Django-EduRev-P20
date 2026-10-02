@@ -1,5 +1,6 @@
 """Staff console: people and roles. Administrators change roles and (de)activate; facility managers can look."""
 
+from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
@@ -171,5 +172,51 @@ def users(request):
             "departments": Department.objects.filter(institution_id=inst),
             "querystring": params.urlencode(),
             "here": request.get_full_path(),
+        },
+    )
+
+
+@staff_required("manage_users")
+@require_http_methods(["GET", "POST"])
+def user_new(request):
+    """Administrators add a person with a role. Privileged roles enrol MFA at their first sign-in."""
+    from . import mfa
+    from .manage_forms import UserCreateForm
+
+    actor = request.user
+    form = UserCreateForm(request.POST or None, institution_id=actor.institution_id)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        record(
+            actor,
+            "user.create",
+            user,
+            after={
+                "username": user.username,
+                "email": user.email,
+                "vid": user.vid,
+                "role": user.role,
+                "department": user.department.code if user.department else None,
+            },
+            request=request,
+        )
+        note = (
+            " They will set up two-step sign-in with an authenticator app the first time they sign in."
+            if mfa.required_for(user)
+            else ""
+        )
+        messages.success(
+            request,
+            f"{user.display_name} can now sign in as {user.username}. Give them the initial password privately.{note}",
+        )
+        return redirect(f"{reverse('manage:users')}?q={user.username}")
+    return render(
+        request,
+        "manage/user_new.html",
+        {
+            "form": form,
+            "role_help": [(v, label, ROLE_HELP[v]) for v, label in Role.choices],
+            "mfa_roles": [label for v, label in Role.choices if v in settings.MFA_REQUIRED_ROLES],
+            "has_departments": Department.objects.filter(institution_id=actor.institution_id).exists(),
         },
     )

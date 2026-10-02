@@ -17,6 +17,10 @@
   {% endif %}
 </div>
 
+{% if creating and not form.type.field.queryset.exists %}
+<div class="notice notice--warn cfg-gap-b" role="status">{% icon "triangle-alert" %}<div><strong>Add a resource type first.</strong>Every resource needs a type, such as Classroom. <a href="{% url 'manage:catalogue' %}?tab=types&amp;new=1">Add one in the catalogue</a>, then come back.</div></div>
+{% endif %}
+
 {% if error_count %}
 <div class="notice notice--danger cfg-errsum" role="alert">{% icon "circle-alert" %}<div><strong>{{ error_count }} thing{{ error_count|pluralize }} need{{ error_count|pluralize:"s," }} fixing before this can be saved.</strong>
   <ul>{% for f in form %}{% if f.errors %}<li><a href="#{{ f.id_for_label }}">{{ f.label }}</a>: {{ f.errors.0 }}</li>{% endif %}{% endfor %}{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}{% for e in attr_errors %}<li><a href="#details-h">Details</a>: {{ e }}</li>{% endfor %}</ul>

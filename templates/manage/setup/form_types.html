@@ -1,0 +1,19 @@
+<form method="post" action="{% url 'manage:catalogue' %}" class="stack" style="--gap: var(--s4)" novalidate>{% csrf_token %}
+  <input type="hidden" name="action" value="types.save">{% if form.instance.pk %}<input type="hidden" name="pk" value="{{ form.instance.pk }}">{% endif %}
+  {% include "manage/setup/_sheet_errors.html" %}
+  <div class="form-grid">
+    {% include "manage/setup/_field.html" with f=form.name %}
+    {% include "manage/setup/_field.html" with f=form.plural hint="Leave empty to add an s." %}
+    {% include "manage/setup/_field.html" with f=form.code hint="Leave empty to make one from the name." %}
+    {% include "manage/setup/_field.html" with f=form.category %}
+    {% include "manage/setup/_field.html" with f=form.icon %}
+    {% include "manage/setup/_field.html" with f=form.accent %}
+    {% include "manage/setup/_field.html" with f=form.sort_order %}
+  </div>
+  <div class="field"><span class="label">{{ form.allowed_roles.label }} <span class="optional">optional</span></span>
+    <div class="chips chips--sm" role="group" aria-label="{{ form.allowed_roles.label }}">{% for c in form.allowed_roles %}<label class="chip">{{ c.tag }}{{ c.choice_label }}</label>{% endfor %}</div>
+    {% if form.allowed_roles.errors %}<span class="error">{{ form.allowed_roles.errors.0 }}</span>{% else %}<span class="hint">{{ form.allowed_roles.help_text }}</span>{% endif %}
+  </div>
+  {% include "manage/setup/_field.html" with f=form.description span=1 %}
+  <div class="row"><button class="btn btn--primary" type="submit">{% icon "check" %}{% if form.instance.pk %}Save type{% else %}Add type{% endif %}</button><button class="btn btn--ghost" type="button" data-close>Cancel</button></div>
+</form>

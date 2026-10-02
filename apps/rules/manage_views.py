@@ -80,6 +80,23 @@ def hub_cards(user, now=None) -> list[dict]:
                 "text": "Add rooms, labs and equipment, import a block from CSV, print door QR signs.",
             }
         )
+        from apps.accounts.models import Department
+        from apps.catalogue.models import Building
+
+        n_types = ResourceType.objects.filter(institution_id=inst).count()
+        n_blocks = Building.objects.filter(institution_id=inst).count()
+        n_depts = Department.objects.filter(institution_id=inst).count()
+        cards.append(
+            {
+                "title": "Catalogue",
+                "icon": "grid-3x3",
+                "url": reverse("manage:catalogue"),
+                "status": f"{_plural(n_types, 'resource type')}, {_plural(n_blocks, 'block')}, "
+                f"{_plural(n_depts, 'department')}",
+                "tone": "ok" if n_types else "warn",
+                "text": "The resource types, blocks and departments that resources and people belong to.",
+            }
+        )
 
     if has_cap(user, "configure_policy"):
         n_pol = BookingPolicy.objects.filter(institution_id=inst).count()
