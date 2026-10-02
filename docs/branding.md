@@ -46,8 +46,9 @@ page already ends with "Lovely Professional University, Phagwara" in text.
 The seal is square, so using it whole as a favicon keeps the correct aspect ratio. At 16 px its
 lettering is not legible, but the orange and black disc remains recognisable. The favicon set is
 derived from the seal without cropping or simplification; a simplified mark for tiny sizes
-would need to come from the university. The neutral placeholder `static/img/favicon.svg` is used
-only if the renditions are missing.
+would need to come from the university. These files are the only favicon: the earlier placeholder
+`static/img/favicon.svg` has been removed, and no icon link or manifest entry is emitted for a file
+that is not present.
 
 ## Static files
 

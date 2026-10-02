@@ -161,13 +161,15 @@ def _desk(user):
 @require_GET
 @cache_control(max_age=3600, public=True)
 def manifest(request):
-    """Web app manifest: the official icons once they are in static/img/brand/, else the placeholder."""
+    """Web app manifest with the official LPU icons from static/img/brand/ (none if they are absent)."""
     assets = brand_assets()
     icons = [
         {"src": static(assets[slot]), "sizes": size, "type": "image/png", "purpose": "any"}
         for slot, size in (("icon_192", "192x192"), ("icon_512", "512x512"))
         if slot in assets
-    ] or [{"src": static(assets.get("favicon", "img/favicon.svg")), "sizes": "any", "type": "image/svg+xml"}]
+    ]
+    if not icons and "favicon" in assets:  # an official SVG favicon, if one is ever supplied
+        icons = [{"src": static(assets["favicon"]), "sizes": "any", "type": "image/svg+xml"}]
     body = {
         "name": "LPU Reserve",
         "short_name": "LPU Reserve",

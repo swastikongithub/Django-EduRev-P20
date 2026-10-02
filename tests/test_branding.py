@@ -1,13 +1,15 @@
 """
 The official LPU seal (static/img/lpu_logo.png) and its renditions in static/img/brand/
 (scripts/brand_renditions.py): where they render, the favicon set, the manifest, and the
-placeholder that remains when no artwork is present (docs/branding.md).
+absence of any icon reference when no artwork is present (docs/branding.md).
 """
 
+import re
 from pathlib import Path
 
 import pytest
 from django.conf import settings
+from django.contrib.staticfiles import finders
 from django.test import override_settings
 from PIL import Image
 
@@ -86,10 +88,22 @@ def test_manifest_lists_the_official_icons(client):
 
 
 @pytest.mark.django_db
-def test_placeholder_returns_when_no_artwork_is_present(client, tmp_path):
+def test_every_icon_reference_points_at_a_real_static_file(client):
+    html = client.get("/login/").content.decode()
+    hrefs = re.findall(r'<link rel="(?:icon|apple-touch-icon)" href="([^"]+)"', html)
+    hrefs += [i["src"] for i in client.get("/site.webmanifest").json()["icons"]]
+    assert len(hrefs) >= 5  # .ico, PNG favicon, touch icon, two manifest icons
+    for href in hrefs:
+        assert href.startswith(settings.STATIC_URL) and finders.find(href.removeprefix(settings.STATIC_URL)), href
+
+
+@pytest.mark.django_db
+def test_without_artwork_no_icon_is_referenced(client, tmp_path):
+    # The old placeholder favicon was removed; nothing may point at it or at any missing file.
     with override_settings(STATICFILES_DIRS=[tmp_path]):
         brand_assets.cache_clear()
         html = client.get("/login/").content.decode()
-        assert "img/favicon.svg" in html
+        assert 'rel="icon"' not in html and 'rel="apple-touch-icon"' not in html
+        assert "favicon.svg" not in html
         assert f"{BRAND_DIR}/" not in html
-        assert client.get("/site.webmanifest").json()["icons"][0]["type"] == "image/svg+xml"
+        assert client.get("/site.webmanifest").json()["icons"] == []
