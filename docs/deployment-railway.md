@@ -1,8 +1,31 @@
 # Deploying to Railway
 
-LPU Reserve is ready to deploy to [Railway](https://railway.com), but **has not been deployed**.
-This guide is the complete configuration, plus what is still needed from a person
-([blockers](#what-is-still-needed-before-the-first-deploy)).
+LPU Reserve runs on [Railway](https://railway.com) at
+<https://django-edurev-p20-production.up.railway.app>. This guide is the complete target
+configuration, plus what is still needed from a person
+([blockers](#what-is-still-needed-before-the-first-deploy)). The live deployment was set up by
+hand and differs from the target in places; the next section lists exactly how.
+
+## Current production deployment
+
+Recorded on 2026-10-02. The project is `handsome-blessing`, environment `production`, on Railway's
+Trial plan. It was configured in the dashboard and with the Railway CLI; `railway config apply` has
+not been run, so `.railway/railway.ts` describes the target, not the live state.
+
+| Area | Live | Target in this guide |
+|---|---|---|
+| Web service | `Django-EduRev-P20` (public domain, health check `/ready/`) | `web` |
+| Worker | `worker`, start command and draining as specified | `worker` |
+| Beat | **not created**: the Trial plan refuses more services ("Free plan resource provision limit exceeded") | `beat` |
+| Backups | **not created**: same plan limit (backup service and `backups` bucket) | `backup` cron and `backups` bucket |
+| Database | `Postgres`, **PostgreSQL 18** | `postgres`; set `PG_MAJOR=18` on the backup service, not the file's `17` |
+| Redis | `Redis` (8.2) | `redis` |
+| Media bucket | `media`, region `sjc`; its `REGION` variable resolves to `sjc`, which works for signing (`verify_storage` passes) | `media` |
+| Domain target port | **8080**: Railway injects `PORT=8080` at runtime, and gunicorn binds `$PORT`. The image's `PORT=8000` default applies only where nothing is injected | not pinned |
+| Pre-deploy | **migrate only**: `sh /app/docker/entrypoint.sh python manage.py migrate --noinput`. `docker/predeploy.sh` would refuse the release until email is configured (`lpu.E002`); switch to it once email works | `docker/predeploy.sh` |
+| Secret and settings | service variables, not shared variables. The worker references the web service's `DJANGO_SECRET_KEY` and sets `SITE_URL` explicitly | shared variables |
+| Email | **not configured**: needs a provider key and a verified sender domain ([Email](#email)) | Resend |
+| Auto-deploy | **off**: Railway's GitHub App is not authorized for the repository, so Railway cannot list branches. Deploy with the dashboard's **Deploy latest commit** (Ctrl+K) | `main` after GitHub checks |
 
 The platform configuration is code: [`.railway/railway.ts`](../.railway/railway.ts), written for Railway's
 [Infrastructure as Code](https://docs.railway.com/infrastructure-as-code) (TypeScript SDK `railway`
