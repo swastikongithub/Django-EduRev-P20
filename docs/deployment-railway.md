@@ -277,7 +277,8 @@ Then:
    `BOOTSTRAP_SETUP_CODE` first if the domain is public), sign in and enrol MFA, then work through
    **Setup → Getting started** ([admin guide](guide-admin.md#first-run-setup-a-brand-new-installation)).
    The operator fallback is unchanged: `railway ssh --service web -- python manage.py createsuperuser`.
-   **Do not run `seed_demo` in production.**
+   **Do not run `seed_demo` in production.** To bring over an installation already built elsewhere
+   (catalogue, bookings, timetable, people), use [the state transfer](state-transfer.md) instead.
 
 ## What is still needed before the first deploy
 

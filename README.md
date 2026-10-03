@@ -143,6 +143,7 @@ maintenance transitions, nightly analytics). Booking correctness never depends o
 | [docs/environment.md](docs/environment.md) | Every environment variable, with production guidance |
 | [docs/runbook.md](docs/runbook.md) | Deployment, rollback, backup and tested restore, secret rotation, incident playbooks |
 | [docs/deployment-railway.md](docs/deployment-railway.md) | Production on Railway: services, every variable, migrations, the single Beat, health checks, what is still needed |
+| [docs/state-transfer.md](docs/state-transfer.md) | Copying a built installation (catalogue, bookings, timetable, people) into another database, with fresh production passwords |
 | [docs/backup-restore.md](docs/backup-restore.md) | Nightly encrypted backups, volume backups, restoring, and the CI restore drill |
 | [docs/branding.md](docs/branding.md) | The official LPU seal: renditions, where it appears, favicon treatment |
 | [docs/security-review.md](docs/security-review.md) | Security findings SEC-01 to SEC-14, their fixes and regression tests |
