@@ -182,15 +182,29 @@ def accounts_digest(usernames) -> str:
     return hashlib.sha256("\n".join(sorted(u.lower() for u in usernames)).encode()).hexdigest()[:16]
 
 
-def generate_credentials(bundle: dict, *, existing_usernames) -> list[dict]:
+def generate_credentials(bundle: dict, *, existing_usernames, public_vids=()) -> list[dict]:
     """
     Give every bundle account that the target does not already have a fresh password: its hash goes
     into the bundle, the plaintext only into the returned list (for the operator's private file).
     Accounts the target already has get nothing, so the import maps them and never resets them.
+
+    `public_vids` names a few Student accounts whose passwords are meant to be published (the
+    README's demo accounts). They get passwords exactly like the rest and are marked `public`; only
+    active Students qualify, so a published credential can never be a privileged one.
     """
     from apps.accounts.models import Role, User
 
     taken = {u.lower() for u in existing_usernames}
+    public = {v.strip() for v in public_vids if v.strip()}
+    rows = {r["fields"].get("vid"): r["fields"] for r in bundle["models"]["accounts.User"] if r["fields"].get("vid")}
+    for vid in public:
+        f = rows.get(vid)
+        if f is None:
+            raise TransferError(f"No account with VID {vid} in the bundle.")
+        if f["role"] != Role.STUDENT or not f.get("is_active", True) or f["username"].lower() in taken:
+            raise TransferError(
+                f"VID {vid} is not a new, active Student account, so it cannot be a public demo account."
+            )
     issued, seen = [], set()
     roles = dict(Role.choices)
     for row in bundle["models"]["accounts.User"]:
@@ -211,6 +225,7 @@ def generate_credentials(bundle: dict, *, existing_usernames) -> list[dict]:
                 "email": f["email"],
                 "vid": f.get("vid") or "",
                 "password": password,
+                "public": (f.get("vid") or "") in public,
             }
         )
     bundle["credentials"] = {
@@ -241,9 +256,18 @@ def credentials_markdown(issued: list[dict], *, site_url: str = "") -> str:
     ]
     for i in sorted(issued, key=lambda x: (x["role"], x["username"])):
         lines.append(
-            f"| {cell(i['name'])} | {cell(i['username'])} | {cell(i['role'])} | {cell(i['email'])} | "
+            f"| {cell(i['name'])} | {cell(i['username'])} | "
+            f"{cell(i['role'] + (' (public demo, in README)' if i.get('public') else ''))} | {cell(i['email'])} | "
             f"{cell(i['vid'])} | `{i['password']}` |"
         )
+    return "\n".join(lines) + "\n"
+
+
+def public_demo_markdown(issued: list[dict]) -> str:
+    """Only the deliberately public Student accounts: VID and password, nothing personal."""
+    rows = [i for i in issued if i.get("public")]
+    lines = ["| Student ID | Password |", "|---|---|"]
+    lines += [f"| `{i['vid']}` | `{i['password']}` |" for i in sorted(rows, key=lambda x: x["vid"])]
     return "\n".join(lines) + "\n"
 
 

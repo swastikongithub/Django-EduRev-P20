@@ -33,16 +33,30 @@ class Command(BaseCommand):
             "--existing-usernames", default="", help="Comma-separated usernames the target already has (never reset)"
         )
         parser.add_argument("--site-url", default="", help="Shown in the credentials file")
+        parser.add_argument(
+            "--public-demo-vids",
+            default="",
+            help="Comma-separated VIDs of Student accounts whose passwords will be published (README demo)",
+        )
+        parser.add_argument("--public-demo-out", help="Where to write just those VIDs and passwords (outside the repo)")
 
-    def handle(self, *args, path, institution, credentials, existing_usernames, site_url, **opts):
-        out = None
-        if credentials:
-            out = Path(credentials).resolve()
-            repo = Path(settings.BASE_DIR).resolve()
-            if out == repo or repo in out.parents:
-                raise CommandError("The credentials file must be outside the repository.")
-            if out.exists():
-                raise CommandError(f"{out} already exists; it is the record of an earlier export. Move it first.")
+    def handle(
+        self,
+        *args,
+        path,
+        institution,
+        credentials,
+        existing_usernames,
+        site_url,
+        public_demo_vids,
+        public_demo_out,
+        **opts,
+    ):
+        out = self._private_path(credentials) if credentials else None
+        public_out = self._private_path(public_demo_out) if public_demo_out else None
+        public_vids = [v.strip() for v in public_demo_vids.split(",") if v.strip()]
+        if public_vids and not (out and public_out):
+            raise CommandError("--public-demo-vids needs --credentials and --public-demo-out.")
         try:
             bundle = st.export_bundle(institution_code=institution)
         except st.TransferError as exc:
@@ -50,8 +64,13 @@ class Command(BaseCommand):
         issued = []
         if out:
             existing = [u.strip() for u in existing_usernames.split(",") if u.strip()]
-            issued = st.generate_credentials(bundle, existing_usernames=existing)
+            try:
+                issued = st.generate_credentials(bundle, existing_usernames=existing, public_vids=public_vids)
+            except st.TransferError as exc:
+                raise CommandError(str(exc)) from exc
             out.write_text(st.credentials_markdown(issued, site_url=site_url), encoding="utf-8")
+            if public_out:
+                public_out.write_text(st.public_demo_markdown(issued), encoding="utf-8")
         st.write_bundle(bundle, path)
         summary = st.bundle_summary(bundle)
         for label, n in summary["counts"].items():
@@ -64,4 +83,16 @@ class Command(BaseCommand):
                 f"passwords generated: {len(issued)} (written only to {out}); "
                 f"accounts_digest {bundle['credentials']['accounts_digest']}"
             )
+        if public_out:
+            self.stdout.write(f"public demo accounts: {len(public_vids)} (VID and password only, in {public_out})")
         self.stdout.write(self.style.SUCCESS(f"Wrote {path}"))
+
+    @staticmethod
+    def _private_path(value):
+        out = Path(value).resolve()
+        repo = Path(settings.BASE_DIR).resolve()
+        if out == repo or repo in out.parents:
+            raise CommandError("The credentials file must be outside the repository.")
+        if out.exists():
+            raise CommandError(f"{out} already exists; it is the record of an earlier export. Move it first.")
+        return out

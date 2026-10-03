@@ -496,3 +496,41 @@ def test_credentials_markdown_escapes_table_cells():
         [{"name": "A | B", "username": "ab", "role": "Student", "email": "a@x.test", "vid": "", "password": "Xy-1"}]
     )
     assert "A \| B" in md and "`Xy-1`" in md
+
+
+# ── Public demo Student accounts (README) ───────────────────────────────────
+
+
+def test_public_demo_accounts_are_students_signing_in_by_vid(source, student, faculty, tmp_path):
+    User.objects.filter(pk=student.pk).update(vid="12321411")
+    User.objects.filter(pk=faculty.pk).update(vid="30001")
+    bundle = st.export_bundle(institution_code="LPU")
+    with pytest.raises(st.TransferError, match="Student"):
+        st.generate_credentials(bundle, existing_usernames=["swastik"], public_vids=["30001"])
+    with pytest.raises(st.TransferError, match="No account"):
+        st.generate_credentials(bundle, existing_usernames=["swastik"], public_vids=["99999999"])
+    issued = st.generate_credentials(bundle, existing_usernames=["swastik"], public_vids=["12321411"])
+    public = [i for i in issued if i["public"]]
+    assert [i["vid"] for i in public] == ["12321411"]
+
+    md = st.public_demo_markdown(issued)
+    assert md.splitlines()[0] == "| Student ID | Password |" and len(md.splitlines()) == 3
+    assert student.username not in md and student.email not in md and "@" not in md
+    private = st.credentials_markdown(issued)
+    assert "(public demo, in README)" in private and private.count("(public demo, in README)") == 1
+
+    wipe_to_production_like(99999)
+    st.import_bundle(bundle)
+    c = Client()
+    resp = c.post(reverse("accounts:login"), {"username": "12321411", "password": public[0]["password"]})
+    assert resp.status_code == 302 and resp.url == "/home/"  # VID sign-in, no MFA for a student
+    u = User.objects.get(vid="12321411")
+    assert u.role == Role.STUDENT and not u.is_staff and not u.is_superuser and not u.mfa_enabled
+
+
+def test_public_demo_needs_both_private_files(source, tmp_path):
+    with pytest.raises(CommandError, match="--public-demo-out"):
+        call_command(
+            "export_state", str(tmp_path / "b.json.gz"), "--credentials", str(tmp_path / "c.md"),
+            "--public-demo-vids", "12321411",
+        )  # fmt: skip

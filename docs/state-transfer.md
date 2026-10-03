@@ -47,6 +47,11 @@ Both commands print an `accounts_digest` of the usernames: the export for the ac
 passwords to, the import for the accounts it created. Equal digests prove the credentials file lists
 exactly the accounts that were created. Re-running the import never resets a password.
 
+`--public-demo-vids V1,V2,V3 --public-demo-out FILE` marks a few accounts whose passwords will be
+published (the README's demo accounts). Only new, active **Student** accounts qualify, so a
+published credential can never be a privileged one; their passwords are generated like the rest,
+and `FILE` holds just their VIDs and passwords (no names or emails). They sign in with the VID.
+
 MFA follows the existing policy unchanged: administrators, facility managers and superusers enrol a
 new authenticator at their first sign-in, protected by their new password; other roles do not.
 
@@ -78,7 +83,8 @@ railway ssh --service Django-EduRev-P20 -- sh -c \
   > prod-dumpdata-<UTC timestamp>.json.gz
 # 2. Export locally, with the target's existing usernames
 python manage.py export_state lpu-state.json.gz --existing-usernames swastik,Demo1 \
-  --credentials "C:/Users/<you>/Desktop/LPU_RESERVE_DEMO_CREDENTIALS.md"
+  --credentials "C:/Users/<you>/Desktop/LPU_RESERVE_DEMO_CREDENTIALS.md" \
+  --public-demo-vids 12321411,12421707,12321744 --public-demo-out "C:/Users/<you>/Desktop/public-demo.md"
 # 3. Rehearse, then import
 railway ssh --service Django-EduRev-P20 -- sh -c 'cat > /tmp/s.gz && python manage.py import_state /tmp/s.gz --dry-run' < lpu-state.json.gz
 railway ssh --service Django-EduRev-P20 -- sh -c 'cat > /tmp/s.gz && python manage.py import_state /tmp/s.gz --production-confirm; rm -f /tmp/s.gz' < lpu-state.json.gz
