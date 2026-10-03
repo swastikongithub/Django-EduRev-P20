@@ -158,7 +158,9 @@ def _fields(model, spec):
     return names
 
 
-PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"  # noqa: S105 - character set, not a password; no 0/O, 1/l/I
+TYPEABLE_CHARACTERS = (
+    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"  # gitleaks:allow - a character set; no 0/O, 1/l/I
+)
 
 
 def new_password(user) -> str:
@@ -169,7 +171,7 @@ def new_password(user) -> str:
     from django.core.exceptions import ValidationError
 
     while True:
-        groups = ["".join(secrets.choice(PASSWORD_ALPHABET) for _ in range(4)) for _ in range(3)]
+        groups = ["".join(secrets.choice(TYPEABLE_CHARACTERS) for _ in range(4)) for _ in range(3)]
         candidate = "-".join(groups) + secrets.choice("23456789")
         try:
             password_validation.validate_password(candidate, user)

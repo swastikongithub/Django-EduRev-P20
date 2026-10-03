@@ -1,0 +1,3 @@
+# Reviewed false positives (gitleaks fingerprint: commit:file:rule:line). Never list a real secret here.
+# The character set new passwords are drawn from, not a password (apps/core/state_transfer.py).
+f06639e475dfc228e732a4ef62d2201d3caade48:apps/core/state_transfer.py:generic-api-key:161
