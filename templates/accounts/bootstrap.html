@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Set up the first administrator{% endblock %}
+{% block body_class %}auth{% endblock %}
+{% block shell %}
+<main id="main" class="auth-panel auth-panel--solo">
+  <div class="auth-card auth-card--wide">
+    <div class="auth-card__head">
+      <span class="brandmark">{% include "components/brandmark.html" %}</span>
+      <span class="badge badge--pending">{% icon "sparkles" %}First-run setup</span>
+      <h1 class="auth-card__title">Set up the first administrator</h1>
+      <p class="muted">LPU Reserve has no accounts yet. Create the administrator who will add departments, blocks, resources and everyone else. This page disappears for good once this account exists, and there is no public sign-up.</p>
+    </div>
+
+    {% if error %}<div class="notice notice--danger" role="alert">{% icon "circle-alert" %}<div>{{ error }}</div></div>{% endif %}
+    {% if form.errors %}
+    <div class="notice notice--danger cfg-errsum" role="alert">{% icon "circle-alert" %}<div><strong>{{ form.errors|length }} thing{{ form.errors|length|pluralize }} need{{ form.errors|length|pluralize:"s," }} fixing. No account was created.</strong>
+      <ul>{% for f in form %}{% if f.errors %}<li><a href="#{{ f.id_for_label }}">{{ f.label }}</a>: {{ f.errors.0 }}</li>{% endif %}{% endfor %}{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    </div></div>
+    {% endif %}
+
+    <form method="post" class="stack" novalidate>
+      {% csrf_token %}
+      {% include "manage/setup/_field.html" with f=form.full_name %}
+      {% include "manage/setup/_field.html" with f=form.email %}
+      {% include "manage/setup/_field.html" with f=form.username %}
+      {% include "manage/setup/_field.html" with f=form.password1 %}
+      {% include "manage/setup/_field.html" with f=form.password2 %}
+      {% if code_required %}{% include "manage/setup/_field.html" with f=form.setup_code %}{% endif %}
+      <div class="notice">{% icon "shield-check" %}<div><strong>What happens next</strong>You'll sign in with this username and password, then set up two-step sign-in with an authenticator app such as Google Authenticator. This account is an Administrator: it manages people, the catalogue and rules, but it is not a Django superuser.</div></div>
+      <button class="btn btn--primary btn--lg btn--block" type="submit">{% icon "user-round-check" %}Create administrator</button>
+    </form>
+    <a class="small" href="{% url 'accounts:login' %}">Back to sign in</a>
+  </div>
+</main>
+{% endblock %}

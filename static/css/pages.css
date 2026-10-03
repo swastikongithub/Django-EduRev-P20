@@ -402,6 +402,13 @@ a.inbox__title:hover { color: var(--link); text-decoration: underline; }
 .mfa-key { display: block; margin-top: 8px; padding: 8px 10px; border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--fs-sm); letter-spacing: .12em; word-break: break-all; }
 .mfa-code { letter-spacing: .4em; text-align: center; font-variant-numeric: tabular-nums; font-size: var(--fs-2xl); font-weight: 750; }
 
+/* ── First-run setup (no accounts yet) ────────────────────────────────── */
+.auth-card--wide { width: min(520px, 100%); }
+.auth-card__head .badge { margin-top: 12px; }
+.auth-card__title { font-size: var(--fs-2xl); margin-top: 8px; }
+.auth-card .cfg-errsum { margin-bottom: 0; }
+.auth-firstrun a { font-weight: 700; }
+
 /* ── Resource page layout: calendar, then the booking panel, then details (any width) ── */
 .detail-body { display: grid; grid-template-columns: minmax(0, 1fr) 440px; grid-template-areas: "cal side" "info side"; gap: var(--s6); align-items: start; }
 .detail-cal { grid-area: cal; min-width: 0; }

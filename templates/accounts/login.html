@@ -27,6 +27,9 @@
         <h2>{% translate "Sign in" %}</h2>
         <p class="muted">{% translate "Use your UMS VID or username." %}</p>
       </div>
+      {% if bootstrap_required %}
+      <div class="notice notice--warn auth-firstrun">{% icon "sparkles" %}<div><strong>{% translate "This installation has no accounts yet" %}</strong>{% translate "Before anyone can sign in, set up the first administrator." %} <a href="{% url 'accounts:bootstrap' %}">{% translate "Set up the first administrator" %}</a></div></div>
+      {% endif %}
       {% if error %}<div class="notice notice--danger" role="alert">{% icon "circle-alert" %}<div>{{ error }}</div></div>{% endif %}
       <form method="post" class="stack" novalidate>
         {% csrf_token %}

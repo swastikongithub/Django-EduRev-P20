@@ -318,6 +318,10 @@ LOGIN_LOCKOUT_THRESHOLD = 5
 # CES §1.1: TOTP MFA for admin roles. Demo persona sign-in (DEMO_MODE only) skips it.
 MFA_REQUIRED_ROLES = env.list("MFA_REQUIRED_ROLES", default=["admin", "facility_manager"])
 MFA_ENFORCED = env.bool("MFA_ENFORCED", default=True)
+# First-run setup (/setup/bootstrap/) is open only while the database has no accounts at all. If
+# set, the form also asks for this value, so whoever reaches a fresh deployment first cannot claim
+# it without access to its configuration. Optional; empty means no code is asked for.
+BOOTSTRAP_SETUP_CODE = env("BOOTSTRAP_SETUP_CODE", default="")
 LOGIN_LOCKOUT_MINUTES = 15
 
 # ── Email ───────────────────────────────────────────────────────────────────

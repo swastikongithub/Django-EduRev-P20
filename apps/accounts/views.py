@@ -1,4 +1,4 @@
-"""Sign-in (with lockout), demo personas, profile and booking standing."""
+"""Sign-in (with lockout), first-run setup, demo personas, profile and booking standing."""
 
 import logging
 import time
@@ -11,15 +11,16 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import Http404
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 from django_ratelimit.decorators import ratelimit
 
 from apps.audit.services import record
 
-from . import mfa
+from . import bootstrap, mfa
 from .models import User
 
 # Stable usernames created by `manage.py seed_demo`. Only reachable when DEMO_MODE=1.
@@ -125,7 +126,55 @@ def login_view(request):
     return render(
         request,
         "accounts/login.html",
-        {"error": error, "username": username, "personas": personas, "next": request.GET.get("next", "")},
+        {
+            "error": error,
+            "username": username,
+            "personas": personas,
+            "next": request.GET.get("next", ""),
+            # Decided by the database alone: shown only while there is no account at all.
+            "bootstrap_required": bootstrap.is_system_bootstrap_required(),
+        },
+    )
+
+
+@never_cache
+@require_http_methods(["GET", "POST"])
+@ratelimit(key="ip", rate="5/m", method="POST", block=False)
+@ratelimit(key="ip", rate="20/h", method="POST", block=False)
+def bootstrap_view(request):
+    """
+    First-run setup: create the first administrator of an installation that has no accounts.
+
+    Exists only while the user table is empty (apps.accounts.bootstrap); afterwards both GET and
+    POST are a plain 404, so the page neither shows a form nor confirms that it ever existed. The
+    new administrator is not signed in here: they sign in like anyone else and enrol TOTP first.
+    """
+    if not bootstrap.is_system_bootstrap_required():
+        raise Http404
+    error = ""
+    form = bootstrap.BootstrapForm(request.POST or None)
+    if request.method == "POST":
+        if getattr(request, "limited", False):
+            error = "Too many attempts from this network. Wait a few minutes and try again."
+            form = bootstrap.BootstrapForm(
+                initial={k: request.POST.get(k, "") for k in ("full_name", "email", "username")}
+            )
+        elif form.is_valid():
+            try:
+                user = form.save(request=request)
+            except bootstrap.BootstrapClosed:
+                raise Http404 from None  # someone else finished set-up a moment earlier
+            log.info("First administrator (user %s) created through first-run setup", user.pk)
+            messages.success(
+                request,
+                f"Administrator account created. Continue to sign in as {user.username}; "
+                "you'll set up two-step sign-in with an authenticator app next.",
+            )
+            return redirect(f"{reverse('accounts:login')}?next={reverse('manage:setup')}")
+    return render(
+        request,
+        "accounts/bootstrap.html",
+        {"form": form, "error": error, "code_required": bootstrap.setup_code_required()},
     )
 
 
