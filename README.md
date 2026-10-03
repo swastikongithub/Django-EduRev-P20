@@ -14,6 +14,40 @@ sits idle.
 
 ---
 
+## Live demo
+
+**[django-edurev-p20-production.up.railway.app](https://django-edurev-p20-production.up.railway.app)**: the deployed
+LPU Reserve, populated with the full demonstration campus (61 resources across labs, classrooms,
+halls, courts, equipment and vehicles, with timetabled classes, maintenance windows, bookings and
+approvals).
+
+### Public Demo Student Accounts
+
+Sign in with the **Student ID** (VID) in the *VID or username* box and the password beside it.
+
+| Student ID | Password |
+|---|---|
+| `12321411` | `X7y7-GNoU-Z68D7` |
+| `12321744` | `TnM4-acpH-xrYs3` |
+| `12421707` | `Hv2n-wKNg-jeCk4` |
+
+- These are **demonstration accounts only**, deliberately public, for evaluating the project. The
+  people and bookings behind them are fictional demo data; please do not enter personal information.
+- They are **Student accounts** with ordinary student permissions: no administration, approvals or
+  setup, and no two-step sign-in. Privileged access (facility managers, administrators) is not
+  publicly available.
+- Several people may use the same account at once, so bookings you see may have been made by
+  another reviewer.
+
+### What to try
+
+1. Sign in with one of the Student IDs above.
+2. **Find**: browse classrooms, labs, courts and equipment, or search ("lab for 40 tomorrow").
+3. Open a resource and read its day: free slots, classes from the timetable, maintenance, bookings.
+4. Pick a free slot and **book** it. Classrooms confirm instantly; equipment asks a custodian.
+5. Open **Bookings** for the status and the **QR pass**, and **Calendar** for your week.
+6. **Home** shows your next booking and what is free right now.
+
 ## What it does
 
 | P20 module | What you get | Where |
