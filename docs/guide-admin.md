@@ -6,6 +6,29 @@ happens in the staff console at **`/manage/`** (the **Manage** section of the le
 [roles.md](roles.md) for the full matrix. For booking as a person, see the
 [user quick-start](guide-user.md).
 
+## First-run setup (a brand-new installation)
+
+A fresh database has no accounts, and LPU Reserve has no public sign-up, so the first
+administrator is created in the browser:
+
+1. Open the site. While there are no accounts at all, the sign-in page says **This installation
+   has no accounts yet** and links to **Set up the first administrator** (`/setup/bootstrap/`).
+2. Enter your full name, email, username and a password (at least 10 characters, not common, not
+   like your name). If the deployment sets `BOOTSTRAP_SETUP_CODE`, the form also asks for it.
+3. **Create administrator** makes one account with the **Administrator** role. It is not a Django
+   superuser and has no `/django-admin/` access; nothing on the form can change that.
+4. Sign in with it. As for every administrator, the first sign-in sets up two-step sign-in (see
+   below), then opens **Setup** with the [getting-started checklist](#getting-started-checklist).
+
+The page exists only while the database has no accounts: as soon as one exists, from this page or
+from `python manage.py createsuperuser`, both the link and the page are gone (a plain 404), and
+nothing a browser sends can bring them back. Two people submitting at the same moment still get
+exactly one administrator; the other is turned away. The creation is in the audit log
+(`auth.bootstrap_admin`) without the password.
+
+`python manage.py createsuperuser` still works and remains the operator's fallback, for example
+`railway ssh --service web -- python manage.py createsuperuser` on Railway.
+
 ## Signing in and MFA
 
 Facility managers and administrators sign in with a password **and** a six-digit code from an
@@ -147,6 +170,37 @@ block or department can only be removed while nothing uses it; move its resource
 first. If there are no resource types yet, **Add a resource** says so and links here.
 
 ## Setup
+
+### Getting started checklist
+
+Facility managers and administrators see **Getting started** at the top of **Setup**: the steps a
+new installation needs before people can book, each read from the database every time (nothing is
+ticked by hand, and a step un-ticks if its last record goes):
+
+| Step | Done when | Needed? |
+|---|---|---|
+| Administrator account | an active administrator or superuser exists | yes |
+| Department | at least one department | optional: heads of department and department quotas |
+| Block or building | at least one block | optional: resources can be added without one |
+| Resource type | at least one type, for example Classroom | yes |
+| People | at least one active account that is not an administrator | yes |
+| Approval workflow | at least one active workflow | optional: without one, bookings are confirmed instantly |
+| First resource | at least one resource that is not retired | yes |
+
+Each open step links straight to the screen that does it (**Setup → Catalogue**, **Add a person**,
+**Approval workflows**, **Add a resource**), shown only to people that screen allows; facility
+managers, for example, get no **Add a person** link. Once the essential steps are done the
+checklist folds away, and the console home stops reminding you. Screens that would otherwise be
+empty (the booking home, **Find**, the live board, **Resources**) say what is missing and, for
+people who can fix it, link to the fix.
+
+A typical first hour, all through the console: a department (Computer Science and Engineering),
+a block, the Classroom type; a student and a facility manager with **Add a person**; a Classroom
+workflow with one facility-manager step; then a classroom with its photo. The student can then
+book it, the facility manager approves it after setting up two-step sign-in, and the student's
+booking shows **Confirmed** with its QR pass.
+
+### The hub
 
 **Manage → Setup** is the hub for configuration. Its cards depend on your role.
 

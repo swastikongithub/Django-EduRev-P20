@@ -25,6 +25,7 @@ not been run, so `.railway/railway.ts` describes the target, not the live state.
 | Pre-deploy | **migrate only**: `sh /app/docker/entrypoint.sh python manage.py migrate --noinput`. `docker/predeploy.sh` would refuse the release until email is configured (`lpu.E002`); switch to it once email works | `docker/predeploy.sh` |
 | Secret and settings | service variables, not shared variables. The worker references the web service's `DJANGO_SECRET_KEY` and sets `SITE_URL` explicitly | shared variables |
 | Email | **not configured**: needs a provider key and a verified sender domain ([Email](#email)) | Resend |
+| First administrator | exists (a superuser made with `createsuperuser`), so first-run setup is closed and `/setup/bootstrap/` answers 404 | first-run setup or `createsuperuser` |
 | Auto-deploy | **off**: Railway's GitHub App is not authorized for the repository, so Railway cannot list branches. Deploy with the dashboard's **Deploy latest commit** (Ctrl+K) | `main` after GitHub checks |
 
 The platform configuration is code: [`.railway/railway.ts`](../.railway/railway.ts), written for Railway's
@@ -271,8 +272,12 @@ Then:
    * `railway ssh --service worker -- python manage.py sendtestemail <you>`;
    * the `beat` logs show `Scheduler lock acquired`;
    * trigger `backup` once from the dashboard and check that its log shows `pgbackup: wrote s3://…`.
-5. Create the first administrator (`railway ssh --service web -- python manage.py createsuperuser`)
-   and enrol MFA at first sign-in. **Do not run `seed_demo` in production.**
+5. Create the first administrator: open the site, follow **Set up the first administrator** on the
+   sign-in page (`/setup/bootstrap/`, open only while the database has no accounts; set
+   `BOOTSTRAP_SETUP_CODE` first if the domain is public), sign in and enrol MFA, then work through
+   **Setup → Getting started** ([admin guide](guide-admin.md#first-run-setup-a-brand-new-installation)).
+   The operator fallback is unchanged: `railway ssh --service web -- python manage.py createsuperuser`.
+   **Do not run `seed_demo` in production.**
 
 ## What is still needed before the first deploy
 

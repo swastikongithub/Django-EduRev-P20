@@ -49,14 +49,15 @@ see [deployment-railway.md](deployment-railway.md).
 |---|---|---|---|
 | `MFA_REQUIRED_ROLES` | `admin,facility_manager` | Roles that must pass TOTP after a password sign-in (superusers always) | Keep the default or add `dept_head`, `custodian` |
 | `MFA_ENFORCED` | `True` | Master switch for the above | Must be `1` |
+| `BOOTSTRAP_SETUP_CODE` | empty | When set, first-run setup (`/setup/bootstrap/`, open only while the database has no accounts) also asks for this value | Optional. Set a random value before the first deploy of a public site, so nobody who finds a fresh deployment first can claim it; it has no effect once any account exists |
 | `TRUSTED_PROXY_HOPS` | `0` | Number of reverse proxies in front of the app that append to `X-Forwarded-For`. The client address used by the audit log, the sign-in rate limiter and the API throttles is the entry that many places from the right; with `0` the header is ignored and `REMOTE_ADDR` is used | `1` behind a single proxy that appends to `X-Forwarded-For` (nginx, Render). On Railway leave `0` and use `TRUSTED_CLIENT_IP_HEADER`. Never higher than the real number of proxies: every extra hop lets clients choose their own address |
 | `TRUSTED_CLIENT_IP_HEADER` | empty | A header that the edge proxy itself *sets*, overwriting anything the client sent, holding the client address. When set and valid, it wins over `TRUSTED_PROXY_HOPS`; a malformed value falls back to the connection address | `X-Real-IP` on Railway (its documented client-address header). Never set it where clients can reach the app without passing through that proxy, or they could choose their own address |
 | `API_USER_RATE` | `600/min` | DRF throttle per signed-in user (anonymous is fixed at `60/min`) | Lower for public exposure; raise for integrations such as the load test |
 
 Fixed in code (not environment): sign-in lockout after 5 failures for 15 minutes (password and
 TOTP failures count together, under a row lock so concurrent guesses cannot race past it; a locked
-account gets the same answer as a wrong password); IP rate limits of 20/min on sign-in and MFA and
-30/min on demo sign-in; single-use TOTP codes; a password-verified sign-in waits at most 10 minutes
+account gets the same answer as a wrong password); IP rate limits of 20/min on sign-in and MFA,
+30/min on demo sign-in, and 5/min and 20/hour on first-run setup; single-use TOTP codes; a password-verified sign-in waits at most 10 minutes
 for its TOTP code; session lifetime 10 hours; `HttpOnly`, `SameSite=Lax` session and CSRF cookies
 (`Secure` with `DEBUG=0`); static files without a wildcard CORS header; the live API schema
 (`/api/v1/schema/`, `/api/v1/docs/`) requires sign-in.

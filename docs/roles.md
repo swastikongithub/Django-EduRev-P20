@@ -80,6 +80,7 @@ view re-checks the capability (`apps/core/manage_views.staff_required`).
 
 | Console area | Path | Needs any of | Scope |
 |---|---|---|---|
+| First-run setup | `/setup/bootstrap/` | nobody signed in, **and the database has no accounts at all**; otherwise a 404 for everyone | Creates one Administrator (never superuser or staff) |
 | Console home | `/manage/` | any staff capability | Own work |
 | Approvals queue | `/manage/approvals/` | `approve_bookings` | Steps the person may decide |
 | Live booking board | `/manage/board/` | `manage_resources`, `approve_bookings` | Managed resources |
