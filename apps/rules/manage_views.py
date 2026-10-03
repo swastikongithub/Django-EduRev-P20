@@ -169,7 +169,7 @@ def hub_cards(user, now=None) -> list[dict]:
                 "url": reverse("manage:users"),
                 "status": f"{_plural(agg['n'], 'active account')}, {agg['staff']} with console roles",
                 "tone": "ok",
-                "text": "Change roles and deactivate accounts."
+                "text": "Add people, change roles and deactivate accounts."
                 if has_cap(user, "manage_users")
                 else "See who holds which role. Administrators make changes.",
             }
@@ -232,7 +232,11 @@ def hub_cards(user, now=None) -> list[dict]:
 
 @staff_required(*SETUP_CAPS)
 def setup(request):
-    return render(request, "manage/setup.html", {"cards": hub_cards(request.user)})
+    from apps.core.onboarding import setup_checklist
+
+    return render(
+        request, "manage/setup.html", {"cards": hub_cards(request.user), "checklist": setup_checklist(request.user)}
+    )
 
 
 # ── Policies ────────────────────────────────────────────────────────────────

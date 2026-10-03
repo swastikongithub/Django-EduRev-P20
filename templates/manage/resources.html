@@ -85,7 +85,7 @@
   {% elif can_create %}
   <h3>The catalogue is empty</h3>
   <p>Add resources one by one, or import a whole block from a spreadsheet saved as CSV.</p>
-  <a class="btn btn--primary" href="{% url 'manage:resources' %}?import=1">{% icon "file-up" %}Import from CSV</a>
+  <div class="row row--wrap"><a class="btn btn--primary" href="{% url 'manage:resource_new' %}">{% icon "plus" %}Add a resource</a><a class="btn" href="{% url 'manage:resources' %}?import=1">{% icon "file-up" %}Import from CSV</a></div>
   {% else %}
   <h3>No resources are assigned to you yet</h3>
   <p>Ask the facility manager to add you as a custodian of the rooms, labs or equipment you look after.</p>

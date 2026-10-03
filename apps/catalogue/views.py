@@ -16,6 +16,7 @@ from apps.core.http import date_param, int_param, is_digits
 from apps.core.timeutil import aware, ceil_to
 
 from . import search
+from .manage_forms import can_create_resources
 from .models import Building, Feature, Resource, ResourceType, SavedResource
 
 
@@ -144,6 +145,10 @@ def find(request):
         "today": today,
         "unavailable_reasons": unavailable_reasons,
         "can_book_role": lambda r: r.type.role_may_book(user.role),
+        # An empty catalogue is not "nothing matched": say so, and who can fill it.
+        "catalogue_empty": not total
+        and not Resource.objects.filter(institution_id=user.institution_id).exclude(status="retired").exists(),
+        "can_add_resources": can_create_resources(user),
     }
     template = "catalogue/_results.html" if request.headers.get("HX-Request") else "catalogue/find.html"
     return render(request, template, ctx)

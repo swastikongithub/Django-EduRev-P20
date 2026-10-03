@@ -64,14 +64,19 @@
   {% else %}
   <div class="panel empty">
     <div class="empty__icon">{% icon "search" %}</div>
-    {% if window %}
+    {% if catalogue_empty %}
+      <h3>Nothing has been added to LPU Reserve yet</h3>
+      {% if can_add_resources %}<p>Add the first room, lab or piece of equipment and it shows up here for everyone allowed to book it.</p>
+      <a class="btn btn--primary" href="{% url 'manage:resource_new' %}">{% icon "plus" %}Add a resource</a>
+      {% else %}<p>Rooms, labs and equipment appear here once the facility office adds them.</p>{% endif %}
+    {% elif window %}
       <h3>Nothing matching is free {{ window.0|dayname|lower }} {{ window.0|hm }}–{{ window.1|hm }}</h3>
       <p>{% if unavailable_reasons.busy %}{{ unavailable_reasons.busy }} match{{ unavailable_reasons.busy|pluralize:"es" }} are booked or timetabled then. {% endif %}Try a shorter window, another block, or fewer people.</p>
     {% else %}
       <h3>No resources match that</h3>
       <p>Check the spelling or remove a filter. Searching by block (&ldquo;block 34&rdquo;) or kind (&ldquo;lab&rdquo;, &ldquo;court&rdquo;) works well.</p>
     {% endif %}
-    <a class="btn" href="{% url 'catalogue:find' %}">Clear search</a>
+    {% if not catalogue_empty %}<a class="btn" href="{% url 'catalogue:find' %}">Clear search</a>{% endif %}
   </div>
   {% endif %}
 </section>

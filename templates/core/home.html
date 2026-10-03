@@ -15,6 +15,15 @@
 <div class="home-grid">
   <section class="panel composer" aria-labelledby="composer-h">
     <h2 id="composer-h" class="composer__title">{% translate "What do you need, and when?" %}</h2>
+    {% if not types %}
+    <div class="empty empty--compact">
+      <div class="empty__icon">{% icon "building-2" %}</div>
+      <h3>Nothing to book yet</h3>
+      {% if can_set_up %}<p class="small">Rooms, labs and equipment appear here once they're added. Add a resource type and the first resource from Setup.</p>
+      <a class="btn btn--primary" href="{% url 'manage:setup' %}">{% icon "list-checks" %}Open the setup checklist</a>
+      {% else %}<p class="small">Rooms, labs and equipment appear here once the facility office adds them. Check back soon.</p>{% endif %}
+    </div>
+    {% else %}
     <form class="composer__form" action="{% url 'catalogue:find' %}" method="get">
       <fieldset class="composer__types">
         <legend class="sr-only">Kind of resource</legend>
@@ -50,6 +59,7 @@
       </div>
       <p class="composer__hint xsmall faint">Only resources that are genuinely free for the whole time are shown. Classes on the timetable, maintenance and blackouts are already taken out.</p>
     </form>
+    {% endif %}
   </section>
 
   <section class="panel panel--flagged nextpass" aria-labelledby="next-h">

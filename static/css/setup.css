@@ -53,6 +53,27 @@
 .hubcard__status.is-warn { color: var(--amber-700); }
 .hubcard__chev { color: var(--text-3); align-self: center; }
 
+/* Getting-started checklist (apps.core.onboarding): read from the database, never ticked by hand */
+.cfg-checklist { margin-bottom: var(--s6); padding: 0; }
+.cfg-checklist__head { display: flex; gap: var(--s4); align-items: center; padding: var(--s5); cursor: pointer; list-style: none; }
+.cfg-checklist__head::-webkit-details-marker { display: none; }
+.cfg-checklist__head::after { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--text-3); border-bottom: 2px solid var(--text-3); transform: rotate(45deg) translateY(-2px); margin-left: auto; flex: none; transition: transform var(--t-fast); }
+.cfg-checklist[open] .cfg-checklist__head::after { transform: rotate(225deg); }
+.cfg-checklist__icon { width: 48px; height: 48px; flex: none; border-radius: 15px; display: grid; place-items: center; background: var(--saffron-50); color: var(--ember); }
+.cfg-checklist.is-ready .cfg-checklist__icon { background: var(--green-50); color: var(--green-700); }
+.cfg-checklist__title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cfg-checklist__title .h-sm { margin: 0; }
+.cfg-checklist__steps { list-style: none; margin: 0; padding: 0 var(--s5) var(--s3); }
+.cfg-step { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; gap: var(--s3); align-items: center; padding: var(--s3) 0; border-top: 1px solid var(--line); }
+.cfg-step__mark { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: var(--fs-xs); font-weight: 750; background: var(--surface-2); color: var(--text-2); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.cfg-step.is-done .cfg-step__mark { background: var(--green-50); color: var(--green-700); box-shadow: none; }
+.cfg-step.is-optional .cfg-step__mark { box-shadow: inset 0 0 0 1px var(--line-strong); background: transparent; }
+.cfg-step__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cfg-step__title { font-weight: 700; }
+.cfg-step__count { color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cfg-step__count.is-ok { color: var(--green-700); font-weight: 650; }
+.cfg-step__action { display: flex; justify-content: flex-end; min-width: 0; }
+
 /* ── Filters & tables ─────────────────────────────────────────────────── */
 .cfg-kpis { margin-bottom: var(--s5); }
 .cfg-kpi-link { color: inherit; text-decoration: none; transition: border-color var(--t-fast); }
@@ -275,6 +296,10 @@ span.cfg-span { padding-right: 10px; }
   .hubcard { grid-template-columns: 40px minmax(0, 1fr); padding: var(--s4); }
   .hubcard__icon { width: 40px; height: 40px; border-radius: 12px; }
   .hubcard__chev { display: none; }
+  .cfg-checklist__head { padding: var(--s4); }
+  .cfg-checklist__steps { padding: 0 var(--s4) var(--s2); }
+  .cfg-step { grid-template-columns: 32px minmax(0, 1fr); }
+  .cfg-step__count, .cfg-step__action { grid-column: 2; justify-content: flex-start; }
   .cfg-rule, .wfcard__head { flex-direction: column; }
   .cfg-rowactions { justify-content: flex-start; flex-wrap: wrap; }
   .cfg-kvrow { grid-template-columns: minmax(0, 1fr) 42px; }

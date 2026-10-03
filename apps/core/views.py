@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_GET
 
-from apps.accounts.permissions import has_cap
+from apps.accounts.permissions import has_cap, is_campus_wide
 from apps.bookings import availability
 from apps.bookings.models import Booking, BookingStatus
 from apps.catalogue.models import Resource, ResourceType, SavedResource
@@ -121,6 +121,9 @@ def home(request):
         or has_cap(user, "view_department_analytics"),
         "today": today,
         "tomorrow": today + timedelta(days=1),
+        # With nothing bookable yet, the composer has nothing to offer: say so, and point the
+        # people who can fix it at the setup checklist.
+        "can_set_up": has_cap(user, "configure_policy") and is_campus_wide(user),
     }
     if ctx["is_staff_side"]:
         ctx["desk"] = _desk(user)

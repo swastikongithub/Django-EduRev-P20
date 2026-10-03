@@ -17,6 +17,7 @@ from django.utils import timezone
 from apps.accounts.permissions import has_cap, is_campus_wide
 from apps.bookings.models import HOLDING_STATUSES, Booking, BookingStatus
 from apps.core.manage_views import staff_required
+from apps.core.onboarding import setup_checklist
 from apps.core.scope import managed_resources, resource_q, scope_label
 from apps.core.timeutil import aware, trange
 
@@ -267,6 +268,7 @@ def home(request):
         "scope_label": scope_label(user),
         "resource_count": resources.count(),
         "campus_wide": is_campus_wide(user),
+        "checklist": setup_checklist(user) if has_cap(user, "configure_policy") else None,
         "kpis": kpis,
         "needs": needs,
         "preview": preview,

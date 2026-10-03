@@ -13,6 +13,7 @@ from django.utils.text import slugify
 
 from apps.accounts.models import Department, Role
 
+from .manage_forms import StyledFormMixin
 from .models import Building, ResourceCategory, ResourceType
 
 # Icons that exist in static/img/icons.svg and suit a resource type, and the accents the
@@ -42,7 +43,7 @@ TYPE_ACCENTS = [
 ]
 
 
-class _InstitutionCodeForm(forms.ModelForm):
+class _InstitutionCodeForm(StyledFormMixin, forms.ModelForm):
     """Shared duplicate check: a code is unique within the institution, regardless of case."""
 
     code_noun = "code"
@@ -50,6 +51,8 @@ class _InstitutionCodeForm(forms.ModelForm):
     def __init__(self, *args, institution_id: int, **kwargs):
         super().__init__(*args, **kwargs)
         self.institution_id = institution_id
+        if not self.is_bound:  # a bound form is styled after validation (StyledFormMixin.full_clean)
+            self.style()
 
     def clean_code(self):
         code = (self.cleaned_data.get("code") or "").strip()

@@ -16,6 +16,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import urlencode
 
+from apps.accounts.permissions import is_campus_wide
+from apps.catalogue.manage_forms import can_create_resources
 from apps.catalogue.models import Building, ResourceType
 from apps.core.http import date_param
 from apps.core.manage_views import staff_required
@@ -185,6 +187,8 @@ def board(request):
         "soon": [(b, states[b.pk]) for b in soon],
         "day_list": [(b, states[b.pk]) for b in day_list],
         "scope_label": scope_label(user),
+        "campus_wide": is_campus_wide(user),
+        "can_add_resources": can_create_resources(user),
         "prev_url": url_for(date=(day - timedelta(days=1)).isoformat()),
         "next_url": url_for(date=(day + timedelta(days=1)).isoformat()),
         "today_url": url_for(),

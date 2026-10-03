@@ -11,6 +11,10 @@
   {% if can_board %}<a class="btn btn--primary" href="{% url 'manage:board' %}">{% icon "rows-3" %}Open live board</a>{% endif %}
 </div>
 
+{% if checklist and not checklist.ready %}
+<div class="notice notice--warn cfg-gap-b">{% icon "list-checks" %}<div><strong>Finish setting up LPU Reserve</strong>{{ checklist.essential_left }} essential step{{ checklist.essential_left|pluralize }} left before people can book. <a href="{% url 'manage:setup' %}">Open the setup checklist</a></div></div>
+{% endif %}
+
 <section class="kpis" aria-label="Right now">
   {% for k in kpis %}
   {% if k.url %}<a class="panel kpi kpi--link{% if k.alert %} is-alert{% endif %}" href="{{ k.url }}">{% else %}<div class="panel kpi">{% endif %}
@@ -69,8 +73,14 @@
       {% else %}
       <div class="empty empty--compact">
         <div class="empty__icon">{% icon "rows-3" %}</div>
+        {% if campus_wide and not resource_count %}
+        <h3>No resources on campus yet</h3>
+        <p class="small">Add the first room, lab or piece of equipment and its day shows up here.</p>
+        <a class="btn btn--sm" href="{% url 'manage:setup' %}">{% icon "list-checks" %}Open the setup checklist</a>
+        {% else %}
         <h3>No resources in your care yet</h3>
         <p class="small">Once you're named custodian of a room, lab or piece of equipment, its day shows up here.</p>
+        {% endif %}
       </div>
       {% endif %}
     </section>

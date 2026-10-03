@@ -15,10 +15,12 @@ from django.contrib.auth import password_validation
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import transaction
 
+from apps.catalogue.manage_forms import StyledFormMixin
+
 from .models import Department, Role, User
 
 
-class UserCreateForm(forms.Form):
+class UserCreateForm(StyledFormMixin, forms.Form):
     first_name = forms.CharField(max_length=150)
     last_name = forms.CharField(max_length=150, required=False)
     username = forms.CharField(
@@ -50,6 +52,8 @@ class UserCreateForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.institution_id = institution_id
         self.fields["department"].queryset = Department.objects.filter(institution_id=institution_id).order_by("code")
+        if not self.is_bound:  # a bound form is styled after validation (StyledFormMixin.full_clean)
+            self.style()
 
     def clean_username(self):
         username = self.cleaned_data["username"].strip()

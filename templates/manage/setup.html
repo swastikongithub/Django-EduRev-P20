@@ -9,6 +9,8 @@
   </div>
 </div>
 
+{% if checklist %}{% include "manage/setup/_checklist.html" %}{% endif %}
+
 {% if cards %}
 <ul class="hub" role="list">
   {% for c in cards %}

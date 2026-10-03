@@ -1,0 +1,25 @@
+<details class="panel cfg-checklist{% if checklist.ready %} is-ready{% endif %}"{% if not checklist.ready %} open{% endif %}>
+  <summary class="cfg-checklist__head">
+    <span class="cfg-checklist__icon">{% if checklist.ready %}{% icon "circle-check" 22 %}{% else %}{% icon "list-checks" 22 %}{% endif %}</span>
+    <span class="cfg-checklist__title">
+      <span class="h-sm">Getting started</span>
+      <span class="small muted">{% if checklist.ready %}Everything people need to book is in place. {{ checklist.done }} of {{ checklist.total }} steps done; the rest are optional.{% else %}{{ checklist.essential_left }} essential step{{ checklist.essential_left|pluralize }} left before people can book. {{ checklist.done }} of {{ checklist.total }} done.{% endif %}</span>
+    </span>
+  </summary>
+  <ol class="cfg-checklist__steps" role="list">
+    {% for s in checklist.steps %}
+    <li class="cfg-step{% if s.done %} is-done{% elif s.optional %} is-optional{% endif %}">
+      <span class="cfg-step__mark" aria-hidden="true">{% if s.done %}{% icon "check" 16 %}{% else %}{{ forloop.counter }}{% endif %}</span>
+      <span class="cfg-step__body">
+        <span class="cfg-step__title">{{ s.title }}{% if s.optional %} <span class="optional">optional</span>{% endif %}<span class="sr-only">: {% if s.done %}done{% else %}not done yet{% endif %}</span></span>
+        <span class="xsmall muted">{{ s.text }}</span>
+      </span>
+      <span class="cfg-step__count small{% if s.done %} is-ok{% endif %}">{{ s.count_label }}</span>
+      <span class="cfg-step__action">
+        {% if not s.done and s.add_url %}<a class="btn btn--sm{% if not s.optional %} btn--primary{% endif %}" href="{{ s.add_url }}">{% icon "plus" %}{{ s.add_label }}</a>
+        {% elif s.view_url %}<a class="btn btn--sm btn--ghost" href="{{ s.view_url }}">View<span class="sr-only"> {{ s.title|lower }}</span></a>{% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ol>
+</details>

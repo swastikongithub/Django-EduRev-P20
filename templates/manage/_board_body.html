@@ -54,6 +54,10 @@
         <h3>No resources match</h3>
         <p>Nothing in your scope fits{% if q %} &ldquo;{{ q }}&rdquo;{% endif %} with these filters.</p>
         <a class="btn" href="{{ clear_url }}">Clear filters</a>
+      {% elif campus_wide %}
+        <h3>No resources to show yet</h3>
+        <p>The board lists every room, lab and piece of equipment on campus. Nothing has been added yet.</p>
+        {% if can_add_resources %}<a class="btn btn--primary" href="{% url 'manage:resource_new' %}">{% icon "plus" %}Add a resource</a>{% endif %}
       {% else %}
         <h3>No resources to show yet</h3>
         <p>The board lists the resources you look after. Once you're named custodian of a room, lab or piece of equipment, it appears here.</p>
