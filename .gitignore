@@ -29,3 +29,8 @@ Thumbs.db
 node_modules/
 playwright-report/
 test-results/
+
+# State transfer (apps/core/state_transfer.py): generated credentials and bundles never belong in Git
+LPU_RESERVE_DEMO_CREDENTIALS.md
+*DEMO_CREDENTIALS*.md
+*-state.json.gz

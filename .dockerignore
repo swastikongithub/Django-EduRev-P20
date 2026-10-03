@@ -50,3 +50,8 @@ test-results
 
 # Railway IaC tooling (.railway/package.json) is not part of the image
 .railway
+
+# State transfer: generated credentials and bundles never go into an image
+LPU_RESERVE_DEMO_CREDENTIALS.md
+*DEMO_CREDENTIALS*.md
+*-state.json.gz
