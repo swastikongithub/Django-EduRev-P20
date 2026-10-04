@@ -86,3 +86,35 @@ Elevation: panels are flat (1 px `--line` border, no shadow); only floating thin
    `prefers-reduced-motion` (handled globally).
 7. **Accessible by default:** labelled inputs, `aria-current` for nav, visible focus,
    `role="status"`/`aria-live` for async results, colour never the only signal.
+
+## The public landing page
+
+`/` shows signed-out visitors `templates/core/landing.html` (signed-in people still go to Home,
+and an installation with no accounts still goes to sign-in for first-run setup). It is the one
+marketing surface, so it adds a layer on top of the tokens above instead of new ones:
+
+- **Idea:** "every hour, claimed once". The day strip is the page's graphic language: lanes, hour
+  rules and the state patterns from `tokens.css`. Nothing else is decorative.
+- **Type:** Newsreader (headlines), Plus Jakarta Sans (reading text, as in the app), JetBrains
+  Mono (times and labels). All self-hosted under `static/fonts`, SIL OFL 1.1.
+- **Colour:** the app's navy and canvas; saffron only for the primary action, the reading-progress
+  rule and the closing chapter. One dark chapter (the booking guarantee). Light and dark themes.
+- **Truth:** the hero board is a real day of the booking ledger (`apps/core/landing.py`, the same
+  `availability.board` the live board uses), read as an anonymous visitor and reduced to kinds of
+  claim: no names, titles or course codes. Resource counts are live. The role matrix is generated
+  from `ROLE_PERMISSIONS` and `MFA_REQUIRED_ROLES`. Anything illustrative is labelled
+  "Illustration". Nothing on the page depends on Celery Beat (no-show release and the no-show
+  ladder, reminders, approval expiry, the nightly Insights rollup), because production runs no
+  Beat service today; `tests/test_landing.py` holds all of this to account.
+- **Motion:** `static/js/landing.js`, on GSAP + ScrollTrigger with Lenis as the only smooth-scroll
+  engine (all vendored in `static/vendor`, served from our origin, so the CSP is unchanged). It is
+  progressive enhancement: without JavaScript, or under `prefers-reduced-motion`, every section
+  renders in its final state. `landing-pre.js` holds the hero back before first paint only when
+  motion is welcome, and `landing.css` reveals it after 2.6 s whatever happens.
+- **Checks:** `tests/e2e/test_landing.py` runs axe in both themes with and without motion, and
+  checks the calls to action and the phone layout.
+
+Third-party files: GSAP and ScrollTrigger 3.15 (GSAP Standard "no charge" licence,
+https://gsap.com/standard-license), Lenis 1.3.26 (MIT, `static/vendor/LICENSE-lenis.txt`),
+Newsreader and JetBrains Mono (`static/fonts/OFL-*.txt`). Resource photographs are credited in
+`static/img/resources/CREDITS.md`.

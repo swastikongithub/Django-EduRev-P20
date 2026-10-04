@@ -1,0 +1,466 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Book any room, lab, court or kit on campus{% endblock %}
+{% block body_class %}lp{% endblock %}
+{% block head %}
+  <meta name="description" content="LPU Reserve is the campus booking platform for Lovely Professional University: find, book, get approval for and check in to classrooms, labs, seminar halls, courts, equipment and vehicles. Classes, maintenance and bookings share one ledger, so every hour is claimed once.">
+  <link rel="canonical" href="{{ request.build_absolute_uri }}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="LPU Reserve: the campus, on one timeline">
+  <meta property="og:description" content="Find, book and check in to every room, lab, court and piece of equipment at LPU. Every hour is claimed exactly once.">
+  {% if brand.icon_512 %}<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static brand.icon_512 %}">{% endif %}
+  <link rel="preload" href="{% static 'fonts/newsreader-latin-500-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/landing.css' %}">
+  <script src="{% static 'js/landing-pre.js' %}"></script>
+  <script src="{% static 'vendor/gsap.min.js' %}" defer></script>
+  <script src="{% static 'vendor/ScrollTrigger.min.js' %}" defer></script>
+  <script src="{% static 'vendor/lenis.min.js' %}" defer></script>
+  <script src="{% static 'js/landing.js' %}" defer></script>
+{% endblock %}
+{% block shell %}
+<div class="lp-progress" aria-hidden="true"><span></span></div>
+<header class="lp-nav" data-intro>
+  <div class="lp-wrap lp-nav__in">
+    <a class="lp-brand" href="#top" aria-label="LPU Reserve, back to top">
+      {% if brand.mark %}<img src="{% static brand.mark %}" alt="" width="34" height="34" decoding="async">{% else %}<span class="brandmark brandmark--sm">{% include "components/brandmark.html" with decorative=True %}</span>{% endif %}
+      <span class="lp-brand__name">LPU Reserve</span>
+    </a>
+    <nav class="lp-nav__links" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#resources">Resources</a>
+      <a href="#guarantee">The guarantee</a>
+      <a href="#operations">Operations</a>
+      <a href="#roles">Roles</a>
+    </nav>
+    <div class="lp-nav__actions">
+      <button type="button" class="lp-iconbtn" data-theme-toggle aria-label="Switch between light and dark theme">{% icon "moon" cls="when-light" %}{% icon "sun" cls="when-dark" %}</button>
+      <a class="lp-btn lp-btn--ink lp-btn--sm" href="{% url 'accounts:login' %}">Sign in</a>
+    </div>
+  </div>
+</header>
+
+<main id="main" tabindex="-1">
+
+  {# ── Hero ─────────────────────────────────────────────────────────── #}
+  <section class="lp-hero" id="top" aria-labelledby="hero-title">
+    <div class="lp-wrap lp-hero__grid">
+      <div class="lp-hero__copy">
+        <p class="lp-eyebrow" data-intro><span class="lp-dot" aria-hidden="true"></span>Campus resource booking<span class="lp-eyebrow__long">· Lovely Professional University</span></p>
+        <h1 id="hero-title" class="lp-display lp-hero__title" data-intro data-split>The campus, booked on <em>one timeline.</em></h1>
+        <p class="lp-lede lp-hero__lede" data-intro>Classrooms, labs, seminar halls, courts, equipment and vehicles: find what's free, see why a slot is taken, book it, and walk in with a QR pass. Classes, maintenance and bookings share one ledger, so every hour is claimed exactly once.</p>
+        <div class="lp-cta" data-intro>
+          <a class="lp-btn lp-btn--primary lp-btn--lg" href="{% url 'catalogue:find' %}">Explore resources</a>
+          <a class="lp-btn lp-btn--ghost lp-btn--lg" href="#how">See how it works</a>
+        </div>
+        {% if catalogue.resources %}
+        <dl class="lp-facts" data-intro>
+          <div><dt>Resources</dt><dd>{{ catalogue.resources }}</dd></div>
+          <div><dt>Buildings</dt><dd>{{ catalogue.buildings }}</dd></div>
+          <div><dt>Languages</dt><dd lang="en">EN <span lang="hi">हिन्दी</span> <span lang="pa">ਪੰਜਾਬੀ</span></dd></div>
+        </dl>
+        {% endif %}
+      </div>
+
+      <figure class="lp-board" data-board aria-labelledby="board-cap">
+        {% if ledger %}
+        <div class="lp-board__head" data-intro>
+          <div>
+            <p class="lp-mono lp-board__kicker">{% if ledger.is_today %}Today, from{% else %}From{% endif %} the booking ledger</p>
+            <p class="lp-board__day">{{ ledger.day|date:"l j F" }}</p>
+          </div>
+          <ul class="lp-legend lp-legend--compact" aria-label="Key">
+            {% for k in ledger.kinds %}<li><i class="lp-sw lp-sw--{{ k }}" aria-hidden="true"></i>{% if k == "booked" %}Booked{% elif k == "pending" %}Pending{% elif k == "class" %}Class{% elif k == "maintenance" %}Maintenance{% elif k == "blackout" %}Blackout{% endif %}</li>{% endfor %}
+          </ul>
+        </div>
+        <div class="lp-board__ruler" aria-hidden="true" data-intro>
+          {% for h in ledger.hours %}<span style="left:{{ h.left }}%">{{ h.label }}</span>{% endfor %}
+        </div>
+        <ul class="lp-board__rows">
+          {% for r in ledger.rows %}
+          <li class="lp-row" data-row>
+            <div class="lp-row__id">
+              {% if r.photo %}<img src="{{ r.photo }}" alt="" width="48" height="32" decoding="async">{% else %}<span class="lp-row__ph" aria-hidden="true"></span>{% endif %}
+              <div><p class="lp-row__name">{{ r.name }}</p><p class="lp-row__meta">{{ r.type }}{% if r.building %} · {{ r.building }}{% endif %}</p></div>
+            </div>
+            <div class="lp-track" role="img" aria-label="{{ r.name }}: {% for s in r.segments %}{% if s.kind != 'closed' %}{{ s.label }}; {% endif %}{% empty %}free all day{% endfor %}">
+              {% for h in ledger.hours %}<i class="lp-track__tick" style="left:{{ h.left }}%"></i>{% endfor %}
+              {% for s in r.segments %}<span class="lp-seg lp-seg--{{ s.kind }}" style="left:{{ s.left }}%;width:{{ s.width }}%" title="{{ s.label }}"></span>{% endfor %}
+              {% if ledger.now_pos is not None %}<span class="lp-track__now" style="left:{{ ledger.now_pos }}%"></span>{% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        <figcaption id="board-cap" class="lp-board__cap" data-intro>
+          <span class="lp-mono">Real data, anonymised.</span>
+          That day the ledger holds {{ ledger.summary }} across {{ ledger.resources }} resources; {{ ledger.rows|length }} are shown.
+        </figcaption>
+        {% else %}
+        <div class="lp-board__empty">
+          <p class="lp-board__day">Every resource, one day, one line each.</p>
+          <p>When resources are added, their schedules appear here, read straight from the booking ledger.</p>
+        </div>
+        {% endif %}
+      </figure>
+    </div>
+  </section>
+
+  {# ── 01 The problem ───────────────────────────────────────────────── #}
+  <section class="lp-section" id="problem" aria-labelledby="problem-title">
+    <div class="lp-wrap">
+      <header class="lp-head">
+        <p class="lp-index"><span>01</span>The problem</p>
+        <div>
+          <h2 id="problem-title" class="lp-display lp-h2" data-split>One room. Four registers. Nobody holds the whole day.</h2>
+          <p class="lp-lede">On most campuses a room's day is split across a timetable spreadsheet, a department register, a maintenance log and a trail of emails. Each one is right on its own. Together they collide, and the people at the door find out first.</p>
+        </div>
+      </header>
+
+      <div class="lp-merge" data-merge>
+        <div class="lp-merge__before">
+          <p class="lp-merge__label"><span class="lp-mono">Illustration</span> Seminar Hall, Thursday, kept in four places</p>
+          <div class="lp-lanes">
+            <div class="lp-lane" data-lane><span class="lp-lane__name">Timetable spreadsheet</span><span class="lp-lane__track"><i class="lp-seg lp-seg--class" style="left:0%;width:16.67%"></i><i class="lp-seg lp-seg--class" style="left:50%;width:16.67%"></i></span></div>
+            <div class="lp-lane" data-lane><span class="lp-lane__name">Department register</span><span class="lp-lane__track"><i class="lp-seg lp-seg--booked" style="left:12.5%;width:16.67%"></i><i class="lp-seg lp-seg--booked" style="left:75%;width:12.5%"></i></span></div>
+            <div class="lp-lane" data-lane><span class="lp-lane__name">Maintenance log</span><span class="lp-lane__track"><i class="lp-seg lp-seg--maintenance" style="left:58.33%;width:12.5%"></i></span></div>
+            <div class="lp-lane" data-lane><span class="lp-lane__name">Emailed requests</span><span class="lp-lane__track"><i class="lp-seg lp-seg--pending" style="left:33.33%;width:12.5%"></i><i class="lp-seg lp-seg--pending" style="left:79.17%;width:12.5%"></i></span></div>
+            <div class="lp-clashes" aria-hidden="true">
+              <span class="lp-clash" style="left:12.5%;width:4.17%" data-clash><span>Clash</span></span>
+              <span class="lp-clash" style="left:58.33%;width:8.33%" data-clash><span>Clash</span></span>
+              <span class="lp-clash" style="left:79.17%;width:8.33%" data-clash><span>Clash</span></span>
+            </div>
+          </div>
+          <p class="lp-merge__note">Three overlaps nobody can see until two groups arrive at the same door.</p>
+        </div>
+        <div class="lp-merge__after">
+          <p class="lp-merge__label"><span class="lp-mono">LPU Reserve</span> The same day, on one ledger</p>
+          <div class="lp-lane lp-lane--one">
+            <span class="lp-lane__name">Seminar Hall</span>
+            <span class="lp-lane__track" data-one>
+              <i class="lp-seg lp-seg--class" style="left:0%;width:16.67%"></i>
+              <i class="lp-seg lp-seg--booked" style="left:16.67%;width:12.5%"></i>
+              <i class="lp-seg lp-seg--pending" style="left:33.33%;width:12.5%"></i>
+              <i class="lp-seg lp-seg--class" style="left:50%;width:16.67%"></i>
+              <i class="lp-seg lp-seg--maintenance" style="left:66.67%;width:8.33%"></i>
+              <i class="lp-seg lp-seg--booked" style="left:75%;width:12.5%"></i>
+            </span>
+          </div>
+          <ul class="lp-ticks">
+            <li>{% icon "calendar-days" %}<span>Publishing the timetable writes every class into the room's day for the whole term.</span></li>
+            <li>{% icon "wrench" %}<span>A maintenance window claims time exactly as a booking does.</span></li>
+            <li>{% icon "shield-check" %}<span>Anything that would overlap is refused, so the clashes on the left cannot be stored.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# ── 02 Availability ──────────────────────────────────────────────── #}
+  <section class="lp-section lp-section--tint" id="availability" aria-labelledby="avail-title">
+    <div class="lp-wrap">
+      <header class="lp-head">
+        <p class="lp-index"><span>02</span>Availability</p>
+        <div>
+          <h2 id="avail-title" class="lp-display lp-h2" data-split>A slot is never just grey. It tells you why.</h2>
+          <p class="lp-lede">Every resource shows its day as a strip. Each state has its own colour and its own pattern, so it reads without colour vision, and every taken slot carries the sentence that explains it.</p>
+        </div>
+      </header>
+
+      <div class="lp-anatomy" data-anatomy>
+        <div class="lp-anatomy__strip">
+          <div class="lp-anatomy__title">
+            <p class="lp-row__name">Seminar Hall</p>
+            <p class="lp-mono lp-anatomy__sub">Illustration · one day, 08:00 to 20:00</p>
+          </div>
+          <div class="lp-track lp-track--xl" role="img" aria-label="Illustration of one day: a timetabled class, a confirmed booking, free time, a request pending approval, maintenance, a blackout and closed hours.">
+            <span class="lp-seg lp-seg--class" data-state="class" style="left:0%;width:16.67%"></span>
+            <span class="lp-seg lp-seg--booked" data-state="booked" style="left:16.67%;width:12.5%"></span>
+            <span class="lp-seg lp-seg--free" data-state="free" style="left:29.17%;width:12.5%"></span>
+            <span class="lp-seg lp-seg--pending" data-state="pending" style="left:41.67%;width:12.5%"></span>
+            <span class="lp-seg lp-seg--maintenance" data-state="maintenance" style="left:54.17%;width:12.5%"></span>
+            <span class="lp-seg lp-seg--free" data-state="free" style="left:66.67%;width:8.33%"></span>
+            <span class="lp-seg lp-seg--blackout" data-state="blackout" style="left:75%;width:16.67%"></span>
+            <span class="lp-seg lp-seg--closed" data-state="closed" style="left:91.67%;width:8.33%"></span>
+          </div>
+          <div class="lp-board__ruler lp-board__ruler--xl" aria-hidden="true"><span style="left:0%">08:00</span><span style="left:16.67%">10:00</span><span style="left:33.33%">12:00</span><span style="left:50%">14:00</span><span style="left:66.67%">16:00</span><span style="left:83.33%">18:00</span><span style="left:100%">20:00</span></div>
+        </div>
+
+        <ul class="lp-states" aria-label="Booking states">
+          <li><button type="button" data-show="free" aria-pressed="false"><i class="lp-sw lp-sw--free" aria-hidden="true"></i><span class="lp-states__name">Available</span><span class="lp-states__why">Select it and book. Only times free for the whole span are offered.</span></button></li>
+          <li><button type="button" data-show="booked" aria-pressed="false"><i class="lp-sw lp-sw--booked" aria-hidden="true"></i><span class="lp-states__name">Booked</span><span class="lp-states__why">Someone holds it. Managers see who and why.</span></button></li>
+          <li><button type="button" data-show="pending" aria-pressed="false"><i class="lp-sw lp-sw--pending" aria-hidden="true"></i><span class="lp-states__name">Pending approval</span><span class="lp-states__why">Requested and waiting for its approver. It already holds the time.</span></button></li>
+          <li><button type="button" data-show="class" aria-pressed="false"><i class="lp-sw lp-sw--class" aria-hidden="true"></i><span class="lp-states__name">Timetabled class</span><span class="lp-states__why">From the published timetable, with the course, type and section.</span></button></li>
+          <li><button type="button" data-show="maintenance" aria-pressed="false"><i class="lp-sw lp-sw--maintenance" aria-hidden="true"></i><span class="lp-states__name">Maintenance</span><span class="lp-states__why">A scheduled window, with what is being done.</span></button></li>
+          <li><button type="button" data-show="blackout" aria-pressed="false"><i class="lp-sw lp-sw--blackout" aria-hidden="true"></i><span class="lp-states__name">Blackout</span><span class="lp-states__why">Holidays and exam weeks set by the facility office, for a building, a type or the whole campus.</span></button></li>
+          <li><button type="button" data-show="closed" aria-pressed="false"><i class="lp-sw lp-sw--closed" aria-hidden="true"></i><span class="lp-states__name">Closed</span><span class="lp-states__why">Outside the resource's opening hours.</span></button></li>
+          <li class="lp-states__hint" aria-hidden="true">{% icon "mouse-pointer-click" %}<span>Choose a state to find it in the day.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  {# ── 03 How it works ─────────────────────────────────────────────── #}
+  <section class="lp-section" id="how" aria-labelledby="how-title">
+    <div class="lp-wrap">
+      <header class="lp-head">
+        <p class="lp-index"><span>03</span>How it works</p>
+        <div>
+          <h2 id="how-title" class="lp-display lp-h2" data-split>From “I need a lab for 40” to a checked-in room.</h2>
+          <p class="lp-lede">Five steps, and the fourth only when the resource needs it.</p>
+        </div>
+      </header>
+
+      <ol class="lp-steps" data-steps>
+        <li class="lp-step">
+          <p class="lp-step__n lp-mono">01</p>
+          <h3>Discover</h3>
+          <p>Ask in plain words, or filter by type, building, capacity and features.</p>
+          <div class="lp-vig" aria-hidden="true">
+            <div class="lp-vig__search">{% icon "search" %}<span>lab for 40 monday</span></div>
+            <div class="lp-vig__chips"><span>40+ people</span><span>Mon 05 Oct</span><span>Computer lab</span></div>
+          </div>
+        </li>
+        <li class="lp-step">
+          <p class="lp-step__n lp-mono">02</p>
+          <h3>Check availability</h3>
+          <p>Each resource shows its day. Taken slots say why.</p>
+          <div class="lp-vig" aria-hidden="true">
+            <div class="lp-vig__cells">
+              <span class="c-class"></span><span class="c-class"></span><span class="c-sel"></span><span class="c-sel"></span><span></span><span class="c-booked"></span><span></span><span></span>
+            </div>
+            <p class="lp-vig__time lp-mono">10:00–11:00 <b>free</b></p>
+          </div>
+        </li>
+        <li class="lp-step">
+          <p class="lp-step__n lp-mono">03</p>
+          <h3>Reserve</h3>
+          <p>Booked on the spot where policy allows, with a QR pass.</p>
+          <div class="lp-vig" aria-hidden="true">
+            <p class="lp-vig__ok">{% icon "circle-check" %}Booked. It's yours.</p>
+            <p class="lp-vig__small">Deep Learning Lab 38-204<br><span class="lp-mono">Mon 10:00–11:00</span></p>
+          </div>
+        </li>
+        <li class="lp-step">
+          <p class="lp-step__n lp-mono">04</p>
+          <h3>Approval <span class="lp-step__opt">when required</span></h3>
+          <p>Some types need a custodian, a head of department or the facility office to say yes, in order.</p>
+          <div class="lp-vig" aria-hidden="true">
+            <div class="lp-vig__chain"><span>Request</span><i></i><span>Custodian</span><i></i><span class="is-ok">Approved</span></div>
+            <p class="lp-vig__small">Equipment · student request</p>
+          </div>
+        </li>
+        <li class="lp-step">
+          <p class="lp-step__n lp-mono">05</p>
+          <h3>Check in</h3>
+          <p>Scan the door's QR code when check-in opens, 15 minutes before the start.</p>
+          <div class="lp-vig" aria-hidden="true">
+            <div class="lp-vig__door">{% icon "qr-code" 30 %}<span class="lp-vig__btn">Check in here</span></div>
+            <p class="lp-vig__small"><span class="lp-live"></span>In use</p>
+          </div>
+        </li>
+      </ol>
+      <p class="lp-foot-note">Check-in windows are set per resource type; by default check-in opens 15 minutes before the start.</p>
+    </div>
+  </section>
+
+  {# ── 04 Resources ────────────────────────────────────────────────── #}
+  <section class="lp-section lp-section--tint" id="resources" aria-labelledby="res-title">
+    <div class="lp-wrap">
+      <header class="lp-head">
+        <p class="lp-index"><span>04</span>Resources</p>
+        <div>
+          <h2 id="res-title" class="lp-display lp-h2" data-split>{% if catalogue.types %}{{ catalogue.types|length }} kinds of space and kit. One way to book them.{% else %}Every kind of space and kit. One way to book them.{% endif %}</h2>
+          <p class="lp-lede">{% if catalogue.resources %}{{ catalogue.resources }} bookable resources across {{ catalogue.buildings }} buildings, from lecture theatres and courts to cameras, 3D printers and a GPU compute node.{% else %}Rooms, labs, courts, equipment and vehicles, each with its own rules for who may book and who approves.{% endif %} Each type sets who may book it and who approves.</p>
+        </div>
+      </header>
+
+      {% if catalogue.types %}
+      <ul class="lp-mosaic">
+        {% for t in catalogue.types %}
+        <li class="lp-tile{% if forloop.counter == 1 or forloop.counter == 7 %} lp-tile--big{% endif %}" data-tile>
+          <a href="{% url 'catalogue:find' %}?type={{ t.code }}">
+            <span class="lp-tile__media">{% if t.photo %}<img src="{% if forloop.counter == 1 or forloop.counter == 7 %}{{ t.photo }}{% else %}{{ t.photo_sm }}{% endif %}" alt="" loading="lazy" decoding="async" width="960" height="640">{% else %}<span class="lp-tile__icon">{% icon t.icon 28 %}</span>{% endif %}</span>
+            <span class="lp-tile__text">
+              <span class="lp-tile__cat lp-mono">{{ t.category }}</span>
+              <span class="lp-tile__name">{{ t.name }}</span>
+              <span class="lp-tile__count lp-mono">{{ t.count }} bookable</span>
+            </span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="lp-foot-note">Browsing the catalogue needs a university sign-in. Photographs are representative and credited in the project.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {# ── 05 The guarantee ─────────────────────────────────────────────── #}
+  <section class="lp-section lp-night" id="guarantee" aria-labelledby="g-title">
+    <div class="lp-wrap">
+      <header class="lp-head">
+        <p class="lp-index"><span>05</span>The guarantee</p>
+        <div>
+          <h2 id="g-title" class="lp-display lp-h2" data-split>Two requests. One hour. One booking.</h2>
+          <p class="lp-lede">When two people book the same slot in the same instant, the decision isn't left to application code. PostgreSQL itself refuses the second overlapping claim, and that person is told straight away to pick another time.</p>
+        </div>
+      </header>
+
+      <div class="lp-race" data-race>
+        <div class="lp-race__stage" aria-hidden="true">
+          <div class="lp-req lp-req--a" data-req="a">
+            <p class="lp-mono">Request A · 10:42:07.112</p>
+            <p class="lp-req__what">Deep Learning Lab 38-204<br>Mon 10:00–11:00</p>
+            <p class="lp-req__out lp-req__out--ok" data-out="a">{% icon "circle-check" %}Confirmed</p>
+          </div>
+          <div class="lp-req lp-req--b" data-req="b">
+            <p class="lp-mono">Request B · 10:42:07.115</p>
+            <p class="lp-req__what">Deep Learning Lab 38-204<br>Mon 10:00–11:00</p>
+            <p class="lp-req__out lp-req__out--no" data-out="b">{% icon "circle-x" %}Someone booked this slot a moment ago. Pick another time.</p>
+          </div>
+          <div class="lp-ledger">
+            <p class="lp-mono lp-ledger__label">Ledger · Deep Learning Lab 38-204 · Monday</p>
+            <div class="lp-ledger__track">
+              <span class="lp-seg lp-seg--class" style="left:0%;width:16.67%"></span>
+              <span class="lp-ledger__slot" data-slot style="left:16.67%;width:8.33%"></span>
+              <span class="lp-seg lp-seg--booked" style="left:50%;width:12.5%"></span>
+              <span class="lp-seg lp-seg--class" style="left:70.83%;width:16.67%"></span>
+            </div>
+            <div class="lp-board__ruler" aria-hidden="true"><span style="left:0%">08:00</span><span style="left:16.67%">10:00</span><span style="left:33.33%">12:00</span><span style="left:50%">14:00</span><span style="left:66.67%">16:00</span><span style="left:83.33%">18:00</span><span style="left:100%">20:00</span></div>
+          </div>
+        </div>
+        <button type="button" class="lp-btn lp-btn--onnight lp-btn--sm lp-race__replay" data-replay hidden>{% icon "rotate-ccw" %}Replay the race</button>
+        <p class="sr-only">Illustration: request A and request B ask for the same lab from 10:00 to 11:00, three milliseconds apart. Request A is confirmed. Request B is refused with the message “Someone booked this slot a moment ago. Pick another time.”</p>
+
+        <div class="lp-proof">
+          <pre class="lp-code" aria-label="The database constraint"><code><span class="k">EXCLUDE USING</span> gist (
+  resource_id <span class="k">WITH</span> =,
+  period      <span class="k">WITH</span> &amp;&amp;
+)</code></pre>
+          <dl class="lp-proof__list">
+            <div><dt>500 → 1</dt><dd>An automated test fires 500 simultaneous attempts at one slot. Exactly one booking survives.</dd></div>
+            <div><dt>One ledger</dt><dd>Classes, maintenance and bookings sit in the same table, so a booking can't overlap a class either.</dd></div>
+            <div><dt>[10:00, 11:00)</dt><dd>Times are half-open ranges: a booking ending at 11:00 never collides with one starting at 11:00.</dd></div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# ── 06 Operations ───────────────────────────────────────────────── #}
+  <section class="lp-section" id="operations" aria-labelledby="ops-title">
+    <div class="lp-wrap lp-ops">
+      <header class="lp-head lp-head--side">
+        <p class="lp-index"><span>06</span>Operations</p>
+        <h2 id="ops-title" class="lp-display lp-h2" data-split>The other side of the desk.</h2>
+        <p class="lp-lede">The people who run the rooms work from the same ledger: what students see and what the facility office decides never drift apart.</p>
+      </header>
+      <ul class="lp-oplist">
+        <li data-reveal>{% icon "list-checks" 22 %}<div><h3>Approval workflows</h3><p>Chains per resource type and requester role. A student's equipment request goes to its custodian; the Central Auditorium needs its custodian, then the facility manager.</p></div><span class="lp-who lp-mono">Custodians · Heads · Facility office</span></li>
+        <li data-reveal>{% icon "calendar-days" 22 %}<div><h3>Timetable publishing</h3><p>Import a term's timetable and publish it. Every class takes its room for the term; bookings in the way are cancelled with a reason, and their owners are told what else is free.</p></div><span class="lp-who lp-mono">Facility office</span></li>
+        <li data-reveal>{% icon "wrench" 22 %}<div><h3>Maintenance and breakdowns</h3><p>Schedule a window and the resource drops out of availability. Anyone who finds something broken can report it from the resource's page.</p></div><span class="lp-who lp-mono">Custodians · Facility office</span></li>
+        <li data-reveal>{% icon "qr-code" 22 %}<div><h3>QR check-in at the door</h3><p>Every door gets a printable QR code. Scanning it checks the booking in on the spot, inside the check-in window set for that type of resource.</p></div><span class="lp-who lp-mono">Everyone · Custodians</span></li>
+        <li data-reveal>{% icon "rows-3" 22 %}<div><h3>Live booking board</h3><p>Every resource's day on one screen, read straight from the ledger, so the people who run the rooms see exactly what students see.</p></div><span class="lp-who lp-mono">Custodians · Heads · Facility office</span></li>
+        <li data-reveal>{% icon "sliders-horizontal" 22 %}<div><h3>Rules, stock and the audit log</h3><p>Opening hours, blackouts, quotas and lead times per type; consumables with restock and write-off; and a searchable, exportable record of administrative actions.</p></div><span class="lp-who lp-mono">Facility office · Admins</span></li>
+      </ul>
+    </div>
+  </section>
+
+  {# ── 07 Roles ────────────────────────────────────────────────────── #}
+  <section class="lp-section lp-section--tint" id="roles" aria-labelledby="roles-title">
+    <div class="lp-wrap">
+      <header class="lp-head">
+        <p class="lp-index"><span>07</span>Roles</p>
+        <div>
+          <h2 id="roles-title" class="lp-display lp-h2" data-split>One platform. Different keys.</h2>
+          <p class="lp-lede">What each person can do is decided by their role and checked by the server on every request. Custodians act on the resources they look after, heads of department on their department's, and the facility office campus-wide.</p>
+        </div>
+      </header>
+
+      <div class="lp-matrix" data-reveal>
+        <table>
+          <caption class="sr-only">What each role can do</caption>
+          <thead>
+            <tr>
+              <th scope="col"><span class="sr-only">Capability</span></th>
+              {% for c in roles.columns %}<th scope="col"><span class="lp-matrix__role">{{ c.label }}</span><span class="lp-matrix__scope">{{ c.scope }}</span></th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in roles.rows %}
+            <tr{% if row.mfa %} class="is-mfa"{% endif %}>
+              <th scope="row">{{ row.label }}</th>
+              {% for yes in row.cells %}<td>{% if yes %}<span class="lp-yes"></span><span class="sr-only">Yes</span>{% else %}<span class="lp-no"></span><span class="sr-only">No</span>{% endif %}</td>{% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="lp-rolelist">
+        {% for c in roles.columns %}
+        <details class="lp-role"{% if forloop.first %} open{% endif %}>
+          <summary><span class="lp-matrix__role">{{ c.label }}</span><span class="lp-matrix__scope">{{ c.scope }}</span>{% icon "chevron-down" %}</summary>
+          <ul>{% for text in c.can %}<li>{{ text }}</li>{% endfor %}{% if c.mfa %}<li class="is-mfa">Two-factor sign-in required</li>{% endif %}</ul>
+        </details>
+        {% endfor %}
+      </div>
+      <p class="lp-foot-note">Which resource types a role may book is set per type: vehicles, for example, can be limited to faculty and staff.</p>
+    </div>
+  </section>
+
+  {# ── 08 Engineering ──────────────────────────────────────────────── #}
+  <section class="lp-section" id="engineering" aria-labelledby="eng-title">
+    <div class="lp-wrap">
+      <header class="lp-head">
+        <p class="lp-index"><span>08</span>Engineering</p>
+        <div>
+          <h2 id="eng-title" class="lp-display lp-h2" data-split>Built like infrastructure, because a timetable depends on it.</h2>
+          <p class="lp-lede">Django 5.2 and PostgreSQL, with Celery and Redis for work done outside a request. The interesting parts are the ones you never see.</p>
+        </div>
+      </header>
+      <ul class="lp-eng">
+        <li data-reveal><p class="lp-mono">Correctness</p><h3>Rules in the database</h3><p>Range types and exclusion constraints make overlaps impossible to store, not merely unlikely.</p></li>
+        <li data-reveal><p class="lp-mono">Transactions</p><h3>All or nothing</h3><p>A booking and its ledger entry are written in one transaction. If either is refused, neither exists.</p></li>
+        <li data-reveal><p class="lp-mono">Access</p><h3>Checked on the server</h3><p>Every page and API call checks role and scope. Administrators and the facility office sign in with two factors.</p></li>
+        <li data-reveal><p class="lp-mono">Accountability</p><h3>An audit trail</h3><p>Administrative actions are recorded with who, what and when, and can be exported.</p></li>
+        <li data-reveal><p class="lp-mono">Integration</p><h3>A versioned API</h3><p>A REST API under <code>/api/v1</code>, described by an OpenAPI schema.</p></li>
+        <li data-reveal><p class="lp-mono">Accessibility</p><h3>Built for everyone</h3><p>Keyboard-first, readable without colour, checked with axe in light and dark themes, in English, Hindi and Punjabi.</p></li>
+        <li data-reveal><p class="lp-mono">Verification</p><h3>Tested on every push</h3><p>Seven CI gates: lint, infrastructure, security scans, Django tests, browser and accessibility journeys, a Docker smoke test and an OWASP ZAP scan.</p></li>
+        <li data-reveal><p class="lp-mono">Operations</p><h3>Health and recovery</h3><p>Liveness and readiness checks, containerised deploys, and documented backup and restore.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  {# ── Closing ─────────────────────────────────────────────────────── #}
+  <section class="lp-close" aria-labelledby="close-title">
+    <div class="lp-wrap lp-close__in">
+      <h2 id="close-title" class="lp-display lp-close__title" data-split>Find the room. Claim the hour.</h2>
+      <div class="lp-close__side">
+        <p>Sign in with your university ID to see what's free right now.</p>
+        <div class="lp-cta">
+          <a class="lp-btn lp-btn--ink lp-btn--lg" href="{% url 'accounts:login' %}">Sign in</a>
+          <a class="lp-btn lp-btn--line lp-btn--lg" href="{% url 'catalogue:find' %}">Explore resources</a>
+        </div>
+        <p class="lp-close__demo">Trying the demo? Public student accounts are listed in the <a href="{{ repo_url }}#public-demo-student-accounts">project README</a>.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="lp-footer">
+  <div class="lp-wrap">
+    <div class="lp-footer__grid">
+      <div class="lp-footer__brand">
+        <a class="lp-brand" href="#top" aria-label="LPU Reserve, back to top">{% if brand.mark %}<img src="{% static brand.mark %}" alt="" width="34" height="34" decoding="async">{% endif %}<span class="lp-brand__name">LPU Reserve</span></a>
+        <p>Campus resource, laboratory and facility booking for Lovely Professional University, Phagwara.</p>
+      </div>
+      <nav aria-label="Product"><p class="lp-footer__h">Product</p><ul><li><a href="{% url 'accounts:login' %}">Sign in</a></li><li><a href="{% url 'catalogue:find' %}">Explore resources</a></li><li><a href="#how">How it works</a></li><li><a href="#guarantee">The guarantee</a></li></ul></nav>
+      <nav aria-label="Documentation"><p class="lp-footer__h">Documentation</p><ul><li><a href="{{ repo_url }}/blob/main/docs/guide-user.md">User guide</a></li><li><a href="{{ repo_url }}/blob/main/docs/guide-admin.md">Administrator guide</a></li><li><a href="{{ repo_url }}/blob/main/docs/booking-concurrency.md">How double-booking is prevented</a></li><li><a href="{{ repo_url }}/blob/main/docs/openapi.yaml">API reference</a></li></ul></nav>
+      <nav aria-label="Project"><p class="lp-footer__h">Project</p><ul><li><a href="{{ repo_url }}">Source on GitHub</a></li><li><a href="{{ repo_url }}/blob/main/docs/architecture.md">Architecture</a></li><li><a href="{{ repo_url }}/blob/main/static/img/resources/CREDITS.md">Photo credits</a></li></ul></nav>
+    </div>
+    <div class="lp-footer__base">
+      <p>EduRev Project P20 · Designed and built by Swastik Singh.</p>
+      <p>The Lovely Professional University name and seal belong to the university.</p>
+    </div>
+  </div>
+</footer>
+{% endblock %}

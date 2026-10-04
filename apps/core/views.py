@@ -21,7 +21,26 @@ from apps.core.timeutil import ceil_to
 
 
 def root(request):
-    return redirect("core:home" if request.user.is_authenticated else "accounts:login")
+    """Signed-in people go straight to Home. Everyone else gets the public landing page, except on a
+    brand-new installation, where the only useful next step is first-run setup (via sign-in)."""
+    if request.user.is_authenticated:
+        return redirect("core:home")
+    from apps.accounts.bootstrap import is_system_bootstrap_required
+
+    if is_system_bootstrap_required():
+        return redirect("accounts:login")
+    from . import landing
+
+    return render(
+        request,
+        "core/landing.html",
+        {
+            "ledger": landing.ledger_preview(),
+            "catalogue": landing.catalogue(),
+            "roles": landing.role_matrix(),
+            "repo_url": "https://github.com/swastikongithub/Django-EduRev-P20",
+        },
+    )
 
 
 def greeting(now):

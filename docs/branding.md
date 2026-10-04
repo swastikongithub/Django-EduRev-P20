@@ -33,6 +33,7 @@ places use them:
 | Desktop navigation rail | `base.html` → `components/brandmark.html` | 34 px seal in the white brand tile. The link is named "LPU Reserve home", so the image has empty alt text |
 | Mobile top bar | `base.html` → `components/brandmark.html` | 30 px seal in the small tile; empty alt for the same reason |
 | Sign-in page hero | `accounts/login.html` | 56 px seal beside "LPU Reserve" on the saffron panel. The panel is decorative (`aria-hidden`) |
+| Public landing page (`/`, signed-out visitors) | `core/landing.html` | 34 px seal in the top bar and the footer, inside links named "LPU Reserve, back to top", so the image has empty alt text |
 | MFA enrolment and verification | `accounts/mfa.html` (one template for both) | seal in the card header, alt "Lovely Professional University" |
 | Error pages (403, 404, 500) | `errors/error.html` | seal, alt "Lovely Professional University" |
 | Printed door signs | `manage/door_qr.html` | seal beside "LPU Reserve" |
