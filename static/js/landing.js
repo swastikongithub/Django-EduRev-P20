@@ -28,15 +28,15 @@
   const links = new Map($$(".lp-nav__links a").map((a) => [a.getAttribute("href").slice(1), a]));
   if ("IntersectionObserver" in window && links.size) {
     const io = new IntersectionObserver((entries) => {
+      // Whichever section is in the reading band decides; one without a link (hero, closing) clears it.
       entries.forEach((e) => {
+        if (!e.isIntersecting) return;
         const a = links.get(e.target.id);
-        if (a && e.isIntersecting) {
-          links.forEach((l) => l.removeAttribute("aria-current"));
-          a.setAttribute("aria-current", "true");
-        }
+        links.forEach((l) => l.removeAttribute("aria-current"));
+        if (a) a.setAttribute("aria-current", "true");
       });
     }, { rootMargin: "-45% 0px -50% 0px" });
-    $$("main section[id]").forEach((s) => io.observe(s));
+    $$("main section").forEach((s) => io.observe(s));
   }
 
   // ── Availability legend: pick a state, see it in the strip ──────────
