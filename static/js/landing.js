@@ -119,7 +119,7 @@
       if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
       target.focus({ preventScroll: true });
     };
-    if (lenis) lenis.scrollTo(target, { offset: id === "#top" ? -200 : -72, duration: 1.1, onComplete: done });
+    if (lenis) lenis.scrollTo(target, { duration: 1.1, onComplete: done }); // Lenis honours scroll-margin-top
     else { target.scrollIntoView(); done(); }
     history.replaceState(null, "", id === "#top" ? location.pathname : id);
   });
