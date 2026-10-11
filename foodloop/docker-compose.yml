@@ -1,0 +1,26 @@
+# Local PostgreSQL for FoodLoop development.
+#   Start:  docker compose up -d
+#   Stop:   docker compose down          (your data is kept in the "foodloop-pgdata" volume)
+#   Reset:  docker compose down -v       (deletes all local data)
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: foodloop
+      POSTGRES_PASSWORD: foodloop # local development only; never reuse in production
+      POSTGRES_DB: foodloop
+    ports:
+      # If port 5432 is already used by another PostgreSQL, change the left side to "5433"
+      # and use port 5433 in DATABASE_URL and TEST_DATABASE_URL (backend/.env).
+      - "5432:5432"
+    volumes:
+      - foodloop-pgdata:/var/lib/postgresql/data
+      - ./docker/create-test-db.sql:/docker-entrypoint-initdb.d/create-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U foodloop -d foodloop"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  foodloop-pgdata:

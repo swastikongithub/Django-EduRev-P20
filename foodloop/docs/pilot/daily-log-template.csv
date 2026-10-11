@@ -1,0 +1,2 @@
+date,weekday,provider_id,meal_slot,item_name,diet,unit,prepared_qty,sold_regular_qty,leftover_before_listing_qty,listed_qty,posted_time,pickup_start,pickup_end,eat_by,storage,original_price_inr,discounted_price_inr,reserved_qty,collected_qty,no_show_qty,unsold_final_qty,final_disposition,leftover_weight_kg,weight_method,special_day,recorded_by,notes,data_source
+2026-01-05,Mon,K01,lunch,EXAMPLE ROW - delete me,veg,portions,120,104,16,12,14:45,15:00,15:45,16:15,hot_held,80,40,10,9,1,7,staff_meal,3.4,weighed,none,initials,"EXAMPLE ONLY - not real data",example

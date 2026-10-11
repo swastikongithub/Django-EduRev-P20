@@ -1,0 +1,2 @@
+timestamp,provider_id,item_name,customer_alias,quantity,pickup_code,status,collected_time,notes,data_source
+2026-01-05 14:52,K01,EXAMPLE ROW - delete me,C001,1,K7Q2MX,collected,15:20,"aliases only, no names",example

@@ -1,0 +1,2 @@
+date,provider_id,item_name,portions_weighed,total_grams,grams_per_portion,weighed_by,data_source
+2026-01-05,K01,EXAMPLE ROW - delete me,5,2150,=E2/D2,initials,example

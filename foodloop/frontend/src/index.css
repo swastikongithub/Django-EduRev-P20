@@ -1,0 +1,180 @@
+@import "tailwindcss";
+
+/* FoodLoop design tokens. Warm cream backgrounds, leaf-green actions, saffron only for urgency.
+   Text colours are chosen to pass WCAG AA contrast on both cream and white. */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+
+  --color-cream-50: #fffcf7;
+  --color-cream-100: #fbf7f0;
+  --color-cream-200: #f4ede1;
+  --color-cream-300: #e9dfcf;
+  --color-line: #e7dfd2;
+
+  --color-ink-900: #1c2420;
+  --color-ink-700: #3a4540;
+  --color-ink-600: #4a554f;
+  --color-ink-500: #646d68;
+
+  --color-leaf-50: #eef6f0;
+  --color-leaf-100: #dcede1;
+  --color-leaf-200: #b9dbc4;
+  --color-leaf-500: #2f8f5b;
+  --color-leaf-600: #1f7a4d;
+  --color-leaf-700: #17603c;
+  --color-leaf-800: #124a2f;
+  --color-leaf-900: #0d3823;
+
+  --color-saffron-50: #fdf1ea;
+  --color-saffron-100: #fbe3d4;
+  --color-saffron-400: #e8743b;
+  --color-saffron-600: #b4461b;
+  --color-turmeric-300: #f2cf73;
+  --color-turmeric-400: #e9b949;
+
+  --color-danger-50: #fef3f2;
+  --color-danger-600: #b42318;
+  --color-veg: #138a36;
+  --color-nonveg: #7a3e1d;
+
+  --shadow-soft: 0 1px 2px rgb(28 36 32 / 0.05), 0 10px 30px -14px rgb(28 36 32 / 0.22);
+  --shadow-lift: 0 2px 4px rgb(28 36 32 / 0.06), 0 22px 44px -18px rgb(28 36 32 / 0.32);
+
+  --animate-rise: rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-shimmer: shimmer 1.4s ease-in-out infinite;
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes shimmer {
+    0% {
+      background-position: -480px 0;
+    }
+    100% {
+      background-position: 480px 0;
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    background: var(--color-cream-100);
+    color: var(--color-ink-900);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-cream-100);
+    min-height: 100dvh;
+  }
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+    font-variation-settings: "SOFT" 60, "WONK" 0;
+    letter-spacing: -0.015em;
+  }
+  ::selection {
+    background: var(--color-leaf-200);
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-leaf-600);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Reusable building blocks. Defined with @utility so they can be combined and overridden by plain
+   Tailwind classes (e.g. `btn-primary px-8`). */
+
+@utility btn {
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition duration-200 select-none disabled:cursor-not-allowed disabled:opacity-55;
+}
+
+@utility btn-primary {
+  @apply btn bg-leaf-600 text-white shadow-[0_6px_16px_-8px_rgb(31_122_77/0.7)] hover:bg-leaf-700 active:scale-[0.98];
+}
+
+@utility btn-secondary {
+  @apply btn border border-line bg-white text-ink-900 hover:border-leaf-200 hover:bg-leaf-50;
+}
+
+@utility btn-ghost {
+  @apply btn text-ink-700 hover:bg-cream-200;
+}
+
+@utility btn-danger {
+  @apply btn border border-danger-600/25 bg-white text-danger-600 hover:bg-danger-50;
+}
+
+@utility btn-sm {
+  @apply min-h-9 px-3.5 text-[13px];
+}
+
+@utility card {
+  @apply rounded-[1.25rem] border border-line/80 bg-white shadow-soft;
+}
+
+@utility label {
+  @apply mb-1.5 block text-sm font-semibold text-ink-900;
+}
+
+@utility hint {
+  @apply mt-1.5 text-[13px] leading-snug text-ink-500;
+}
+
+@utility field-error {
+  @apply mt-1.5 flex items-start gap-1.5 text-[13px] font-medium text-danger-600;
+}
+
+@utility input {
+  @apply block min-h-11 w-full rounded-xl border border-line bg-white px-3.5 text-[15px] text-ink-900 shadow-[inset_0_1px_1px_rgb(28_36_32/0.04)] transition placeholder:text-ink-500/70 hover:border-cream-300 focus:border-leaf-600 focus:ring-4 focus:ring-leaf-100 focus:outline-none aria-[invalid=true]:border-danger-600 aria-[invalid=true]:focus:ring-danger-50;
+}
+
+@utility chip {
+  @apply inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-[13px] font-semibold text-ink-700 transition hover:border-leaf-200 aria-pressed:border-leaf-600 aria-pressed:bg-leaf-600 aria-pressed:text-white;
+}
+
+@utility badge {
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+}
+
+@utility skeleton {
+  @apply animate-shimmer rounded-xl bg-[linear-gradient(90deg,var(--color-cream-200)_0px,var(--color-cream-50)_160px,var(--color-cream-200)_320px)] bg-[length:960px_100%];
+}
+
+@utility eyebrow {
+  @apply text-xs font-bold tracking-[0.14em] text-leaf-700 uppercase;
+}
