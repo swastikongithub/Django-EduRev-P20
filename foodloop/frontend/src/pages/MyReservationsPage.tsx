@@ -70,7 +70,7 @@ function ActiveReservation({ reservation, now }: { reservation: CustomerReservat
     <article className="card animate-rise overflow-hidden">
       <div className="grid sm:grid-cols-[220px_1fr]">
         <div className="relative aspect-[16/9] bg-cream-200 sm:aspect-auto">
-          <MealImage imageUrl={reservation.listing.image_url} mealType={reservation.listing.meal_type} alt={reservation.listing.title} />
+          <MealImage imageUrl={reservation.listing.image_url} mealType={reservation.listing.meal_type} title={reservation.listing.title} seed={reservation.listing.id} alt={reservation.listing.title} sizes="220px" />
           {reservation.provider.is_sample && <SampleBadge className="absolute top-3 left-3" />}
         </div>
         <div className="p-5 sm:p-6">
@@ -146,7 +146,7 @@ function PastReservation({ reservation, now }: { reservation: CustomerReservatio
   return (
     <article className="card flex gap-4 p-4">
       <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-cream-200">
-        <MealImage imageUrl={reservation.listing.image_url} mealType={reservation.listing.meal_type} alt="" />
+        <MealImage imageUrl={reservation.listing.image_url} mealType={reservation.listing.meal_type} title={reservation.listing.title} seed={reservation.listing.id} alt="" sizes="64px" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center justify-between gap-2">

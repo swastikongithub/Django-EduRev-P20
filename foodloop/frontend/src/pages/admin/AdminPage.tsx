@@ -163,7 +163,7 @@ function AdminListingRow({ listing }: { listing: ProviderListing }) {
     <article className="card p-4">
       <div className="flex gap-4">
         <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-cream-200">
-          <MealImage imageUrl={listing.image_url} mealType={listing.meal_type} alt="" />
+          <MealImage imageUrl={listing.image_url} mealType={listing.meal_type} title={listing.title} seed={listing.id} alt="" sizes="64px" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

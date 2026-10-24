@@ -53,7 +53,7 @@ with sync_playwright() as p:
     # 1. Landing + browse (public)
     page.goto(BASE + "/")
     expect(page.get_by_role("heading", name=re.compile("Good food"))).to_be_visible()
-    expect(page.get_by_text("Closing soon near you")).to_be_visible()
+    expect(page.get_by_text("Fresh surplus near you")).to_be_visible()
     page.wait_for_selector("a[href^='/meals/']")
     shot(page, "01-landing-desktop")
     page.goto(BASE + "/meals")

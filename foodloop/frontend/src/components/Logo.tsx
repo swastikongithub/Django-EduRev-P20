@@ -1,14 +1,15 @@
 import { Link } from "react-router";
 
+/** A circular "loop" arrow around a leaf: food that comes back around instead of being thrown away. */
 export function LogoMark({ className = "size-9" }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
       <rect width="64" height="64" rx="18" fill="var(--color-leaf-600)" />
-      <path d="M32 13a19 19 0 1 0 18.4 14.3" fill="none" stroke="#FBF7F0" strokeWidth="5.5" strokeLinecap="round" />
+      <path d="M32 13a19 19 0 1 0 18.4 14.3" fill="none" stroke="#FAF6EE" strokeWidth="5.5" strokeLinecap="round" />
       <path
         d="M44.6 18.2 51.4 27l-10.8 1.4"
         fill="none"
-        stroke="#FBF7F0"
+        stroke="#FAF6EE"
         strokeWidth="5.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -19,12 +20,14 @@ export function LogoMark({ className = "size-9" }: { className?: string }) {
   );
 }
 
-export function Logo({ to = "/" }: { to?: string }) {
+export function Logo({ to = "/", tone = "dark" }: { to?: string; tone?: "dark" | "light" }) {
   return (
     <Link to={to} className="group inline-flex items-center gap-2.5 rounded-xl" aria-label="FoodLoop home">
-      <LogoMark className="size-9 transition-transform duration-300 group-hover:-rotate-12" />
-      <span className="font-display text-[1.35rem] font-semibold tracking-tight text-ink-900">
-        Food<span className="text-leaf-600">Loop</span>
+      <LogoMark className="size-9 transition-transform duration-500 group-hover:-rotate-[20deg]" />
+      <span
+        className={`font-display text-[1.375rem] font-extrabold tracking-tight ${tone === "light" ? "text-white" : "text-ink-900"}`}
+      >
+        Food<span className={tone === "light" ? "text-leaf-200" : "text-leaf-600"}>Loop</span>
       </span>
     </Link>
   );

@@ -186,7 +186,7 @@ export function ListingDetailPage() {
       <div className="mt-4 grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-12">
         <div className="animate-rise">
           <div className="relative aspect-[4/3] overflow-hidden rounded-[1.75rem] bg-cream-200 shadow-soft">
-            <MealImage imageUrl={listing.image_url} mealType={listing.meal_type} alt={listing.title} />
+            <MealImage imageUrl={listing.image_url} mealType={listing.meal_type} title={listing.title} seed={listing.id} alt={listing.title} sizes="(min-width: 1024px) 640px, 100vw" />
             <div className="absolute top-4 left-4 flex gap-2">
               {listing.discount_percent > 0 && (
                 <span className="badge bg-saffron-600 px-3 py-1 text-sm text-white">{listing.discount_percent}% off</span>
@@ -194,7 +194,7 @@ export function ListingDetailPage() {
               {listing.provider.is_sample && <SampleBadge />}
             </div>
             <span className="badge absolute right-4 bottom-4 bg-white/90 text-xs text-ink-600 backdrop-blur">
-              {!listing.image_url ? "Illustration, not the actual food" : listing.image_is_representative ? "Representative photo" : "Photo from the kitchen"}
+              {!listing.image_url ? "Representative image, not the actual food" : listing.image_is_representative ? "Representative photo" : "Photo from the kitchen"}
             </span>
           </div>
 

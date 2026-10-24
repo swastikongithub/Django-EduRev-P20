@@ -264,7 +264,7 @@ function ListingRow({ listing, canEdit }: { listing: ProviderListing; canEdit: b
     <article className="card p-4 sm:p-5">
       <div className="flex gap-4">
         <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-cream-200 sm:size-24">
-          <MealImage imageUrl={listing.image_url} mealType={listing.meal_type} alt="" />
+          <MealImage imageUrl={listing.image_url} mealType={listing.meal_type} title={listing.title} seed={listing.id} alt="" sizes="96px" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

@@ -1,4 +1,4 @@
-import "@fontsource-variable/fraunces/full.css";
+import "@fontsource-variable/bricolage-grotesque/opsz.css";
 import "@fontsource-variable/inter";
 import "./index.css";
 

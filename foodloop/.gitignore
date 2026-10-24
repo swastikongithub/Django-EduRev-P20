@@ -9,3 +9,8 @@ frontend/node_modules/
 frontend/dist/
 *.tsbuildinfo
 e2e/screenshots/
+
+# Licensed Adobe Stock photos. They are used by the website but must not be published as standalone
+# files in this public repository (Adobe Stock Standard licence). See docs/image-credits.md.
+frontend/public/photos/*
+!frontend/public/photos/README.md
