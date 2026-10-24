@@ -61,6 +61,7 @@ export interface Meta {
     diet: Record<Diet, string>;
     storage: Record<Storage, string>;
     allergen: Record<string, string>;
+    contact_topic: Record<ContactTopic, string>;
   };
   safety_policy: {
     max_safe_hours: Record<Storage, number>;
@@ -216,6 +217,7 @@ export interface AdminOverview {
   live_listings: number;
   portions_reserved_today: Record<ReservationStatus, number>;
   portions_collected_all_time: number;
+  open_messages: number;
   recent_activity: AuditEntry[];
 }
 
@@ -253,4 +255,39 @@ export interface KitchenInput {
   fssai_kind: FssaiKind;
   fssai_valid_until: string;
   pickup_instructions: string;
+}
+
+export type ContactTopic = "question" | "order" | "kitchen" | "safety" | "feedback";
+
+/** A kitchen as the public sees it, with what it has on offer right now. */
+export interface KitchenCard {
+  id: string;
+  name: string;
+  slug: string;
+  kind: ProviderKind;
+  description: string;
+  area: string;
+  city: string;
+  is_sample: boolean;
+  live_meals: number;
+  lowest_price_paise: number | null;
+  meal_types: MealType[];
+}
+
+export interface KitchenDetail extends KitchenCard {
+  address_line: string;
+  pincode: string;
+  pickup_instructions: string;
+  fssai_number: string;
+  fssai_kind: FssaiKind;
+}
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  topic: ContactTopic;
+  message: string;
+  created_at: string;
+  handled_at: string | null;
 }

@@ -191,7 +191,7 @@ function DetailSkeleton() {
   return (
     <div className="container-page py-8" aria-busy="true" aria-label="Loading meal">
       <Skeleton className="h-4 w-48" />
-      <div className="mt-6 grid gap-10 lg:grid-cols-[1.2fr_1fr]">
+      <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-[1.2fr_1fr]">
         <Skeleton className="aspect-[4/3] w-full rounded-[2rem]" />
         <div className="space-y-4">
           <Skeleton className="h-5 w-32" />
@@ -342,7 +342,7 @@ export function ListingDetailPage() {
               Food details
             </h2>
             {listing.description && <p className="mt-3 text-[15.5px] leading-relaxed text-ink-700">{listing.description}</p>}
-            <dl className="mt-5 grid gap-3 sm:grid-cols-3">
+            <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {[
                 { icon: StorageIcon, label: "Stored", value: meta?.labels.storage[listing.storage] ?? listing.storage },
                 { icon: Clock, label: "Prepared", value: formatDateTime(listing.prepared_at, now) },

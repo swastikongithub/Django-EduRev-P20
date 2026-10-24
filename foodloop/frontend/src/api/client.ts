@@ -1,15 +1,25 @@
 // A small wrapper around fetch: JSON in, JSON out, and one error type with friendly messages.
 
+/** Why the server couldn't answer at all, as opposed to answering "no". */
+export type ConnectionProblem = "offline" | "server_unreachable" | "database_unavailable";
+
 export class ApiError extends Error {
   status: number;
   /** Field name → message, for highlighting form inputs ("kitchen.fssai_number", "price_paise"...). */
   fieldErrors: Record<string, string>;
+  code?: ConnectionProblem;
 
-  constructor(status: number, message: string, fieldErrors: Record<string, string> = {}) {
+  constructor(status: number, message: string, fieldErrors: Record<string, string> = {}, code?: ConnectionProblem) {
     super(message);
     this.status = status;
     this.fieldErrors = fieldErrors;
+    this.code = code;
   }
+}
+
+/** The request failed because FoodLoop (or its database) is down or unreachable, not because of the request. */
+export function connectionProblem(error: unknown): ConnectionProblem | null {
+  return error instanceof ApiError && error.code ? error.code : null;
 }
 
 const FALLBACK_MESSAGES: Record<number, string> = {
@@ -39,7 +49,7 @@ export async function api<T>(path: string, { method = "GET", body, formData, sig
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") throw error;
-    throw new ApiError(0, "Can't reach FoodLoop. Check your internet connection and try again.");
+    throw new ApiError(0, "Can't reach FoodLoop. Check your internet connection and try again.", {}, "offline");
   }
 
   if (response.status === 204) return undefined as T;
@@ -50,7 +60,12 @@ export async function api<T>(path: string, { method = "GET", body, formData, sig
     data = null;
   }
   if (!response.ok) {
-    const payload = (data ?? {}) as { detail?: unknown; errors?: { field: string; message: string }[] };
+    // Our API always answers in JSON. A 502/503/504 without JSON comes from the dev-server proxy or a load
+    // balancer: the FoodLoop server itself isn't running or can't be reached.
+    if (data === null && [502, 503, 504].includes(response.status)) {
+      throw new ApiError(503, "Can't connect to the FoodLoop server right now.", {}, "server_unreachable");
+    }
+    const payload = (data ?? {}) as { detail?: unknown; code?: string; errors?: { field: string; message: string }[] };
     const fieldErrors: Record<string, string> = {};
     for (const item of payload.errors ?? []) {
       fieldErrors[item.field] ??= item.message;
@@ -59,7 +74,8 @@ export async function api<T>(path: string, { method = "GET", body, formData, sig
       typeof payload.detail === "string"
         ? payload.detail
         : (FALLBACK_MESSAGES[response.status] ?? FALLBACK_MESSAGES[500]);
-    throw new ApiError(response.status, message, fieldErrors);
+    const code = payload.code === "database_unavailable" ? "database_unavailable" : undefined;
+    throw new ApiError(response.status, message, fieldErrors, code);
   }
   return data as T;
 }

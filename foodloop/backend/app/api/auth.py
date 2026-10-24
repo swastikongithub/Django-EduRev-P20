@@ -1,15 +1,33 @@
 from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from app.api.deps import current_user_optional
+from app.api.deps import current_user, current_user_optional
 from app.config import get_settings
 from app.db import get_db
 from app.errors import DomainError
-from app.models import User
+from app.models import User, UserSession
 from app.models.enums import UserRole
-from app.schemas.auth import LoginRequest, MeResponse, ProviderOut, ProviderRegisterRequest, RegisterRequest, UserOut
+from app.schemas.auth import (
+    LoginRequest,
+    MeResponse,
+    PasswordChange,
+    ProfileUpdate,
+    ProviderOut,
+    ProviderRegisterRequest,
+    RegisterRequest,
+    UserOut,
+)
+from app.security.passwords import hash_password, verify_password
 from app.security.rate_limit import limiter
-from app.security.sessions import COOKIE_NAME, clear_session_cookie, create_session, delete_session, set_session_cookie
+from app.security.sessions import (
+    COOKIE_NAME,
+    clear_session_cookie,
+    create_session,
+    delete_session,
+    hash_token,
+    set_session_cookie,
+)
 from app.services import accounts
 from app.services.providers import provider_for_user
 
@@ -79,3 +97,28 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)) 
 def me(user: User | None = Depends(current_user_optional), db: Session = Depends(get_db)):
     """The logged-in user, or null. Returns 200 either way so the website can check quietly."""
     return me_response(db, user) if user else None
+
+
+@router.put("/me", response_model=MeResponse)
+def update_profile(data: ProfileUpdate, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Change your name and mobile number. Email changes aren't supported yet."""
+    user.full_name = data.full_name
+    user.phone = data.phone
+    db.commit()
+    return me_response(db, user)
+
+
+@router.post("/change-password", status_code=204)
+def change_password(
+    data: PasswordChange, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)
+) -> None:
+    """Needs the current password. Logs out every other browser, so a stolen session stops working."""
+    _check_rate(f"password:{user.id}", 5, 15)
+    if not verify_password(user.password_hash, data.current_password):
+        raise DomainError(400, "Your current password isn't right.", field="current_password")
+    if data.new_password == data.current_password:
+        raise DomainError(400, "Choose a password you haven't used here.", field="new_password")
+    user.password_hash = hash_password(data.new_password)
+    this_session = hash_token(request.cookies.get(COOKIE_NAME, ""))
+    db.execute(delete(UserSession).where(UserSession.user_id == user.id, UserSession.token_hash != this_session))
+    db.commit()

@@ -10,7 +10,7 @@ of metadata, and are **not committed** to this public repository.
 | File prefix | Adobe Stock ID | Shows | Used for |
 |---|---|---|---|
 | `thali-spread` | 275393147 | Indian vegetarian dishes in steel bowls | Landing hero |
-| `steel-thali` | 193123927 | Thali on a steel plate, top view | Lunch meals, “browse by meal”, sign-up page |
+| `steel-thali` | 193123927 | Thali on a steel plate, top view | Lunch meals, sign-up page |
 | `lunch-tray` | 658806691 | Mini-meal tray | Lunch meals, “how it works” step 1 |
 | `biryani-pan` | 293587256 | Biryani in a pan | Dinner / biryani meals |
 | `biryani-bowl` | 546604660 | Chicken biryani in a brass bowl | Dinner meals |
@@ -27,6 +27,29 @@ of metadata, and are **not committed** to this public repository.
 | `chef-kitchen` | 382648453 | Chefs in a commercial kitchen | “For providers” section, kitchen registration header |
 | `takeaway-bag` | 862469565 | Takeaway boxes and paper bag | “How it works” step 3 |
 | `food-waste` | 551313735 | Food scraps in a kitchen bin | Sustainability section |
+| `masala-dosa` | 434709120 | Masala dosa on a banana leaf | Dosa |
+| `poha` | 472016429 | Poha in a bowl | Poha |
+| `upma` | 419398499 | Rava upma on a leaf | Upma |
+| `aloo-paratha` | 287531975 | Aloo paratha with curd | Parathas |
+| `rajma-chawal` | 332446392 | Rajma with rice | Rajma chawal |
+| `chole-bhature` | 433456593 | Chole bhature | Chole bhature |
+| `paneer-masala` | 321190583 | Paneer butter masala | Paneer dishes |
+| `curd-rice` | 162715005 | Curd rice | Curd rice |
+| `dal-makhani` | 689283108 | Dal makhani with rice and naan | Dal makhani, dinner thalis |
+| `chicken-curry` | 554002351 | Butter chicken curry | Chicken curries |
+| `egg-curry` | 362631164 | Egg masala | Egg curries |
+| `hakka-noodles` | 710517713 | Vegetable hakka noodles | Noodles |
+| `momos` | 224726344 | Momos with chutney | Momos |
+| `vada-pav` | 494428267 | Vada pav | Vada pav |
+| `pav-bhaji` | 470892726 | Pav bhaji | Pav bhaji |
+| `sandwich` | 167256518 | Grilled sandwiches | Sandwiches |
+| `gulab-jamun` | 335082798 | Gulab jamun | Indian sweets |
+| `fruit-bowl` | 309827689 | Bowl of cut mixed fruit | Fruit bowls |
+| `brownies` | 283518525 | Chocolate brownies | Brownies and cakes |
+| `filter-coffee` | 532537342 | South Indian filter coffee | Coffee |
+| `cold-coffee` | 195045679 | Iced coffee | Cold coffee |
+| `lassi` | 512585198 | Sweet lassi | Lassi |
+| `lime-soda` | 196101002 | Lime soda with mint | Lime soda and lemonade |
 
 **How the photos are used honestly**
 

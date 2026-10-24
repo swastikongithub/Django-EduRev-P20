@@ -39,7 +39,7 @@ export function KitchenFields({
   const err = (key: keyof KitchenInput) => errors[`${prefix}${key}`];
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
       <div className="sm:col-span-2">
         <Field id="k-name" label="Kitchen name" error={err("name")} hint="As customers know it, e.g. “Block 32 Canteen”.">
           <input className="input" required maxLength={120} value={value.name} onChange={(e) => set("name", e.target.value)} {...describedBy("k-name", err("name"))} />
@@ -79,7 +79,7 @@ export function KitchenFields({
         <p className="mt-1 text-[13px] text-leaf-900/80">
           FoodLoop checks this on the FSSAI FoSCoS portal before approving your kitchen. It's shown on your listings.
         </p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field id="k-fssai" label="Licence / registration no." error={err("fssai_number")} hint="14 digits">
             <input className="input font-mono" required inputMode="numeric" maxLength={17} value={value.fssai_number} onChange={(e) => set("fssai_number", e.target.value)} {...describedBy("k-fssai", err("fssai_number"))} />
           </Field>

@@ -18,6 +18,7 @@ router = APIRouter(prefix="/api/listings", tags=["listings"])
 def browse(
     db: Session = Depends(get_db),
     q: Annotated[str | None, Query(max_length=80)] = None,
+    kitchen: Annotated[str | None, Query(max_length=140, description="a kitchen's slug")] = None,
     meal_type: Annotated[list[MealType], Query()] = [],  # noqa: B006 - FastAPI copies defaults per request
     diet: Annotated[list[Diet], Query()] = [],  # noqa: B006
     exclude_allergen: Annotated[list[Allergen], Query()] = [],  # noqa: B006
@@ -41,6 +42,7 @@ def browse(
         sort=sort,
         limit=limit,
         offset=offset,
+        kitchen_slug=kitchen,
     )
     now = utcnow()
     return {

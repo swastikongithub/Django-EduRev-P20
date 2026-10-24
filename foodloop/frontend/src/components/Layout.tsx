@@ -1,16 +1,19 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChefHat, LogOut, Mail, Menu, ShieldCheck, Ticket, X } from "lucide-react";
+import { ChefHat, CircleUserRound, LogOut, Mail, Menu, ShieldCheck, Ticket, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation, useNavigate } from "react-router";
 
 import { api } from "../api/client";
 import { useMe } from "../api/queries";
 import type { Me } from "../api/types";
+import { ConnectionBanner } from "./ConnectionBanner";
 import { Logo } from "./Logo";
 
 const PUBLIC_LINKS = [
   { to: "/", label: "Home", end: true },
   { to: "/meals", label: "Explore Meals" },
+  { to: "/menu", label: "Menu" },
+  { to: "/kitchens", label: "Kitchens" },
   { to: "/#how-it-works", label: "How It Works", hash: "#how-it-works" },
   { to: "/#providers", label: "For Providers", hash: "#providers" },
 ];
@@ -56,6 +59,8 @@ function Header() {
   }, []);
 
   const account = accountLink(me);
+  // At the top of the home page the header floats over the dark green hero, so it switches to light text.
+  const overDark = location.pathname === "/" && !scrolled && !open;
   const isActive = (link: (typeof PUBLIC_LINKS)[number]) =>
     link.hash
       ? location.pathname === "/" && location.hash === link.hash
@@ -63,8 +68,14 @@ function Header() {
         ? location.pathname === "/" && !location.hash
         : location.pathname.startsWith(link.to);
   const linkClass = (active: boolean) =>
-    `relative inline-flex min-h-10 items-center rounded-full px-3.5 text-[14.5px] font-semibold transition ${
-      active ? "text-leaf-700" : "text-ink-600 hover:text-ink-900"
+    `relative inline-flex min-h-10 items-center rounded-full px-2.5 text-[14px] font-semibold transition xl:px-3.5 xl:text-[14.5px] ${
+      overDark
+        ? active
+          ? "text-white"
+          : "text-white/75 hover:text-white"
+        : active
+          ? "text-leaf-700"
+          : "text-ink-600 hover:text-ink-900"
     }`;
 
   return (
@@ -72,16 +83,20 @@ function Header() {
       className={`sticky top-0 z-40 transition-[background-color,box-shadow,border-color] duration-300 ${
         scrolled || open
           ? "border-b border-line/70 bg-cream-50/90 shadow-[0_6px_24px_-18px_rgb(20_29_24/0.35)] backdrop-blur-xl"
-          : "border-b border-transparent bg-cream-100/0"
+          : "border-b border-transparent bg-transparent"
       }`}
     >
-      <div className="container-page flex h-[4.25rem] items-center justify-between gap-6">
-        <Logo />
+      <div className="container-page flex h-[4.25rem] items-center justify-between gap-4 xl:gap-6">
+        <Logo tone={overDark ? "light" : "dark"} />
         <nav aria-label="Main" className="hidden items-center gap-0.5 lg:flex">
           {PUBLIC_LINKS.map((link) => (
             <Link key={link.label} to={link.to} className={linkClass(isActive(link))} aria-current={isActive(link) ? "page" : undefined}>
               {link.label}
-              {isActive(link) && <span className="absolute inset-x-3.5 -bottom-0.5 h-0.5 rounded-full bg-leaf-600" />}
+              {isActive(link) && (
+                <span
+                  className={`absolute inset-x-2.5 -bottom-0.5 h-0.5 rounded-full xl:inset-x-3.5 ${overDark ? "bg-turmeric-400" : "bg-leaf-600"}`}
+                />
+              )}
             </Link>
           ))}
         </nav>
@@ -94,26 +109,41 @@ function Header() {
                 <NavLink
                   to={account.to}
                   className={({ isActive: active }) =>
-                    `btn-sm btn ${active ? "bg-leaf-50 text-leaf-800" : "text-ink-700 hover:bg-cream-200"}`
+                    `btn-sm btn ${
+                      overDark ? "text-white hover:bg-white/10" : active ? "bg-leaf-50 text-leaf-800" : "text-ink-700 hover:bg-cream-200"
+                    }`
                   }
                 >
                   <account.icon className="size-4" aria-hidden="true" /> {account.label}
                 </NavLink>
               )}
-              <span className="mx-1 h-6 w-px bg-line" aria-hidden="true" />
-              <span className="max-w-32 truncate text-sm text-ink-600" title={me.user.email}>
-                {me.user.full_name.split(" ")[0]}
-              </span>
-              <button type="button" className="btn-ghost btn-sm" onClick={() => logout.mutate()} aria-label="Log out">
+              <span className={`mx-1 h-6 w-px ${overDark ? "bg-white/25" : "bg-line"}`} aria-hidden="true" />
+              <Link
+                to="/account"
+                className={`btn-sm btn max-w-40 ${overDark ? "text-white hover:bg-white/10" : "text-ink-700 hover:bg-cream-200"}`}
+                title={`My account (${me.user.email})`}
+              >
+                <CircleUserRound className="size-4 shrink-0" aria-hidden="true" />
+                <span className="truncate">{me.user.full_name.split(" ")[0]}</span>
+              </Link>
+              <button
+                type="button"
+                className={`btn-sm btn ${overDark ? "text-white hover:bg-white/10" : "btn-ghost"}`}
+                onClick={() => logout.mutate()}
+                aria-label="Log out"
+              >
                 <LogOut className="size-4" aria-hidden="true" />
               </button>
             </>
           ) : (
             <>
-              <Link to="/login" className="btn-ghost btn-sm px-4 text-[14px]">
+              <Link
+                to="/login"
+                className={`btn-sm btn px-4 text-[14px] ${overDark ? "text-white hover:bg-white/10" : "text-ink-700 hover:bg-cream-200"}`}
+              >
                 Log in
               </Link>
-              <Link to="/register" className="btn-primary btn-sm px-5 text-[14px]">
+              <Link to="/register" className={`btn-sm px-5 text-[14px] ${overDark ? "btn-accent" : "btn-primary"}`}>
                 Sign up
               </Link>
             </>
@@ -121,7 +151,7 @@ function Header() {
         </div>
         <button
           type="button"
-          className="btn-ghost -mr-2 px-3 lg:hidden"
+          className={`-mr-2 px-3 lg:hidden ${overDark ? "btn text-white hover:bg-white/10" : "btn-ghost"}`}
           aria-expanded={open}
           aria-controls="mobile-menu"
           onClick={() => setOpen((value) => !value)}
@@ -148,6 +178,11 @@ function Header() {
             {account && (
               <Link to={account.to} className="flex min-h-12 items-center gap-2 rounded-2xl px-4 text-[15px] font-semibold text-ink-700 hover:bg-cream-200">
                 <account.icon className="size-4" aria-hidden="true" /> {account.label}
+              </Link>
+            )}
+            {me && (
+              <Link to="/account" className="flex min-h-12 items-center gap-2 rounded-2xl px-4 text-[15px] font-semibold text-ink-700 hover:bg-cream-200">
+                <CircleUserRound className="size-4" aria-hidden="true" /> My account
               </Link>
             )}
             <div className="mt-3 flex gap-2 border-t border-line pt-4">
@@ -178,9 +213,10 @@ const FOOTER_COLUMNS = [
     title: "Explore",
     links: [
       { to: "/meals", label: "Explore meals" },
+      { to: "/menu", label: "Today's menu" },
+      { to: "/kitchens", label: "Kitchens" },
       { to: "/#how-it-works", label: "How it works" },
       { to: "/#safety", label: "Food safety" },
-      { to: "/register", label: "Create an account" },
     ],
   },
   {
@@ -194,7 +230,9 @@ const FOOTER_COLUMNS = [
   {
     title: "Company",
     links: [
-      { to: "/#impact", label: "Our mission" },
+      { to: "/about", label: "About us" },
+      { to: "/faq", label: "FAQ" },
+      { to: "/contact", label: "Contact us" },
       { to: "/privacy", label: "Privacy policy" },
       { to: "/terms", label: "Terms of use" },
     ],
@@ -204,7 +242,7 @@ const FOOTER_COLUMNS = [
 function Footer() {
   return (
     <footer className="mt-24 bg-leaf-900 text-leaf-100">
-      <div className="container-page grid gap-12 py-16 lg:grid-cols-[1.3fr_2fr]">
+      <div className="container-page grid grid-cols-1 gap-12 py-16 lg:grid-cols-[1.3fr_2fr]">
         <div>
           <Logo tone="light" />
           <p className="font-display mt-5 text-2xl font-semibold text-white">Good food. Less waste.</p>
@@ -212,15 +250,14 @@ function Footer() {
             FoodLoop helps approved canteens, cafeterias, hostel messes and PG kitchens sell safe surplus meals to
             people nearby, so good food gets eaten instead of thrown away.
           </p>
-          {/* Contact details are placeholders until FoodLoop has an official address. */}
-          <a
-            href="mailto:hello@foodloop.example"
+          <Link
+            to="/contact"
             className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/8 px-4 py-2 text-sm font-medium text-white ring-1 ring-white/15 transition hover:bg-white/15"
           >
-            <Mail className="size-4" aria-hidden="true" /> hello@foodloop.example
-          </a>
+            <Mail className="size-4" aria-hidden="true" /> Write to us
+          </Link>
         </div>
-        <div className="grid gap-10 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-3">
           {FOOTER_COLUMNS.map((column) => (
             <div key={column.title}>
               <h2 className="font-sans text-sm font-bold tracking-wide text-white">{column.title}</h2>
@@ -258,6 +295,7 @@ export function Layout() {
         Skip to content
       </a>
       <Header />
+      <ConnectionBanner />
       <main id="main" className="flex-1">
         <Outlet />
       </main>

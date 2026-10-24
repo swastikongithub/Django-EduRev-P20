@@ -53,7 +53,7 @@ function Stats() {
   const { data } = useKitchenStats();
   if (!data) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[0, 1, 2, 3].map((key) => (
           <Skeleton key={key} className="h-24 rounded-[1.25rem]" />
         ))}
@@ -62,7 +62,7 @@ function Stats() {
   }
   const { today, last_7_days: week } = data;
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatTile label="Waiting for pickup" value={data.open_pickups} sub={`${plural(data.live_listings, "live listing")}`} icon={<Ticket className="size-5" />} tone="saffron" />
       <StatTile
         label="Today: reserved / listed"

@@ -90,6 +90,14 @@ class PaymentStatus(StrEnum):
     refunded = "refunded"
 
 
+class ContactTopic(StrEnum):
+    question = "question"
+    order = "order"
+    kitchen = "kitchen"
+    safety = "safety"
+    feedback = "feedback"
+
+
 class Allergen(StrEnum):
     gluten = "gluten"
     crustacean = "crustacean"
@@ -132,6 +140,13 @@ LABELS: dict[str, dict[str, str]] = {
         "refrigerated": "Refrigerated (5 °C or below)",
         "room_temp": "Room temperature",
         "shelf_stable": "Shelf-stable (bakery, packaged)",
+    },
+    "contact_topic": {
+        "question": "A general question",
+        "order": "A reservation or pickup",
+        "kitchen": "Listing my kitchen",
+        "safety": "A food-safety concern",
+        "feedback": "Feedback or ideas",
     },
     "allergen": {
         "gluten": "Gluten (wheat, barley, rye, oats)",

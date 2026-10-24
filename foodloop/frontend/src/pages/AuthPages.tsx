@@ -32,7 +32,7 @@ function AuthShell({
   caption: string;
 }) {
   return (
-    <div className="mx-auto grid max-w-6xl items-stretch gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_0.95fr] lg:py-14">
+    <div className="mx-auto grid grid-cols-1 max-w-6xl items-stretch gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_0.95fr] lg:py-14">
       <div className="card animate-rise self-start p-6 sm:p-10">
         <h1 className="text-[2rem] leading-tight sm:text-4xl">{title}</h1>
         <p className="mt-2 text-[15px] text-ink-600">{subtitle}</p>
@@ -223,7 +223,7 @@ export function RegisterKitchenPage() {
         {register.isError && <Notice tone="danger">{register.error.message}</Notice>}
         <section className="card p-6 sm:p-8">
           <h2 className="text-xl font-semibold">Your login</h2>
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+          <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
             <Field id="r-name" label="Manager's name" error={errors.full_name}>
               <input className="input" required minLength={2} autoComplete="name" value={account.full_name} onChange={set("full_name")} {...describedBy("r-name", errors.full_name)} />
             </Field>

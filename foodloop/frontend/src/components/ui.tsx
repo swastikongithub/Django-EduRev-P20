@@ -1,9 +1,10 @@
 // Small shared building blocks: states (loading / empty / error), badges, fields and stat tiles.
 
-import { CircleAlert, CircleCheck, Info, LoaderCircle, RefreshCw, TriangleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck, Info, LoaderCircle, PlugZap, RefreshCw, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { errorMessage } from "../api/client";
+import { connectionProblem, errorMessage } from "../api/client";
+import { PROBLEM_TEXT } from "../lib/connection";
 import type { Diet, DisplayStatus } from "../api/types";
 
 export function Spinner({ label = "Loading" }: { label?: string }) {
@@ -63,13 +64,18 @@ export function EmptyState({
 }
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  const problem = connectionProblem(error);
+  const text = problem ? PROBLEM_TEXT[problem] : null;
   return (
     <div role="alert" className="mx-auto flex max-w-md flex-col items-center px-6 py-12 text-center">
-      <div className="mb-4 grid size-14 place-items-center rounded-full bg-danger-50 text-danger-600">
-        <CircleAlert className="size-7" aria-hidden="true" />
+      <div
+        className={`mb-4 grid size-14 place-items-center rounded-full ${text ? "bg-saffron-50 text-saffron-600" : "bg-danger-50 text-danger-600"}`}
+      >
+        {text ? <PlugZap className="size-7" aria-hidden="true" /> : <CircleAlert className="size-7" aria-hidden="true" />}
       </div>
-      <h3 className="text-lg font-semibold">We couldn't load this</h3>
-      <p className="mt-1.5 text-[15px] text-ink-600">{errorMessage(error)}</p>
+      <h3 className="text-lg font-semibold">{text ? text.title : "We couldn't load this"}</h3>
+      <p className="mt-1.5 text-[15px] text-ink-600">{text ? text.body : errorMessage(error)}</p>
+      {text && import.meta.env.DEV && text.devHint && <p className="mt-2 text-[13px] leading-relaxed text-ink-500">{text.devHint}</p>}
       {onRetry && (
         <button type="button" className="btn-secondary mt-5" onClick={onRetry}>
           <RefreshCw className="size-4" aria-hidden="true" /> Try again

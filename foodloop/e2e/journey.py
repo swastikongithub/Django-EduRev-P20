@@ -34,7 +34,13 @@ def watch(page, name):
 
 
 def shot(page, name, full=True):
-    page.wait_for_timeout(700)  # let rise animations finish
+    if full:  # scroll through once so sections that fade in on scroll (and lazy photos) are shown
+        height = page.evaluate("document.documentElement.scrollHeight")
+        for y in range(0, height, 500):
+            page.evaluate(f"window.scrollTo({{top: {y}, behavior: 'instant'}})")
+            page.wait_for_timeout(80)
+        page.evaluate("window.scrollTo({top: 0, behavior: 'instant'})")
+    page.wait_for_timeout(900)  # let rise animations finish
     page.screenshot(path=str(OUT / f"{name}.png"), full_page=full)
 
 
@@ -53,9 +59,18 @@ with sync_playwright() as p:
     # 1. Landing + browse (public)
     page.goto(BASE + "/")
     expect(page.get_by_role("heading", name=re.compile("Good food"))).to_be_visible()
-    expect(page.get_by_text("Fresh surplus near you")).to_be_visible()
+    expect(page.get_by_role("heading", name="Grab it before it's gone")).to_be_visible()
     page.wait_for_selector("a[href^='/meals/']")
+    expect(page.get_by_text(re.compile(r"\d+ meals you can reserve right now"))).to_be_visible()
     shot(page, "01-landing-desktop")
+    page.goto(BASE + "/menu")
+    expect(page.get_by_role("heading", name="Today's menu")).to_be_visible()
+    expect(page.get_by_role("heading", name="Breakfast")).to_be_visible()
+    shot(page, "01b-menu-desktop")
+    page.goto(BASE + "/kitchens")
+    page.get_by_role("link", name=re.compile("Green Leaf Canteen")).first.click()
+    expect(page.get_by_role("heading", name="On the menu now")).to_be_visible()
+    shot(page, "01c-kitchen-desktop")
     page.goto(BASE + "/meals")
     page.wait_for_selector("a[href^='/meals/']")
     shot(page, "02-browse-desktop")
@@ -86,6 +101,17 @@ with sync_playwright() as p:
     page.get_by_role("link", name=re.compile("View my reservations")).click()
     expect(page.get_by_text(code)).to_be_visible()
     shot(page, "05-my-reservations-desktop")
+    # ...updates her account and writes to the FoodLoop team
+    page.goto(BASE + "/account")
+    page.get_by_label("Mobile number").fill("98765 43210")
+    page.get_by_role("button", name="Save details").click()
+    expect(page.get_by_text("Profile saved")).to_be_visible()
+    page.goto(BASE + "/contact")
+    expect(page.get_by_label("Email")).to_have_value(email)
+    page.get_by_label("What's it about?").select_option("order")
+    page.get_by_label("Message").fill("Can I pick up my thali ten minutes late?")
+    page.get_by_role("button", name="Send message").click()
+    expect(page.get_by_text("Thanks, your message is on its way")).to_be_visible()
     logout(page)
 
     # 3. Kitchen hands over the meal with the code
@@ -106,7 +132,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(500)
     shot(page, "08-kitchen-listings-desktop")
     page.get_by_role("link", name=re.compile("List surplus food")).click()
-    page.get_by_label("Meal name").fill("Rajma chawal")
+    page.get_by_label("Meal name").fill("Kadhi chawal")
     page.get_by_label("Usual price (₹)").fill("70")
     page.get_by_label("FoodLoop price (₹)").fill("35")
     page.get_by_role("button", name="60 min").click()
@@ -116,7 +142,7 @@ with sync_playwright() as p:
     shot(page, "09-listing-form-desktop")
     page.get_by_role("button", name="Publish listing").click()
     page.wait_for_url(re.compile(r"/kitchen\?tab=listings"))
-    expect(page.get_by_text("Rajma chawal")).to_be_visible()
+    expect(page.get_by_text("Kadhi chawal")).to_be_visible()
     logout(page)
 
     # 5. A new kitchen registers and is pending
@@ -150,6 +176,10 @@ with sync_playwright() as p:
     page.locator("article").filter(has_text="Hostel 4 Mess").get_by_role("button", name="Approve").click()
     page.wait_for_timeout(800)
     expect(page.locator("article").filter(has_text="Hostel 4 Mess")).to_have_count(0)
+    page.get_by_role("tab", name="Messages").click()
+    expect(page.get_by_text("Can I pick up my thali ten minutes late?")).to_be_visible()
+    page.locator("article").filter(has_text="ten minutes late").get_by_role("button", name="Mark as handled").click()
+    expect(page.get_by_text("Marked as handled")).to_be_visible()
     page.get_by_role("tab", name="Activity log").click()
     expect(page.get_by_text("Kitchen approved").first).to_be_visible()
     shot(page, "12-admin-activity-desktop")
@@ -168,6 +198,9 @@ with sync_playwright() as p:
     m.goto(BASE + "/")
     m.wait_for_selector("a[href^='/meals/']")
     shot(m, "13-landing-mobile")
+    m.goto(BASE + "/menu")
+    expect(m.get_by_role("heading", name="Breakfast")).to_be_visible()
+    shot(m, "13b-menu-mobile", full=False)
     m.goto(BASE + "/meals")
     m.wait_for_selector("a[href^='/meals/']")
     shot(m, "14-browse-mobile", full=False)
@@ -178,11 +211,12 @@ with sync_playwright() as p:
     shot(m, "16-not-found-mobile", full=False)
 
     # horizontal overflow check at phone width
-    for path in ["/", "/meals", "/register/kitchen", "/login"]:
+    for path in ["/", "/meals", "/menu", "/kitchens", "/about", "/faq", "/contact", "/register/kitchen", "/login"]:
         m.goto(BASE + path)
-        m.wait_for_timeout(400)
+        m.wait_for_timeout(600)
         overflow = m.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
         print(f"overflow {path}: {overflow}px")
+        assert overflow <= 0, f"{path} scrolls sideways on a phone"
     browser.close()
 
 # The only expected error is the deliberate 404 from opening a meal that doesn't exist.

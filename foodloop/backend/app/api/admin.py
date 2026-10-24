@@ -11,11 +11,12 @@ from app.api.deps import require_admin
 from app.clock import today_ist, utcnow
 from app.db import get_db
 from app.errors import DomainError
-from app.models import Listing, Provider, ProviderMember, User
+from app.models import ContactMessage, Listing, Provider, ProviderMember, User
 from app.models.enums import ListingStatus, MemberRole, ProviderStatus
 from app.schemas.admin import AdminProviderOut, AuditEntryOut, ReasonRequest
 from app.schemas.auth import ProviderOut
 from app.schemas.listing import ProviderListingOut
+from app.schemas.public import ContactMessageOut
 from app.services import listings as listing_service
 from app.services import providers as provider_service
 from app.services import stats as stats_service
@@ -64,8 +65,10 @@ def _provider_rows(db: Session, provider_ids: list[uuid.UUID] | None = None, sta
 
 @router.get("/overview")
 def overview(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    open_messages = db.scalar(select(func.count()).where(ContactMessage.handled_at.is_(None))) or 0
     return {
         **stats_service.admin_overview(db),
+        "open_messages": open_messages,
         "recent_activity": [AuditEntryOut(**row) for row in stats_service.recent_audit(db)],
     }
 
@@ -142,3 +145,24 @@ def remove_listing(
     listing = listing_service.remove(db, admin, listing, data.reason, by_admin=True)
     taken = listing_service.taken_quantities(db, [listing.id])[listing.id]
     return listing_service.provider_listing_out(listing, utcnow(), taken)
+
+
+@router.get("/messages", response_model=list[ContactMessageOut])
+def messages(status: Literal["open", "all"] = "open", _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Contact-form messages, newest first."""
+    stmt = select(ContactMessage).order_by(ContactMessage.created_at.desc()).limit(200)
+    if status == "open":
+        stmt = stmt.where(ContactMessage.handled_at.is_(None))
+    return db.scalars(stmt).all()
+
+
+@router.post("/messages/{message_id}/handled", response_model=ContactMessageOut)
+def mark_handled(message_id: uuid.UUID, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    message = db.get(ContactMessage, message_id)
+    if message is None:
+        raise DomainError(404, "We couldn't find that message.")
+    if message.handled_at is None:
+        message.handled_at = utcnow()
+        message.handled_by = admin.id
+        db.commit()
+    return message

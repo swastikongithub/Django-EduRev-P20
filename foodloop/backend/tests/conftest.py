@@ -39,7 +39,7 @@ from app.security.rate_limit import limiter  # noqa: E402
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 PASSWORD = "correct-horse-battery"
-TABLES = "audit_log, reservations, listings, provider_members, providers, sessions, users"
+TABLES = "audit_log, contact_messages, reservations, listings, provider_members, providers, sessions, users"
 
 
 @pytest.fixture(scope="session", autouse=True)

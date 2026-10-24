@@ -1,15 +1,14 @@
 import {
   ArrowRight,
   BadgeCheck,
-  Check,
   ChefHat,
   CircleCheck,
-  Clock,
   ExternalLink,
+  Flame,
   Hourglass,
   IndianRupee,
-  Leaf,
   Scale,
+  Search,
   ShieldCheck,
   Thermometer,
   Ticket,
@@ -17,155 +16,213 @@ import {
   UtensilsCrossed,
   Wheat,
 } from "lucide-react";
-import { Link } from "react-router";
+import { type FormEvent, useState } from "react";
+import { Link, useNavigate } from "react-router";
 
-import { useListings } from "../api/queries";
+import { useAllListings, useKitchens } from "../api/queries";
+import type { Listing, MealType } from "../api/types";
+import { FaqList } from "../components/Faq";
+import { KitchenCard } from "../components/KitchenCard";
 import { ListingCard, ListingCardSkeleton } from "../components/ListingCard";
+import { Countdown, CountUp, DealTicker, LiveDot, Rail, Reveal } from "../components/Live";
+import { MenuRow } from "../components/MenuRow";
 import { Photo } from "../components/Photo";
-import { ErrorState, Notice } from "../components/ui";
-import { CATEGORY_PHOTOS, PHOTOS } from "../lib/photos";
+import { ErrorState, Notice, Skeleton } from "../components/ui";
+import { FAQ } from "../lib/faq";
+import { formatRupees, minutesUntil } from "../lib/format";
+import { CATEGORY_PHOTOS, PHOTOS, photoForMeal } from "../lib/photos";
+
+const byClosingTime = (a: Listing, b: Listing) => a.reservations_close_at.localeCompare(b.reservations_close_at);
 
 // ---------------------------------------------------------------------------------------------------------
-// Hero
+// Hero: dark green, live numbers from the API, a real "closing soon" deal and a ticker of live deals
 // ---------------------------------------------------------------------------------------------------------
 
-function HeroVisual() {
+function ClosingSoonCard({ listing }: { listing: Listing }) {
+  return (
+    <Link
+      to={`/meals/${listing.id}`}
+      className="absolute -bottom-8 left-3 w-[250px] animate-float rounded-2xl bg-white p-3 text-ink-900 shadow-lift ring-1 ring-black/5 transition hover:ring-leaf-300 sm:-left-8 sm:bottom-12 sm:w-[285px]"
+    >
+      <p className="flex items-center gap-1.5 text-[10.5px] font-bold tracking-wider text-saffron-600 uppercase">
+        <Flame className="size-3.5" aria-hidden="true" /> Closing soon
+      </p>
+      <div className="mt-2 flex gap-3">
+        <div className="size-14 shrink-0 overflow-hidden rounded-xl">
+          <Photo photo={photoForMeal(listing.meal_type, listing.title, listing.id)} sizes="56px" alt="" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-[14px] font-semibold">{listing.title}</p>
+          <p className="text-[14px]">
+            <span className="font-bold text-leaf-700">{formatRupees(listing.price_paise)}</span>{" "}
+            <span className="text-ink-500 line-through">{formatRupees(listing.original_price_paise)}</span>
+          </p>
+        </div>
+      </div>
+      <div className="mt-2.5 flex items-center justify-between rounded-xl bg-sage-50 px-3 py-2 text-[12px]">
+        <Countdown to={listing.reservations_close_at} />
+        <span className="font-semibold text-leaf-700">{listing.quantity_available} left</span>
+      </div>
+    </Link>
+  );
+}
+
+function HeroMosaic({ closing }: { closing?: Listing }) {
   return (
     <div className="relative mx-auto w-full max-w-[560px] lg:max-w-none">
-      <div
-        aria-hidden="true"
-        className="absolute -inset-3 rotate-[2.5deg] rounded-[2.5rem] bg-sage-200/80 sm:-inset-4 lg:-inset-5"
-      />
-      <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] shadow-lift ring-1 ring-black/5 sm:aspect-[5/4] lg:aspect-[4/5]">
-        <Photo photo={PHOTOS.thaliSpread} priority sizes="(min-width: 1024px) 46vw, 92vw" />
-      </div>
-
-      {/* Example of what a listing looks like. Labelled as an example, not a live offer. */}
-      <div
-        aria-hidden="true"
-        className="absolute -bottom-6 left-3 w-[236px] animate-float rounded-2xl bg-white/95 p-3 shadow-lift ring-1 ring-black/5 backdrop-blur sm:-left-8 sm:bottom-10 sm:w-[260px]"
-      >
-        <div className="flex gap-3">
-          <div className="size-14 shrink-0 overflow-hidden rounded-xl sm:size-16">
-            <Photo photo={PHOTOS.samosa} sizes="64px" alt="" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10.5px] font-bold tracking-wider text-saffron-600 uppercase">Example listing</p>
-            <p className="truncate text-[14px] font-semibold text-ink-900">Samosa plate (2 pcs)</p>
-            <p className="text-[14px]">
-              <span className="font-bold text-leaf-700">₹15</span> <span className="text-ink-500 line-through">₹30</span>
-            </p>
-          </div>
+      <div className="grid h-[320px] grid-cols-[1.35fr_1fr] grid-rows-2 gap-3 sm:h-[440px] sm:gap-4 lg:h-[520px]">
+        <div className="row-span-2 overflow-hidden rounded-[2rem] shadow-lift ring-1 ring-white/10">
+          <Photo photo={PHOTOS.thaliSpread} priority sizes="(min-width: 1024px) 30vw, 58vw" />
         </div>
-        <div className="mt-2.5 flex items-center justify-between rounded-xl bg-sage-50 px-3 py-2 text-[12px]">
-          <span className="flex items-center gap-1.5 font-semibold text-ink-700">
-            <Clock className="size-3.5 text-leaf-600" /> Pickup by 5:30 pm
-          </span>
-          <span className="font-semibold text-leaf-700">4 left</span>
+        <div className="overflow-hidden rounded-[1.6rem] shadow-lift ring-1 ring-white/10">
+          <Photo photo={PHOTOS.masalaDosa} sizes="(min-width: 1024px) 20vw, 38vw" />
+        </div>
+        <div className="overflow-hidden rounded-[1.6rem] shadow-lift ring-1 ring-white/10">
+          <Photo photo={PHOTOS.biryaniBowl} sizes="(min-width: 1024px) 20vw, 38vw" />
         </div>
       </div>
-
-      <div
-        aria-hidden="true"
-        className="absolute top-6 -right-1 animate-float rounded-2xl bg-leaf-900 px-4 py-3 text-white shadow-lift [animation-delay:1.6s] sm:-right-6 sm:top-10"
-      >
-        <p className="flex items-center gap-1.5 text-[10.5px] font-semibold tracking-wider text-leaf-200 uppercase">
-          <Ticket className="size-3.5" /> Pickup code
-        </p>
-        <p className="mt-0.5 font-mono text-lg font-bold tracking-[0.22em] sm:text-xl">K7Q2MX</p>
-      </div>
+      {closing && <ClosingSoonCard listing={closing} />}
     </div>
   );
 }
 
-function Hero() {
+function Hero({ live }: { live: Listing[] }) {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+  const kitchens = new Set(live.map((listing) => listing.provider.id)).size;
+  const bestDeal = live.reduce((best, listing) => Math.max(best, listing.discount_percent), 0);
+  // The soonest deal that still has a few minutes left, so the card doesn't vanish the moment you see it.
+  const closing = [...live].sort(byClosingTime).find((listing) => minutesUntil(listing.reservations_close_at) >= 5);
+  const deals = [...live].sort((a, b) => b.discount_percent - a.discount_percent || byClosingTime(a, b));
+
+  function search(event: FormEvent) {
+    event.preventDefault();
+    navigate(query.trim() ? `/meals?q=${encodeURIComponent(query.trim())}` : "/meals");
+  }
+
   return (
-    <section className="relative overflow-hidden">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute top-[-14rem] right-[-12rem] hidden size-[44rem] rounded-full bg-sage-100/80 lg:block"
-      />
-      <div className="container-page relative grid items-center gap-12 pt-4 pb-20 sm:gap-14 sm:pt-10 lg:grid-cols-[1.02fr_1fr] lg:gap-16 lg:pt-12 lg:pb-24">
+    <section className="relative -mt-[4.25rem] overflow-hidden bg-leaf-900 pt-[4.25rem] text-white">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-48 -right-40 size-[40rem] animate-glow rounded-full bg-saffron-500/25 blur-3xl" />
+        <div className="absolute top-1/3 -left-48 size-[34rem] animate-glow rounded-full bg-leaf-500/35 blur-3xl [animation-delay:-4s]" />
+        <div className="absolute inset-0 bg-[radial-gradient(rgb(255_255_255/0.07)_1px,transparent_1.3px)] [background-size:22px_22px]" />
+      </div>
+
+      <div className="container-page relative grid grid-cols-1 items-center gap-14 pt-8 pb-16 sm:pt-12 lg:grid-cols-[1.05fr_1fr] lg:gap-14 lg:pt-14 lg:pb-20">
         <div className="relative z-10 animate-rise">
-          <p className="inline-flex items-center gap-2 rounded-full border border-sage-200 bg-white/85 py-1.5 pr-3.5 pl-1.5 text-[13px] font-semibold text-leaf-800 shadow-soft backdrop-blur">
-            <span className="grid size-6 place-items-center rounded-full bg-leaf-600 text-white">
-              <Leaf className="size-3.5" aria-hidden="true" />
-            </span>
-            Surplus meals from campus &amp; city kitchens
+          <p className="glass inline-flex items-center gap-2.5 rounded-full py-1.5 pr-4 pl-3 text-[13px] font-semibold">
+            <LiveDot />
+            {live.length > 0 ? `${live.length} meals you can reserve right now` : "Surplus meals from campus & city kitchens"}
           </p>
-          <h1 className="mt-5 text-[2.6rem] leading-[1.03] text-ink-900 sm:mt-6 sm:text-6xl lg:text-[4.25rem]">
-            Good food deserves{" "}
-            <span className="relative inline-block text-leaf-600">
-              another chance.
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 300 14"
-                preserveAspectRatio="none"
-                className="absolute -bottom-2 left-0 h-3 w-full text-saffron-400"
-              >
-                <path d="M2 9c60-6 130-8 296-3" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
-              </svg>
-            </span>
+          <h1 className="mt-6 text-[2.7rem] leading-[1.02] text-white sm:text-6xl lg:text-[4.3rem]">
+            Good food deserves <span className="text-sunrise">another chance.</span>
           </h1>
-          <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-ink-700 sm:mt-7 sm:text-xl">
+          <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-white/80 sm:text-xl">
             Discover delicious surplus meals at lower prices while helping reduce food waste.
           </p>
-          <p className="mt-3 hidden max-w-xl text-[15px] leading-relaxed text-ink-500 sm:block">
-            Reserve from FSSAI-registered canteens, cafeterias, hostel messes and PG kitchens, then collect your meal
-            before the pickup deadline.
-          </p>
-          <div className="mt-7 flex flex-col gap-3 sm:mt-9 sm:flex-row">
-            <Link to="/meals" className="btn-primary btn-lg">
+
+          <form role="search" onSubmit={search} className="mt-8 flex max-w-xl items-center gap-2 rounded-full bg-white p-1.5 pl-5 shadow-lift">
+            <Search className="size-5 shrink-0 text-ink-500" aria-hidden="true" />
+            <label htmlFor="hero-search" className="sr-only">
+              Search meals, kitchens or areas
+            </label>
+            <input
+              id="hero-search"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Try dosa, biryani or chai…"
+              className="min-w-0 flex-1 bg-transparent py-2 text-[15.5px] text-ink-900 outline-none placeholder:text-ink-500"
+            />
+            <button type="submit" className="btn-primary px-6">
+              Search
+            </button>
+          </form>
+
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <Link to="/meals" className="btn-accent btn-lg">
               Explore Meals <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
-            <Link to="/register/kitchen" className="btn-secondary btn-lg">
+            <Link to="/register/kitchen" className="btn btn-lg glass text-white hover:bg-white/20">
               <ChefHat className="size-4" aria-hidden="true" /> Become a Partner
             </Link>
           </div>
-          <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2.5 text-[13.5px] font-medium text-ink-700 sm:mt-10 sm:gap-x-6 sm:text-[14px]">
-            {["FSSAI-verified kitchens", "Allergens on every meal", "Pay at the counter"].map((item) => (
-              <li key={item} className="flex items-center gap-2">
-                <span className="grid size-5 place-items-center rounded-full bg-leaf-100 text-leaf-700">
-                  <Check className="size-3.5" strokeWidth={3} aria-hidden="true" />
-                </span>
-                {item}
-              </li>
-            ))}
-          </ul>
+
+          {live.length > 0 && (
+            <dl className="mt-10 grid max-w-xl grid-cols-3 gap-3">
+              {[
+                { label: "Meals live now", value: live.length, format: String },
+                { label: "Kitchens", value: kitchens, format: String },
+                { label: "Best deal", value: bestDeal, format: (n: number) => `${n}% off` },
+              ].map((stat) => (
+                <div key={stat.label} className="glass flex flex-col-reverse rounded-2xl px-4 py-3">
+                  <dt className="text-[12.5px] text-white/65">{stat.label}</dt>
+                  <dd className="font-display text-xl font-bold whitespace-nowrap sm:text-2xl lg:text-[1.75rem]">
+                    <CountUp value={stat.value} format={stat.format} />
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </div>
-        <HeroVisual />
+        <HeroMosaic closing={closing} />
       </div>
+
+      {deals.length > 0 && (
+        <div className="relative border-t border-white/10 bg-black/10 py-3.5">
+          <div className="container-page flex items-center gap-5">
+            <span className="hidden shrink-0 items-center gap-2 text-[12px] font-bold tracking-[0.14em] text-turmeric-300 uppercase sm:flex">
+              <LiveDot /> Live deals
+            </span>
+            <div className="min-w-0 flex-1">
+              <DealTicker listings={deals} />
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
 
 // ---------------------------------------------------------------------------------------------------------
-// Browse by craving + featured meals (real API data)
+// Live sections: categories, closing soon, today's menu, kitchens (all real API data)
 // ---------------------------------------------------------------------------------------------------------
 
-function Cravings() {
+function Categories({ live }: { live: Listing[] }) {
+  const counts = live.reduce<Partial<Record<MealType, number>>>((all, listing) => {
+    all[listing.meal_type] = (all[listing.meal_type] ?? 0) + 1;
+    return all;
+  }, {});
   return (
-    <section aria-labelledby="cravings-title" className="container-page">
-      <div className="flex items-end justify-between gap-4">
-        <h2 id="cravings-title" className="text-2xl sm:text-[1.75rem]">
-          Browse by meal
-        </h2>
-        <Link to="/meals" className="text-sm font-semibold text-leaf-700 underline-offset-4 hover:underline">
-          See everything
+    <section aria-labelledby="cravings-title" className="container-page pt-16 sm:pt-20">
+      <Reveal className="flex items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow">What are you craving?</p>
+          <h2 id="cravings-title" className="mt-2 text-3xl sm:text-4xl">
+            Browse by meal
+          </h2>
+        </div>
+        <Link to="/menu" className="text-sm font-semibold text-leaf-700 underline-offset-4 hover:underline">
+          Full menu
         </Link>
-      </div>
-      <ul className="mt-6 grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-6 sm:gap-5">
-        {CATEGORY_PHOTOS.map((category) => (
-          <li key={category.mealType}>
+      </Reveal>
+      <ul className="mt-8 grid grid-cols-3 gap-x-3 gap-y-7 sm:grid-cols-6 sm:gap-5">
+        {CATEGORY_PHOTOS.map((category, index) => (
+          <Reveal as="li" key={category.mealType} delay={index * 70}>
             <Link to={`/meals?meal=${category.mealType}`} className="group flex flex-col items-center gap-3 rounded-2xl text-center">
-              <span className="block aspect-square w-full max-w-[148px] overflow-hidden rounded-full shadow-soft ring-4 ring-white transition duration-300 group-hover:-translate-y-1 group-hover:shadow-lift">
-                <Photo photo={category.photo} sizes="(min-width: 640px) 148px, 30vw" className="transition duration-700 group-hover:scale-110" />
+              <span className="relative block aspect-square w-full max-w-[150px] overflow-hidden rounded-full shadow-soft ring-4 ring-white transition duration-300 group-hover:-translate-y-1 group-hover:shadow-lift group-hover:ring-leaf-100">
+                <Photo photo={category.photo} sizes="(min-width: 640px) 150px, 30vw" className="transition duration-700 group-hover:scale-110" />
               </span>
-              <span className="text-[13.5px] font-semibold text-ink-700 group-hover:text-leaf-700 sm:text-[14.5px]">
-                {category.label}
+              <span>
+                <span className="block text-[14px] font-semibold text-ink-900 group-hover:text-leaf-700 sm:text-[15px]">
+                  {category.label}
+                </span>
+                <span className="text-[12.5px] text-ink-500">
+                  {counts[category.mealType] ? `${counts[category.mealType]} available` : "None right now"}
+                </span>
               </span>
             </Link>
-          </li>
+          </Reveal>
         ))}
       </ul>
     </section>
@@ -174,7 +231,7 @@ function Cravings() {
 
 function EmptyMeals() {
   return (
-    <div className="card grid items-center gap-8 overflow-hidden p-6 sm:p-10 md:grid-cols-[1fr_1.2fr]">
+    <div className="card grid grid-cols-1 items-center gap-8 overflow-hidden p-6 sm:p-10 md:grid-cols-[1fr_1.2fr]">
       <div className="relative mx-auto h-40 w-64" aria-hidden="true">
         {[PHOTOS.masalaChai, PHOTOS.idliVada, PHOTOS.biryaniPan].map((item, index) => (
           <div
@@ -196,8 +253,8 @@ function EmptyMeals() {
           <Link to="/register" className="btn-primary">
             Create free account
           </Link>
-          <Link to="/meals" className="btn-secondary">
-            Explore meals
+          <Link to="/kitchens" className="btn-secondary">
+            See the kitchens
           </Link>
         </div>
       </div>
@@ -205,25 +262,27 @@ function EmptyMeals() {
   );
 }
 
-function FeaturedMeals() {
-  const { data, isLoading, isError, error, refetch } = useListings({ limit: 6, sort: "ending_soon" });
-  const hasSample = data?.items.some((listing) => listing.provider.is_sample);
+function ClosingSoon({ live, isLoading, error, retry }: { live: Listing[]; isLoading: boolean; error: unknown; retry: () => void }) {
+  const soonest = [...live].sort(byClosingTime).slice(0, 10);
+  const hasSample = soonest.some((listing) => listing.provider.is_sample);
   return (
-    <section aria-labelledby="featured-title" className="container-page mt-20 sm:mt-24">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <section aria-labelledby="closing-title" className="container-page pt-20 sm:pt-24">
+      <Reveal className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">Available now</p>
-          <h2 id="featured-title" className="mt-2 text-3xl sm:text-4xl">
-            Fresh surplus near you
+          <p className="eyebrow flex items-center gap-2">
+            <LiveDot /> Closing soon
+          </p>
+          <h2 id="closing-title" className="mt-2 text-3xl sm:text-4xl">
+            Grab it before it's gone
           </h2>
           <p className="mt-2 max-w-xl text-[15px] text-ink-600">
-            Live listings from approved kitchens, closing soonest first. Prices are set by each kitchen.
+            Live from approved kitchens, soonest first. Portions and timers update on their own.
           </p>
         </div>
         <Link to="/meals" className="btn-secondary">
           Explore all meals <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
-      </div>
+      </Reveal>
       {hasSample && (
         <Notice tone="info" className="mt-6">
           These are <strong>sample listings</strong> for demonstration. The kitchens, meals and prices aren't real.
@@ -231,26 +290,142 @@ function FeaturedMeals() {
       )}
       <div className="mt-8">
         {isLoading ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2].map((key) => (
               <ListingCardSkeleton key={key} />
             ))}
           </div>
-        ) : isError ? (
+        ) : error ? (
           <div className="card">
-            <ErrorState error={error} onRetry={() => refetch()} />
+            <ErrorState error={error} onRetry={retry} />
           </div>
-        ) : !data || data.items.length === 0 ? (
+        ) : soonest.length === 0 ? (
           <EmptyMeals />
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {data.items.map((listing, index) => (
-              <div key={listing.id} className={index >= 3 ? "hidden sm:contents" : "contents"}>
+          <Rail label="Meals closing soon">
+            {soonest.map((listing, index) => (
+              <div key={listing.id} className="flex w-[285px] shrink-0 snap-start sm:w-[320px] [&>a]:w-full">
                 <ListingCard listing={listing} index={index} />
               </div>
             ))}
-          </div>
+          </Rail>
         )}
+      </div>
+    </section>
+  );
+}
+
+function MenuPreview({ live }: { live: Listing[] }) {
+  if (live.length === 0) return null;
+  // A little of everything: take dishes from each meal type in turn, cheapest first.
+  const byType = new Map<MealType, Listing[]>();
+  for (const listing of [...live].sort((a, b) => a.price_paise - b.price_paise)) {
+    byType.set(listing.meal_type, [...(byType.get(listing.meal_type) ?? []), listing]);
+  }
+  const picks: Listing[] = [];
+  for (let round = 0; picks.length < 8 && round < 8; round++) {
+    for (const list of byType.values()) if (list[round] && picks.length < 8) picks.push(list[round]);
+  }
+  const cheapest = Math.min(...live.map((listing) => listing.price_paise));
+  return (
+    <section aria-labelledby="menu-title" className="container-page pt-20 sm:pt-24">
+      <Reveal className="overflow-hidden rounded-[2rem] border border-line/80 bg-white/80 shadow-soft backdrop-blur">
+        <div className="grid grid-cols-1 lg:grid-cols-[0.8fr_1.6fr]">
+          <div className="relative flex flex-col justify-between gap-8 bg-sage-100/70 p-8 sm:p-10">
+            <div>
+              <p className="eyebrow">Today's menu</p>
+              <h2 id="menu-title" className="mt-2 text-3xl sm:text-4xl">
+                Every dish, every price.
+              </h2>
+              <p className="mt-3 text-[15px] leading-relaxed text-ink-600">
+                {live.length} dishes from approved kitchens right now, starting at {formatRupees(cheapest)}. Prices are
+                set by each kitchen and you pay at the counter.
+              </p>
+            </div>
+            <div className="hidden gap-3 lg:flex" aria-hidden="true">
+              {[PHOTOS.vadaPav, PHOTOS.poha, PHOTOS.lassi].map((photo) => (
+                <div key={photo.slug} className="size-20 overflow-hidden rounded-2xl shadow-soft ring-4 ring-white">
+                  <Photo photo={photo} sizes="80px" alt="" />
+                </div>
+              ))}
+            </div>
+            <Link to="/menu" className="btn-primary self-start">
+              See the full menu <ArrowRight className="size-4" aria-hidden="true" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-x-6 gap-y-1 p-4 sm:p-6 md:grid-cols-2">
+            {picks.map((listing) => (
+              <MenuRow key={listing.id} listing={listing} />
+            ))}
+          </div>
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+function Kitchens({ live }: { live: Listing[] }) {
+  const { data: kitchens, isLoading } = useKitchens();
+  if (!isLoading && !kitchens?.length) return null;
+  return (
+    <section aria-labelledby="kitchens-title" className="container-page pt-20 sm:pt-24">
+      <Reveal className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow">Kitchens on FoodLoop</p>
+          <h2 id="kitchens-title" className="mt-2 text-3xl sm:text-4xl">
+            Cooked by kitchens you can trust
+          </h2>
+          <p className="mt-2 max-w-xl text-[15px] text-ink-600">Every kitchen here is FSSAI-registered and approved by FoodLoop.</p>
+        </div>
+        <Link to="/kitchens" className="btn-secondary">
+          All kitchens <ArrowRight className="size-4" aria-hidden="true" />
+        </Link>
+      </Reveal>
+      <div className="mt-8">
+        {isLoading ? (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((key) => (
+              <Skeleton key={key} className="h-80 rounded-[1.25rem]" />
+            ))}
+          </div>
+        ) : (
+          <Rail label="Kitchens">
+            {kitchens!.map((kitchen) => (
+              <div key={kitchen.id} className="flex w-[285px] shrink-0 snap-start sm:w-[340px] [&>a]:w-full">
+                <KitchenCard kitchen={kitchen} dishes={live.filter((listing) => listing.provider.slug === kitchen.slug)} />
+              </div>
+            ))}
+          </Rail>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function FaqPreview() {
+  return (
+    <section aria-labelledby="faq-title" className="container-page pt-20 sm:pt-24">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+        <Reveal>
+          <p className="eyebrow">Questions</p>
+          <h2 id="faq-title" className="mt-2 text-3xl sm:text-4xl">
+            Good to know
+          </h2>
+          <p className="mt-3 max-w-md text-[15px] leading-relaxed text-ink-600">
+            How paying, pickups and safety work. Can't find your answer? We're happy to help.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/faq" className="btn-secondary">
+              All questions
+            </Link>
+            <Link to="/contact" className="btn-ghost">
+              Contact us
+            </Link>
+          </div>
+        </Reveal>
+        <Reveal delay={100}>
+          <FaqList items={FAQ[0].items.slice(0, 4)} />
+        </Reveal>
       </div>
     </section>
   );
@@ -306,7 +481,7 @@ const STEPS = [
 
 function HowItWorks() {
   return (
-    <section id="how-it-works" className="mt-24 scroll-mt-24 border-y border-line/70 bg-white">
+    <section id="how-it-works" className="mt-24 scroll-mt-24 border-y border-line/70 bg-white/85 backdrop-blur">
       <div className="container-page py-20 lg:py-24">
         <div className="mx-auto max-w-2xl text-center">
           <p className="eyebrow">How it works</p>
@@ -315,7 +490,7 @@ function HowItWorks() {
             No delivery fees, no waiting around. Just good food collected straight from the kitchen.
           </p>
         </div>
-        <ol className="mt-14 grid gap-6 md:grid-cols-3">
+        <ol className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
           {STEPS.map((step, index) => (
             <li
               key={step.title}
@@ -369,7 +544,7 @@ const SAFETY = [
 function Safety() {
   return (
     <section id="safety" className="container-page scroll-mt-24 py-20 lg:py-24">
-      <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
         <div>
           <p className="eyebrow">Safety, built in</p>
           <h2 className="mt-3 text-3xl sm:text-[2.6rem] sm:leading-tight">Cheaper never means riskier.</h2>
@@ -384,7 +559,7 @@ function Safety() {
             </p>
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {SAFETY.map((item) => (
             <div key={item.title} className="card p-6 transition duration-300 hover:-translate-y-0.5 hover:shadow-lift">
               <div className="grid size-11 place-items-center rounded-2xl bg-leaf-50 text-leaf-700">
@@ -403,7 +578,7 @@ function Safety() {
 function Sustainability() {
   return (
     <section id="impact" className="scroll-mt-24 bg-sage-100/70">
-      <div className="container-page grid gap-12 py-20 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:gap-16 lg:py-24">
+      <div className="container-page grid grid-cols-1 gap-12 py-20 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:gap-16 lg:py-24">
         <figure className="relative mx-auto w-full max-w-md lg:max-w-none">
           <div className="aspect-[4/5] overflow-hidden rounded-[2rem] shadow-lift sm:aspect-[5/6]">
             <Photo photo={PHOTOS.foodWaste} sizes="(min-width: 1024px) 40vw, 90vw" />
@@ -420,7 +595,7 @@ function Sustainability() {
             is often still safe and delicious, but there's no simple way to offer it to people nearby before it
             has to be thrown away. FoodLoop is that simple way.
           </p>
-          <dl className="mt-8 grid gap-4 sm:grid-cols-2">
+          <dl className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-2xl bg-white p-5 shadow-soft">
               <dt className="text-[14px] leading-snug text-ink-600">Food wasted worldwide in 2022</dt>
               <dd className="font-display mt-1.5 text-[1.9rem] leading-tight font-bold text-leaf-700">1.05 billion tonnes</dd>
@@ -466,7 +641,7 @@ function Providers() {
   return (
     <section id="providers" className="container-page scroll-mt-24 py-20 lg:py-24">
       <div className="relative overflow-hidden rounded-[2.5rem] bg-leaf-900 text-white shadow-lift">
-        <div className="grid lg:grid-cols-[1fr_1.1fr]">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.1fr]">
           <div className="relative min-h-72 sm:min-h-96 lg:min-h-full">
             <Photo photo={PHOTOS.canteenServing} sizes="(min-width: 1024px) 46vw, 100vw" className="absolute inset-0" />
             <div className="absolute inset-0 bg-gradient-to-t from-leaf-900/70 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-leaf-900/40" />
@@ -485,7 +660,7 @@ function Providers() {
               FoodLoop gives your kitchen a simple way to offer safe, unsold food to students and staff nearby,
               without changing how you cook or take payment.
             </p>
-            <ul className="mt-8 grid gap-5 sm:grid-cols-2">
+            <ul className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
               {PROVIDER_BENEFITS.map((benefit) => (
                 <li key={benefit.title} className="flex gap-3">
                   <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/10 text-turmeric-300 ring-1 ring-white/15">
@@ -515,8 +690,8 @@ function Providers() {
 
 function ClosingCta() {
   return (
-    <section className="container-page">
-      <div className="card grid items-center gap-8 overflow-hidden p-8 sm:p-12 lg:grid-cols-[1.4fr_1fr]">
+    <section className="container-page pt-20 sm:pt-24">
+      <div className="card grid grid-cols-1 items-center gap-8 overflow-hidden p-8 sm:p-12 lg:grid-cols-[1.4fr_1fr]">
         <div>
           <h2 className="text-3xl sm:text-4xl">Hungry? See what's available nearby.</h2>
           <p className="mt-3 max-w-xl text-[16px] text-ink-600">
@@ -548,15 +723,20 @@ function ClosingCta() {
 }
 
 export function LandingPage() {
+  const { data, isLoading, error, refetch } = useAllListings();
+  const live = (data ?? []).filter((listing) => listing.availability === "available");
   return (
     <>
-      <Hero />
-      <Cravings />
-      <FeaturedMeals />
+      <Hero live={live} />
+      <Categories live={live} />
+      <ClosingSoon live={live} isLoading={isLoading} error={error} retry={() => refetch()} />
+      <MenuPreview live={live} />
       <HowItWorks />
+      <Kitchens live={live} />
       <Safety />
       <Sustainability />
       <Providers />
+      <FaqPreview />
       <ClosingCta />
     </>
   );

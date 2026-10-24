@@ -4,6 +4,7 @@ Run in development:  uvicorn app.main:app --reload   (from the backend folder)
 Interactive API docs: http://localhost:8000/docs
 """
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -11,9 +12,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import admin, auth, listings, meta, provider, reservations
+from app.api import admin, auth, listings, meta, provider, public, reservations
 from app.config import get_settings
+from app.db import SessionLocal
 from app.errors import install_error_handlers
+from app.services.samples import start_sample_refresher
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
@@ -24,9 +27,21 @@ CONTENT_SECURITY_POLICY = (
 )
 
 
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    settings = get_settings()
+    stop = None
+    if settings.app_env == "development" and settings.sample_auto_refresh:
+        stop = start_sample_refresher(SessionLocal)
+    yield
+    if stop:
+        stop.set()
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
+        lifespan=lifespan,
         title="FoodLoop API",
         version="0.1.0",
         description="Good food. Less waste. Surplus meals from approved kitchens, reserved and collected safely.",
@@ -62,7 +77,7 @@ def create_app() -> FastAPI:
             response.headers.setdefault("Content-Security-Policy", CONTENT_SECURITY_POLICY)
         return response
 
-    for module in (meta, auth, listings, reservations, provider, admin):
+    for module in (meta, auth, listings, public, reservations, provider, admin):
         app.include_router(module.router)
 
     settings.media_dir.mkdir(parents=True, exist_ok=True)

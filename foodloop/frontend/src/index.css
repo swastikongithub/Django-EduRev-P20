@@ -58,6 +58,9 @@
   --animate-fade: fade 0.5s ease-out both;
   --animate-shimmer: shimmer 1.4s ease-in-out infinite;
   --animate-float: float 7s ease-in-out infinite;
+  --animate-marquee: marquee 50s linear infinite;
+  --animate-ping-soft: ping-soft 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-glow: glow 9s ease-in-out infinite alternate;
 
   @keyframes rise {
     from {
@@ -85,6 +88,29 @@
       background-position: 480px 0;
     }
   }
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  @keyframes ping-soft {
+    75%,
+    100% {
+      transform: scale(2.4);
+      opacity: 0;
+    }
+  }
+  @keyframes glow {
+    from {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+      transform: translate3d(-4%, 6%, 0) scale(1.12);
+    }
+  }
   @keyframes float {
     0%,
     100% {
@@ -99,17 +125,24 @@
 @layer base {
   html {
     color-scheme: light;
-    background: var(--color-cream-100);
+    background: var(--color-cream-50);
     color: var(--color-ink-900);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     scroll-behavior: smooth;
   }
+  /* A bright, warm page with soft saffron and green glows and a fine dot texture. */
   body {
     font-family: var(--font-sans);
     font-feature-settings: "cv11", "ss01";
-    background: var(--color-cream-100);
+    background:
+      radial-gradient(60rem 38rem at 108% -8%, rgb(240 138 62 / 0.11), transparent 62%),
+      radial-gradient(52rem 36rem at -12% 38%, rgb(46 127 82 / 0.09), transparent 60%),
+      radial-gradient(48rem 30rem at 60% 108%, rgb(237 185 63 / 0.1), transparent 60%),
+      radial-gradient(rgb(20 29 24 / 0.05) 1px, transparent 1.3px) 0 0 / 22px 22px,
+      var(--color-cream-50);
+    background-attachment: fixed;
     min-height: 100dvh;
   }
   h1,
@@ -219,4 +252,19 @@
 
 @utility container-page {
   @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+}
+
+/* Frosted panel for use on the dark green hero and bands. */
+@utility glass {
+  @apply bg-white/10 ring-1 ring-white/15 backdrop-blur-md;
+}
+
+/* Warm orange-to-turmeric text, for one highlighted phrase per section at most. */
+@utility text-sunrise {
+  @apply bg-gradient-to-r from-saffron-400 via-turmeric-400 to-turmeric-300 bg-clip-text text-transparent;
+}
+
+/* Horizontal scrolling rows (carousels) without a visible scrollbar. */
+@utility rail {
+  @apply flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
 }

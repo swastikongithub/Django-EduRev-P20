@@ -6,8 +6,11 @@ import { api, toQuery } from "./client";
 import type {
   AdminKitchen,
   AdminOverview,
+  ContactMessage,
   CustomerReservation,
   Kitchen,
+  KitchenCard,
+  KitchenDetail,
   Listing,
   Me,
   Meta,
@@ -29,6 +32,8 @@ export const keys = {
   kitchenReservations: (scope: string) => ["kitchen", "reservations", scope] as const,
   kitchenStats: ["kitchen", "stats"] as const,
   admin: ["admin"] as const,
+  kitchens: ["kitchens"] as const,
+  publicKitchen: (slug: string) => ["kitchens", slug] as const,
 };
 
 export function useMe() {
@@ -41,6 +46,7 @@ export function useMeta() {
 
 export interface BrowseParams {
   q?: string;
+  kitchen?: string;
   meal_type?: string[];
   diet?: string[];
   exclude_allergen?: string[];
@@ -55,8 +61,35 @@ export function useListings(params: BrowseParams) {
     queryKey: keys.listings(params),
     queryFn: ({ signal }) => api<Page<Listing>>(`/listings${toQuery({ ...params })}`, { signal }),
     placeholderData: keepPreviousData,
-    refetchInterval: 60_000, // quantities and countdowns stay fresh
+    refetchInterval: 30_000, // quantities and countdowns stay fresh
   });
+}
+
+const PAGE = 60; // the API's largest page
+
+/** Every meal on offer right now (all pages), for the full menu and live numbers. Refreshes every 30 s. */
+export function useAllListings(params: Omit<BrowseParams, "limit"> = {}) {
+  return useQuery({
+    queryKey: ["listings", "all", params],
+    queryFn: async ({ signal }) => {
+      const items: Listing[] = [];
+      for (let offset = 0; offset < 600; offset += PAGE) {
+        const page = await api<Page<Listing>>(`/listings${toQuery({ ...params, limit: PAGE, offset })}`, { signal });
+        items.push(...page.items);
+        if (items.length >= page.total || page.items.length === 0) break;
+      }
+      return items;
+    },
+    refetchInterval: 30_000,
+  });
+}
+
+export function useKitchens() {
+  return useQuery({ queryKey: keys.kitchens, queryFn: () => api<KitchenCard[]>("/kitchens"), refetchInterval: 60_000 });
+}
+
+export function useKitchenProfile(slug: string) {
+  return useQuery({ queryKey: keys.publicKitchen(slug), queryFn: () => api<KitchenDetail>(`/kitchens/${slug}`) });
 }
 
 export function useListing(id: string) {
@@ -128,5 +161,12 @@ export function useAdminListings(status: string, q: string) {
     queryKey: [...keys.admin, "listings", status, q],
     queryFn: () => api<Page<ProviderListing>>(`/admin/listings${toQuery({ status, q, limit: 100 })}`),
     placeholderData: keepPreviousData,
+  });
+}
+
+export function useAdminMessages(status: "open" | "all") {
+  return useQuery({
+    queryKey: [...keys.admin, "messages", status],
+    queryFn: () => api<ContactMessage[]>(`/admin/messages?status=${status}`),
   });
 }

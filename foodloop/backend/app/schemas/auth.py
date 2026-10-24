@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from typing import Annotated
 
-from pydantic import BaseModel, EmailStr, StringConstraints, field_validator
+from pydantic import AfterValidator, BaseModel, EmailStr, StringConstraints, field_validator
 
 from app.clock import today_ist
 from app.models.enums import FssaiKind, ProviderKind, ProviderStatus, UserRole
@@ -17,9 +17,18 @@ _COMMON_PASSWORDS = {
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=100)]
 
 
+def _hard_to_guess(value: str) -> str:
+    if value.lower() in _COMMON_PASSWORDS or len(set(value)) < 4:
+        raise ValueError("This password is too easy to guess. Try a short phrase you'll remember.")
+    return value
+
+
+NewPassword = Annotated[str, StringConstraints(min_length=8, max_length=128), AfterValidator(_hard_to_guess)]
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: Annotated[str, StringConstraints(min_length=8, max_length=128)]
+    password: NewPassword
     full_name: Name
     phone: Phone | None = None
 
@@ -28,12 +37,20 @@ class RegisterRequest(BaseModel):
     def lowercase_email(cls, value: str) -> str:
         return value.lower()
 
-    @field_validator("password")
+
+class ProfileUpdate(BaseModel):
+    full_name: Name
+    phone: Phone | None = None
+
+    @field_validator("phone", mode="before")
     @classmethod
-    def not_common(cls, value: str) -> str:
-        if value.lower() in _COMMON_PASSWORDS or len(set(value)) < 4:
-            raise ValueError("This password is too easy to guess. Try a short phrase you'll remember.")
-        return value
+    def blank_phone_is_none(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
+
+class PasswordChange(BaseModel):
+    current_password: Annotated[str, StringConstraints(min_length=1, max_length=128)]
+    new_password: NewPassword
 
 
 class LoginRequest(BaseModel):

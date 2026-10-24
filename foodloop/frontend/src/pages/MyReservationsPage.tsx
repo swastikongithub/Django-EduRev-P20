@@ -73,7 +73,7 @@ function ActiveReservation({ reservation, now }: { reservation: CustomerReservat
   const soon = minutesUntil(reservation.pickup_deadline, now) <= 20;
   return (
     <article className="card animate-rise overflow-hidden">
-      <div className="grid sm:grid-cols-[220px_1fr]">
+      <div className="grid grid-cols-1 sm:grid-cols-[220px_1fr]">
         <div className="relative aspect-[16/9] bg-cream-200 sm:aspect-auto">
           <MealImage imageUrl={reservation.listing.image_url} mealType={reservation.listing.meal_type} title={reservation.listing.title} seed={reservation.listing.id} alt={reservation.listing.title} sizes="220px" />
           {reservation.provider.is_sample && <SampleBadge className="absolute top-3 left-3" />}

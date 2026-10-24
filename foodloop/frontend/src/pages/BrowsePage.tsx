@@ -109,7 +109,7 @@ export function BrowsePage() {
   const hasSample = data?.items.some((listing) => listing.provider.is_sample);
 
   const filterPanel = (
-    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
       <FilterGroup label="Price">
         <button type="button" className="chip" aria-pressed={!max} onClick={() => update({ max: null })}>
           Any price
@@ -278,7 +278,7 @@ export function BrowsePage() {
 
         <div className="mt-6">
           {isLoading ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {[0, 1, 2, 3, 4, 5].map((key) => (
                 <ListingCardSkeleton key={key} />
               ))}
@@ -288,7 +288,7 @@ export function BrowsePage() {
               <ErrorState error={error} onRetry={() => refetch()} />
             </div>
           ) : data && data.items.length > 0 ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {data.items.map((listing, index) => (
                 <ListingCard key={listing.id} listing={listing} index={index} />
               ))}

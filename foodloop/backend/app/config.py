@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     max_safe_hours_refrigerated: float = 24
     max_safe_hours_shelf_stable: float = 48
 
+    # Development only: keep the sample kitchens' dishes listed, so a local copy always has food on it.
+    # Has no effect in production, and only after `python -m app.cli seed-sample` has been run once.
+    sample_auto_refresh: bool = True
+
     login_attempts_per_window: int = 10
     login_window_minutes: int = 15
 

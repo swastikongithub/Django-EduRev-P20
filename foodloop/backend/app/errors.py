@@ -3,11 +3,15 @@
 Business errors:   {"detail": "Only 2 portions left."}
 Validation errors: {"detail": "Please check the highlighted fields.",
                     "errors": [{"field": "price_paise", "message": "..."}]}
+Database down:     {"detail": "...", "code": "database_unavailable"} with status 503
 """
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import InterfaceError, OperationalError
+
+from app.config import get_settings
 
 
 class DomainError(Exception):
@@ -54,3 +58,18 @@ def install_error_handlers(app: FastAPI) -> None:
             status_code=422,
             content={"detail": "Please check the highlighted fields.", "errors": errors},
         )
+
+    @app.exception_handler(OperationalError)
+    @app.exception_handler(InterfaceError)
+    async def database_error_handler(_: Request, exc: OperationalError | InterfaceError) -> JSONResponse:
+        # Connection failures carry no SQLSTATE; real query errors (deadlocks etc.) do.
+        if getattr(exc.orig, "sqlstate", None) is None:
+            if get_settings().app_env == "production":
+                detail = "FoodLoop is having trouble right now. Please try again in a minute."
+            else:
+                detail = (
+                    "The FoodLoop database isn't reachable. Start PostgreSQL (open Docker Desktop, then run "
+                    "`docker compose up -d` in the project folder) and the page will reconnect."
+                )
+            return JSONResponse(status_code=503, content={"detail": detail, "code": "database_unavailable"})
+        return JSONResponse(status_code=500, content={"detail": "Something went wrong on our side. Please try again."})

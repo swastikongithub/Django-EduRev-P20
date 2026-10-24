@@ -70,9 +70,37 @@ plain message instead of empty bars when nothing has been listed yet.
 **Phones:** on a meal page the order is photo → name, price and Reserve → food details. A bottom bar with the
 price and a Reserve button appears once the reserve panel scrolls out of view.
 
+## Backgrounds
+
+- **Page:** a bright warm white (`cream-50`) with soft saffron, green and turmeric glows and a fine dot
+  texture, fixed behind the content (`body` in `index.css`).
+- **Dark green bands** (`leaf-900`) for the home hero, Menu, Kitchen and About headers: the same glows and a
+  white dot texture. On the home page the header floats over the hero with light text until you scroll.
+- **Sage bands** (`sage-50`, via `PageHeader`) for dashboards, forms, FAQ and Contact.
+- Utilities: `glass` (frosted panel on dark green), `text-sunrise` (orange-to-turmeric text, one phrase per
+  section at most) and `rail` (horizontal swipeable rows).
+
+## Live and moving parts (`src/components/Live.tsx`)
+
+| Piece | Use |
+|---|---|
+| `Countdown` | “Closes in 24:13”, ticking every second in the last hour, orange in the last 30 minutes |
+| `CountUp` | real numbers counting up once when they scroll into view |
+| `Reveal` | sections rising gently into place the first time they're seen |
+| `LiveDot` | a pulsing green dot next to anything that updates by itself |
+| `DealTicker` | an endless, hover-to-pause ticker of current deals on the dark hero |
+| `Rail` | swipeable rows (closing soon, kitchens) with arrow buttons on desktop |
+| `ConnectionBanner` | says whether the server or the database is down, and reconnects by itself |
+
+Everything shows real API data only, and all motion stops for people who prefer reduced motion.
+
+**Layout rule:** every responsive grid starts with `grid-cols-1`, so long text can never push a phone
+layout sideways (a grid without it sizes its column to the content).
+
 ## Photography (`src/lib/photos.ts`, `src/components/Photo.tsx`)
 
-- Real food photos from Adobe Stock, stored as WebP at 480/800/1200 px (the hero also has 1600 px). They
+- 41 real food photos from Adobe Stock (none AI-generated), stored as WebP at 480/800/1200 px (the hero
+  also has 1600 px). They
   are served with `srcset`/`sizes`, lazy-loaded below the fold, and the hero has `fetchpriority="high"`.
 - A meal without its own photo gets a representative photo matched by its name (biryani → biryani), or
   else by meal type. It is always labelled **“Representative image”**. A kitchen's own upload always wins.

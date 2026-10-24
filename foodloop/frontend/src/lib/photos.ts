@@ -1,7 +1,7 @@
 // Food photography catalogue. Files live in public/photos as `${slug}-${width}.webp` (Adobe Stock, see
 // docs/image-credits.md). They are not in Git, so every photo has an illustration fallback.
 
-import type { MealType } from "../api/types";
+import type { Listing, MealType } from "../api/types";
 import { MEAL_ILLUSTRATIONS } from "./meals";
 
 export interface Photo {
@@ -42,6 +42,29 @@ export const PHOTOS = {
   chefKitchen: photo("chef-kitchen", "Chefs cooking in a busy commercial kitchen", MEAL_ILLUSTRATIONS.dinner),
   takeawayBag: photo("takeaway-bag", "Takeaway food boxes next to a paper carry bag", MEAL_ILLUSTRATIONS.lunch),
   foodWaste: photo("food-waste", "Food scraps being scraped into a kitchen bin", MEAL_ILLUSTRATIONS.lunch, [480, 800]),
+  masalaDosa: photo("masala-dosa", "Masala dosa on a banana leaf with sambar and chutneys", MEAL_ILLUSTRATIONS.breakfast),
+  poha: photo("poha", "A bowl of poha with peanuts and coriander", MEAL_ILLUSTRATIONS.breakfast),
+  upma: photo("upma", "Vegetable rava upma served on a leaf", MEAL_ILLUSTRATIONS.breakfast),
+  alooParatha: photo("aloo-paratha", "Aloo paratha with a bowl of curd", MEAL_ILLUSTRATIONS.breakfast),
+  rajmaChawal: photo("rajma-chawal", "Rajma curry with rice, onions and cucumber", MEAL_ILLUSTRATIONS.lunch),
+  choleBhature: photo("chole-bhature", "Chole bhature with onions and pickle", MEAL_ILLUSTRATIONS.lunch),
+  paneerMasala: photo("paneer-masala", "Paneer butter masala in a black serving dish", MEAL_ILLUSTRATIONS.dinner),
+  curdRice: photo("curd-rice", "A bowl of South Indian curd rice", MEAL_ILLUSTRATIONS.lunch),
+  dalMakhani: photo("dal-makhani", "Dal makhani with rice and flatbread", MEAL_ILLUSTRATIONS.dinner),
+  chickenCurry: photo("chicken-curry", "Chicken curry with naan", MEAL_ILLUSTRATIONS.dinner),
+  eggCurry: photo("egg-curry", "Egg curry in a white bowl", MEAL_ILLUSTRATIONS.dinner),
+  hakkaNoodles: photo("hakka-noodles", "Vegetable hakka noodles in a bowl", MEAL_ILLUSTRATIONS.snacks),
+  momos: photo("momos", "Steamed momos with red chilli chutney", MEAL_ILLUSTRATIONS.snacks),
+  vadaPav: photo("vada-pav", "Vada pav with fried green chilli", MEAL_ILLUSTRATIONS.snacks),
+  pavBhaji: photo("pav-bhaji", "Pav bhaji with buttered pav and lemon", MEAL_ILLUSTRATIONS.snacks),
+  sandwich: photo("sandwich", "A stack of grilled sandwiches", MEAL_ILLUSTRATIONS.snacks),
+  gulabJamun: photo("gulab-jamun", "Gulab jamun on a dark plate", MEAL_ILLUSTRATIONS.snacks),
+  fruitBowl: photo("fruit-bowl", "A bowl of freshly cut mixed fruit", MEAL_ILLUSTRATIONS.breakfast),
+  brownies: photo("brownies", "Chocolate brownies on a white plate", MEAL_ILLUSTRATIONS.bakery),
+  filterCoffee: photo("filter-coffee", "South Indian filter coffee on roasted coffee beans", MEAL_ILLUSTRATIONS.beverages),
+  coldCoffee: photo("cold-coffee", "A tall glass of iced coffee with milk", MEAL_ILLUSTRATIONS.beverages),
+  lassi: photo("lassi", "Sweet lassi topped with nuts in a brass glass", MEAL_ILLUSTRATIONS.beverages),
+  limeSoda: photo("lime-soda", "Fresh lime soda with mint and ice", MEAL_ILLUSTRATIONS.beverages),
 } satisfies Record<string, Photo>;
 
 export function photoSrc(item: Photo, width = item.widths[1] ?? item.widths[0]): string {
@@ -53,25 +76,50 @@ export function photoSrcSet(item: Photo): string {
 }
 
 const BY_MEAL: Record<MealType, Photo[]> = {
-  breakfast: [PHOTOS.idliVada, PHOTOS.idliTop],
-  lunch: [PHOTOS.steelThali, PHOTOS.lunchTray],
-  snacks: [PHOTOS.samosa, PHOTOS.vegWrap],
-  dinner: [PHOTOS.biryaniPan, PHOTOS.biryaniBowl],
-  bakery: [PHOTOS.croissants, PHOTOS.breadBuns],
-  beverages: [PHOTOS.masalaChai, PHOTOS.chaiPour],
+  breakfast: [PHOTOS.idliVada, PHOTOS.masalaDosa, PHOTOS.poha, PHOTOS.alooParatha],
+  lunch: [PHOTOS.steelThali, PHOTOS.lunchTray, PHOTOS.rajmaChawal, PHOTOS.choleBhature],
+  snacks: [PHOTOS.samosa, PHOTOS.vadaPav, PHOTOS.momos, PHOTOS.pavBhaji],
+  dinner: [PHOTOS.biryaniPan, PHOTOS.dalMakhani, PHOTOS.chickenCurry, PHOTOS.paneerMasala],
+  bakery: [PHOTOS.croissants, PHOTOS.breadBuns, PHOTOS.brownies],
+  beverages: [PHOTOS.masalaChai, PHOTOS.chaiPour, PHOTOS.coldCoffee, PHOTOS.lassi],
 };
 
 // The meal's name says more than its category: "Chicken biryani" listed under lunch should look like biryani.
+// Order matters: the first match wins, so specific dishes come before general words.
 const KEYWORDS: [RegExp, Photo][] = [
-  [/biryani|pulao|fried rice/i, PHOTOS.biryaniPan],
-  [/thali|dal|rajma|chawal|curry rice|meals?\b/i, PHOTOS.steelThali],
-  [/idli|idly|vada|dosa|uttapam|upma|sambar/i, PHOTOS.idliVada],
+  [/vada ?pav|wada ?pav/i, PHOTOS.vadaPav],
+  [/pav ?bhaji/i, PHOTOS.pavBhaji],
+  [/dosa|uttapam/i, PHOTOS.masalaDosa],
+  [/idli|idly|vada|sambar/i, PHOTOS.idliVada],
+  [/poha/i, PHOTOS.poha],
+  [/upma/i, PHOTOS.upma],
+  [/paratha/i, PHOTOS.alooParatha],
+  [/sandwich|toast/i, PHOTOS.sandwich],
+  [/chicken biryani|mutton biryani/i, PHOTOS.biryaniBowl],
+  [/biryani|pulao/i, PHOTOS.biryaniPan],
+  [/chole|chana|bhature/i, PHOTOS.choleBhature],
+  [/rajma/i, PHOTOS.rajmaChawal],
+  [/curd rice|dahi chawal/i, PHOTOS.curdRice],
+  [/dal makhani|dinner thali/i, PHOTOS.dalMakhani],
+  [/paneer|butter masala|shahi/i, PHOTOS.paneerMasala],
+  [/egg curry|anda|egg masala/i, PHOTOS.eggCurry],
+  [/chicken|mutton|murg/i, PHOTOS.chickenCurry],
+  [/thali|dal|curry rice|meals?\b/i, PHOTOS.steelThali],
+  [/momo/i, PHOTOS.momos],
+  [/noodle|chow ?mein|hakka/i, PHOTOS.hakkaNoodles],
   [/samosa|pakora|kachori|bhaji/i, PHOTOS.samosa],
-  [/wrap|roll|frankie|sandwich|kathi/i, PHOTOS.vegWrap],
+  [/wrap|roll|frankie|kathi/i, PHOTOS.vegWrap],
+  [/fruit/i, PHOTOS.fruitBowl],
   [/salad|sprout/i, PHOTOS.saladBowl],
-  [/chai|tea|coffee|lassi|juice/i, PHOTOS.masalaChai],
-  [/croissant|pastry|puff|cake|muffin|cookie/i, PHOTOS.croissants],
-  [/bun|bread|pav|loaf/i, PHOTOS.breadBuns],
+  [/gulab|jamun|rasgulla|halwa|kheer/i, PHOTOS.gulabJamun],
+  [/cold coffee|iced coffee/i, PHOTOS.coldCoffee],
+  [/coffee/i, PHOTOS.filterCoffee],
+  [/lassi|chaas|buttermilk/i, PHOTOS.lassi],
+  [/lime|lemon|nimbu|soda/i, PHOTOS.limeSoda],
+  [/chai|tea\b/i, PHOTOS.masalaChai],
+  [/bun|bread|loaf/i, PHOTOS.breadBuns],
+  [/brownie|cake|chocolate/i, PHOTOS.brownies],
+  [/croissant|pastry|puff|muffin|cookie/i, PHOTOS.croissants],
 ];
 
 function stableIndex(seed: string, length: number): number {
@@ -90,10 +138,24 @@ export function photoForMeal(mealType: MealType, title = "", seed = title): Phot
 }
 
 export const CATEGORY_PHOTOS: { mealType: MealType; label: string; photo: Photo }[] = [
-  { mealType: "breakfast", label: "Breakfast", photo: PHOTOS.idliVada },
+  { mealType: "breakfast", label: "Breakfast", photo: PHOTOS.masalaDosa },
   { mealType: "lunch", label: "Lunch", photo: PHOTOS.steelThali },
   { mealType: "snacks", label: "Snacks", photo: PHOTOS.samosa },
   { mealType: "dinner", label: "Dinner", photo: PHOTOS.biryaniPan },
   { mealType: "bakery", label: "Bakery", photo: PHOTOS.croissants },
   { mealType: "beverages", label: "Drinks", photo: PHOTOS.masalaChai },
 ];
+
+/** Three different photos for a kitchen's collage: its own dishes first, then kitchen scenes. */
+export function collagePhotos(dishes: Listing[]): Photo[] {
+  const picked: Photo[] = [];
+  for (const dish of dishes) {
+    const photo = photoForMeal(dish.meal_type, dish.title, dish.id);
+    if (!picked.includes(photo)) picked.push(photo);
+    if (picked.length === 3) return picked;
+  }
+  for (const photo of [PHOTOS.canteenServing, PHOTOS.chefKitchen, PHOTOS.steelThali]) {
+    if (picked.length < 3 && !picked.includes(photo)) picked.push(photo);
+  }
+  return picked;
+}

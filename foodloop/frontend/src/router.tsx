@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { createBrowserRouter } from "react-router";
 
 import { Layout } from "./components/Layout";
@@ -25,6 +26,19 @@ const adminPage = async () => {
   return { element: <RequireRole role="admin"><AdminPage /></RequireRole> };
 };
 
+// Secondary pages load on first visit, keeping the first download small.
+const page = (load: () => Promise<{ default: ComponentType }>) => async () => ({ Component: (await load()).default });
+const menuPage = page(() => import("./pages/MenuPage").then((m) => ({ default: m.MenuPage })));
+const kitchensPage = page(() => import("./pages/KitchensPage").then((m) => ({ default: m.KitchensPage })));
+const kitchenPage = page(() => import("./pages/KitchensPage").then((m) => ({ default: m.KitchenPage })));
+const aboutPage = page(() => import("./pages/InfoPages").then((m) => ({ default: m.AboutPage })));
+const faqPage = page(() => import("./pages/InfoPages").then((m) => ({ default: m.FaqPage })));
+const contactPage = page(() => import("./pages/InfoPages").then((m) => ({ default: m.ContactPage })));
+const accountPage = async () => {
+  const { AccountPage } = await import("./pages/AccountPage");
+  return { element: <RequireRole role="any"><AccountPage /></RequireRole> };
+};
+
 export const router = createBrowserRouter([
   {
     element: <Layout />,
@@ -35,6 +49,13 @@ export const router = createBrowserRouter([
       { index: true, element: <LandingPage /> },
       { path: "meals", element: <BrowsePage /> },
       { path: "meals/:id", element: <ListingDetailPage /> },
+      { path: "menu", lazy: menuPage },
+      { path: "kitchens", lazy: kitchensPage },
+      { path: "kitchens/:slug", lazy: kitchenPage },
+      { path: "about", lazy: aboutPage },
+      { path: "faq", lazy: faqPage },
+      { path: "contact", lazy: contactPage },
+      { path: "account", lazy: accountPage },
       { path: "login", element: <LoginPage /> },
       { path: "register", element: <RegisterPage /> },
       { path: "register/kitchen", element: <RegisterKitchenPage /> },

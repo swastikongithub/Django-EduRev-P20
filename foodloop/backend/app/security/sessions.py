@@ -22,7 +22,7 @@ COOKIE_NAME = "foodloop_session"
 _TOUCH_INTERVAL = timedelta(minutes=5)
 
 
-def _hash_token(token: str) -> str:
+def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
@@ -31,7 +31,7 @@ def create_session(db: Session, user: User, user_agent: str | None) -> str:
     db.add(
         UserSession(
             user_id=user.id,
-            token_hash=_hash_token(token),
+            token_hash=hash_token(token),
             user_agent=(user_agent or "")[:255] or None,
             expires_at=utcnow() + timedelta(days=get_settings().session_days),
         )
@@ -43,7 +43,7 @@ def create_session(db: Session, user: User, user_agent: str | None) -> str:
 def user_for_token(db: Session, token: str | None) -> User | None:
     if not token:
         return None
-    session = db.scalar(select(UserSession).where(UserSession.token_hash == _hash_token(token)))
+    session = db.scalar(select(UserSession).where(UserSession.token_hash == hash_token(token)))
     now = utcnow()
     if session is None or session.expires_at <= now:
         return None
@@ -58,7 +58,7 @@ def user_for_token(db: Session, token: str | None) -> User | None:
 
 def delete_session(db: Session, token: str | None) -> None:
     if token:
-        db.execute(delete(UserSession).where(UserSession.token_hash == _hash_token(token)))
+        db.execute(delete(UserSession).where(UserSession.token_hash == hash_token(token)))
         db.commit()
 
 

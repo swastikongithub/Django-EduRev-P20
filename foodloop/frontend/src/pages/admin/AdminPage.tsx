@@ -1,17 +1,17 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, Ban, ExternalLink, History, ShieldCheck, Store, Ticket, Users, Utensils, X } from "lucide-react";
+import { BadgeCheck, Ban, CircleCheck, ExternalLink, History, Inbox, Mail, ShieldCheck, Store, Ticket, Users, Utensils, X } from "lucide-react";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { api, errorMessage } from "../../api/client";
-import { useAdminKitchens, useAdminListings, useAdminOverview, useMeta } from "../../api/queries";
+import { useAdminKitchens, useAdminListings, useAdminMessages, useAdminOverview, useMeta } from "../../api/queries";
 import type { AdminKitchen, AuditEntry, ProviderListing } from "../../api/types";
 import { MealImage } from "../../components/MealImage";
 import { useToast } from "../../components/Toast";
 import { BusyLabel, EmptyState, ErrorState, Notice, PageHeader, SampleBadge, Skeleton, StatTile, StatusPill, Tabs } from "../../components/ui";
 import { formatDateTime, formatRupees, formatWindow } from "../../lib/format";
 
-type Tab = "kitchens" | "listings" | "activity";
+type Tab = "kitchens" | "listings" | "messages" | "activity";
 
 function ReasonForm({ label, onSubmit, onCancel, pending }: { label: string; onSubmit: (reason: string) => void; onCancel: () => void; pending: boolean }) {
   const [reason, setReason] = useState("");
@@ -256,6 +256,90 @@ const ACTION_LABELS: Record<string, string> = {
   "reservation.cancelled_by_provider": "Kitchen cancelled a reservation",
 };
 
+function Messages() {
+  const [status, setStatus] = useState<"open" | "all">("open");
+  const { data, isLoading, isError, error, refetch } = useAdminMessages(status);
+  const { data: meta } = useMeta();
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const handle = useMutation({
+    mutationFn: (id: string) => api(`/admin/messages/${id}/handled`, { method: "POST" }),
+    onSuccess: () => {
+      toast.success("Marked as handled");
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+    onError: (failure) => toast.error("That didn't work", errorMessage(failure)),
+  });
+  return (
+    <section>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Filter messages">
+        {(
+          [
+            ["open", "To answer"],
+            ["all", "All messages"],
+          ] as const
+        ).map(([value, label]) => (
+          <button key={value} type="button" className="chip" aria-pressed={status === value} onClick={() => setStatus(value)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-4 space-y-3">
+        {isLoading ? (
+          <Skeleton className="h-32 w-full rounded-[1.25rem]" />
+        ) : isError ? (
+          <ErrorState error={error} onRetry={() => refetch()} />
+        ) : !data?.length ? (
+          <div className="card">
+            <EmptyState icon={<Inbox className="size-7" />} title={status === "open" ? "Inbox zero" : "No messages yet"}>
+              Messages sent through the website's contact form appear here.
+            </EmptyState>
+          </div>
+        ) : (
+          data.map((message) => (
+            <article key={message.id} className="card animate-rise p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">{message.name}</span>
+                    <span className="badge bg-sage-100 text-ink-700">{meta?.labels.contact_topic?.[message.topic] ?? message.topic}</span>
+                    {message.topic === "safety" && <span className="badge bg-danger-50 text-danger-600">Safety</span>}
+                  </p>
+                  <a href={`mailto:${message.email}`} className="mt-0.5 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-leaf-700 underline-offset-4 hover:underline">
+                    <Mail className="size-3.5" aria-hidden="true" /> {message.email}
+                  </a>
+                </div>
+                <time className="text-[13px] text-ink-500" dateTime={message.created_at}>
+                  {formatDateTime(message.created_at)}
+                </time>
+              </div>
+              <p className="mt-3 text-[15px] leading-relaxed whitespace-pre-line text-ink-700">{message.message}</p>
+              <div className="mt-4 border-t border-line pt-3">
+                {message.handled_at ? (
+                  <p className="flex items-center gap-1.5 text-[13.5px] font-semibold text-leaf-700">
+                    <CircleCheck className="size-4" aria-hidden="true" /> Handled {formatDateTime(message.handled_at)}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    disabled={handle.isPending && handle.variables === message.id}
+                    onClick={() => handle.mutate(message.id)}
+                  >
+                    <BusyLabel busy={handle.isPending && handle.variables === message.id} busyText="Saving…">
+                      <CircleCheck className="size-4" aria-hidden="true" /> Mark as handled
+                    </BusyLabel>
+                  </button>
+                )}
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
 function Activity({ entries }: { entries: AuditEntry[] }) {
   if (!entries.length) {
     return (
@@ -318,6 +402,7 @@ export function AdminPage() {
             tabs={[
               { value: "kitchens", label: "Kitchens", count: data?.providers.pending },
               { value: "listings", label: "Listings" },
+              { value: "messages", label: "Messages", count: data?.open_messages },
               { value: "activity", label: "Activity log" },
             ]}
           />
@@ -335,7 +420,7 @@ export function AdminPage() {
                 Check each FSSAI number on FoSCoS before approving.
               </Notice>
             )}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatTile label="Approved kitchens" value={data.providers.approved} sub={`${data.providers.pending} pending · ${data.providers.suspended} suspended`} icon={<Store className="size-5" />} />
               <StatTile label="Live listings" value={data.live_listings} sub="Reservable right now" icon={<Utensils className="size-5" />} />
               <StatTile
@@ -352,6 +437,7 @@ export function AdminPage() {
         <div className="mt-8">
           {tab === "kitchens" && <Kitchens />}
           {tab === "listings" && <Listings />}
+          {tab === "messages" && <Messages />}
           {tab === "activity" && <Activity entries={data?.recent_activity ?? []} />}
         </div>
       </div>

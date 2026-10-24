@@ -250,7 +250,7 @@ export function ListingFormPage() {
             <Field id="description" label="Description" optional error={errors.description}>
               <textarea className="input min-h-20 py-3" maxLength={500} value={form.description} onChange={(e) => set("description", e.target.value)} {...describedBy("description", errors.description)} />
             </Field>
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field id="meal_type" label="Meal type" error={errors.meal_type}>
                 <select className="input" value={form.meal_type} onChange={(e) => set("meal_type", e.target.value as MealType)} {...describedBy("meal_type", errors.meal_type)}>
                   {MEAL_TYPES.map((meal) => (
@@ -276,7 +276,7 @@ export function ListingFormPage() {
 
           <section className="card space-y-5 p-6 sm:p-8">
             <h2 className="text-xl font-semibold">Price &amp; quantity</h2>
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field id="original" label="Usual price (₹)" error={errors.original_price_paise}>
                 <input className="input" type="number" inputMode="decimal" min={1} step="0.5" required value={form.original} onChange={(e) => set("original", e.target.value)} {...describedBy("original", errors.original_price_paise)} />
               </Field>
@@ -304,7 +304,7 @@ export function ListingFormPage() {
             </div>
             <fieldset>
               <legend className="label">How has the food been kept since cooking?</legend>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {STORAGE.map(({ value, icon: Icon }) => (
                   <label key={value} className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-line bg-white px-3.5 has-[:checked]:border-leaf-600 has-[:checked]:bg-leaf-50">
                     <input type="radio" name="storage" className="sr-only" checked={form.storage === value} onChange={() => set("storage", value)} />
@@ -317,7 +317,7 @@ export function ListingFormPage() {
                 <p className="hint">FoodLoop safety policy: food {meta?.labels.storage[form.storage].toLowerCase()} must be eaten within {maxHours} hours of preparation.</p>
               )}
             </fieldset>
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field id="prepared" label="Prepared at" error={errors.prepared_at}>
                 <input className="input" type="datetime-local" required value={form.prepared_at} onChange={(e) => set("prepared_at", e.target.value)} {...describedBy("prepared", errors.prepared_at)} />
               </Field>
@@ -351,7 +351,7 @@ export function ListingFormPage() {
             </div>
             <fieldset aria-describedby={errors.allergens ? "allergens-error" : undefined}>
               <legend className="sr-only">Allergens present</legend>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {ALLERGEN_KEYS.map((allergen) => (
                   <label key={allergen} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-line bg-white px-3.5 text-sm has-[:checked]:border-saffron-400 has-[:checked]:bg-saffron-50 ${form.noAllergens ? "opacity-50" : ""}`}>
                     <input
@@ -384,7 +384,7 @@ export function ListingFormPage() {
 
           <section className="card p-6 sm:p-8">
             <h2 className="text-xl font-semibold">Photo</h2>
-            <div className="mt-4 grid gap-5 sm:grid-cols-[200px_1fr] sm:items-center">
+            <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-[200px_1fr] sm:items-center">
               <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-cream-200">
                 <MealImage
                   key={preview ?? listing?.image_url ?? "representative"}

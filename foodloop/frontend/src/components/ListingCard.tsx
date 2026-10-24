@@ -1,10 +1,11 @@
-import { ArrowRight, Clock, Store } from "lucide-react";
+import { ArrowRight, Clock, Flame, Store } from "lucide-react";
 import { Link } from "react-router";
 
 import { useMeta } from "../api/queries";
 import type { Listing } from "../api/types";
-import { formatRupees, formatTime, minutesUntil, relativeTime } from "../lib/format";
+import { formatRupees, formatTime, minutesUntil } from "../lib/format";
 import { useNow } from "../lib/useNow";
+import { Countdown } from "./Live";
 import { MealImage } from "./MealImage";
 import { DietMark, SampleBadge, StatusPill } from "./ui";
 
@@ -41,13 +42,18 @@ export function ListingCard({ listing, index = 0 }: { listing: Listing; index?: 
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/35 to-transparent" />
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
-          {listing.discount_percent > 0 ? (
-            <span className="badge bg-saffron-600 px-2.5 py-1 text-[12px] font-bold tracking-wide text-white shadow-soft">
-              {listing.discount_percent}% OFF
-            </span>
-          ) : (
-            <span />
-          )}
+          <span className="flex flex-wrap gap-1.5">
+            {listing.discount_percent > 0 && (
+              <span className="badge bg-saffron-600 px-2.5 py-1 text-[12px] font-bold tracking-wide text-white shadow-soft">
+                {listing.discount_percent}% OFF
+              </span>
+            )}
+            {urgent && (
+              <span className="badge bg-white/95 px-2.5 py-1 text-[11.5px] font-bold text-saffron-600 shadow-soft">
+                <Flame className="size-3.5" aria-hidden="true" /> Closing soon
+              </span>
+            )}
+          </span>
           {listing.provider.is_sample && <SampleBadge />}
         </div>
         <div className="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
@@ -88,7 +94,7 @@ export function ListingCard({ listing, index = 0 }: { listing: Listing; index?: 
           {available && (
             <div className="w-24 text-right">
               <p className={`text-[12.5px] font-semibold ${lowStock ? "text-saffron-600" : "text-ink-700"}`}>
-                {listing.quantity_available} of {listing.quantity_total} left
+                {lowStock ? `Only ${listing.quantity_available} left` : `${listing.quantity_available} of ${listing.quantity_total} left`}
               </p>
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-cream-200" aria-hidden="true">
                 <div
@@ -106,11 +112,12 @@ export function ListingCard({ listing, index = 0 }: { listing: Listing; index?: 
               <Clock className="size-3.5 shrink-0 text-leaf-600" aria-hidden="true" />
               Pickup {formatTime(listing.pickup_start)} – {formatTime(listing.pickup_end)}
             </p>
-            {available && (
-              <p className={`mt-0.5 pl-5 ${urgent ? "font-semibold text-saffron-600" : "text-ink-500"}`}>
-                Reserve {closesIn < 1 ? "now" : relativeTime(listing.reservations_close_at, now).replace(/^in /, "within ")}
-              </p>
-            )}
+            {available &&
+              (closesIn <= 180 ? (
+                <Countdown to={listing.reservations_close_at} className="mt-0.5 pl-0.5 text-[12.5px]" />
+              ) : (
+                <p className="mt-0.5 pl-5 text-ink-500">Reserve until {formatTime(listing.reservations_close_at)}</p>
+              ))}
           </div>
           <span
             className={`inline-flex shrink-0 items-center gap-1 rounded-full px-3.5 py-2 text-[13px] font-semibold transition ${

@@ -8,13 +8,21 @@ This folder contains **Phase 1 (the MVP)**: a working web app with a React front
 PostgreSQL database. It also includes several Phase 2 safety features and a kit for validating the idea in a
 real pilot.
 
-| Landing page | Kitchen dashboard |
+| Home page | Today's menu |
 |---|---|
-| ![Landing page](docs/screenshots/landing.webp) | ![Kitchen dashboard](docs/screenshots/kitchen-dashboard.webp) |
+| ![Home page](docs/screenshots/landing.webp) | ![Today's menu](docs/screenshots/menu.webp) |
 
-| Meal page | My reservations | On a phone |
+| A kitchen's page | Meal page | My reservations |
 |---|---|---|
-| ![Meal detail](docs/screenshots/meal-detail.webp) | ![My reservations](docs/screenshots/my-reservations.webp) | ![Browse on mobile](docs/screenshots/browse-mobile.webp) |
+| ![Kitchen page](docs/screenshots/kitchen-page.webp) | ![Meal detail](docs/screenshots/meal-detail.webp) | ![My reservations](docs/screenshots/my-reservations.webp) |
+
+| Kitchen dashboard | Admin dashboard |
+|---|---|
+| ![Kitchen dashboard](docs/screenshots/kitchen-dashboard.webp) | ![Admin dashboard](docs/screenshots/admin.webp) |
+
+| Menu on a phone | Browse on a phone |
+|---|---|
+| ![Menu on mobile](docs/screenshots/menu-mobile.webp) | ![Browse on mobile](docs/screenshots/browse-mobile.webp) |
 
 > Everything in the screenshots is **sample data**, labelled “Sample data” in the app. The food photos are
 > licensed stock photos used as **representative images**, and the app labels them that way, so nobody
@@ -38,6 +46,16 @@ real pilot.
   On phones a bottom bar keeps the price and **Reserve** in reach.
 - Reserve 1–N portions (within the kitchen's per-order limit) and get a 6-character **pickup code**.
 - “My reservations”: code, countdown, call-the-kitchen link, and **cancel** (the portions go back on sale).
+- **Today's menu**: every dish on offer right now, grouped like a restaurant menu with prices, search, a
+  veg / non-veg filter and jump links. **Kitchens**: a page per approved kitchen with its address, FSSAI
+  number and everything it has on offer.
+- **Live everywhere**: meals, portions and prices refresh by themselves every 30 seconds, countdowns tick
+  every second in the last hour, and the home page shows live counts and a ticker of current deals.
+- **About**, **FAQ** and **Contact** pages. The contact form saves messages for the admins (with spam
+  protection). **My account**: change your name and mobile number, or your password (which logs out your
+  other browsers).
+- If the server or database goes down, the site says exactly which one, keeps checking, and reloads the
+  data by itself when it's back.
 
 **Kitchens (providers)**
 - Register the kitchen with FSSAI details. It starts as **awaiting approval** and nothing it creates is
@@ -51,8 +69,8 @@ real pilot.
 
 **Admins**
 - Overview numbers, a queue of kitchens awaiting approval (with a link to verify on FSSAI's FoSCoS portal),
-  approve / reject / suspend with a reason, listing moderation, and an **activity log** of every important
-  action.
+  approve / reject / suspend with a reason, listing moderation, a **Messages** inbox for the contact form,
+  and an **activity log** of every important action.
 
 ### Safety guarantees (enforced by the server and the database, not the browser)
 
@@ -106,8 +124,10 @@ foodloop/
 ├── frontend/
 │   └── src/
 │       ├── api/               # fetch wrapper, types, data hooks (TanStack Query)
-│       ├── components/        # Layout, ListingCard, Photo, Toast, PageHeader, UI states, forms
-│       ├── pages/             # Landing, Browse, Meal, Auth, Reservations, kitchen/, admin/
+│       ├── components/        # Layout, ListingCard, KitchenCard, MenuRow, Live (countdowns, ticker),
+│       │                      #   ConnectionBanner, Photo, Toast, UI states, forms
+│       ├── pages/             # Landing, Browse, Meal, Menu, Kitchens, About/FAQ/Contact, Account,
+│       │                      #   Auth, Reservations, kitchen/, admin/
 │       ├── lib/               # ₹ and IST formatting (with unit tests), photos, illustrations
 │       └── index.css          # brand design tokens
 ├── e2e/journey.py             # browser test of the whole journey
@@ -123,6 +143,19 @@ More detail: [docs/database.md](docs/database.md) · [docs/food-safety-and-compl
 
 You need **Python 3.12+**, **Node.js 20+** (22 recommended) and **PostgreSQL 16**, either through
 [Docker Desktop](https://www.docker.com/products/docker-desktop/) or a normal PostgreSQL install.
+
+### Quickest way: one command
+
+```bash
+python run.py          # Windows: just double-click "Start FoodLoop.bat"
+```
+
+It checks the database (and starts it with Docker if needed), creates `backend/.env`, installs the Python
+and JavaScript packages, updates the database tables, adds labelled sample meals, starts the backend and
+the website together, and opens <http://localhost:5173>. Press **Ctrl+C** to stop everything. The first run
+takes a few minutes; after that it starts in seconds. Create your admin once with step 2's `create-admin`.
+
+The steps below do the same by hand.
 
 ### 1. Start PostgreSQL
 
@@ -182,13 +215,18 @@ Open <http://localhost:5173>.
 | Email | Password | What it is |
 |---|---|---|
 | `customer@example.com` | `sample-pass-2024` | a customer |
-| `kitchen@example.com` | `sample-pass-2024` | an **approved** sample kitchen with 6 live meals |
+| `kitchen@example.com` | `sample-pass-2024` | **Green Leaf Canteen**: lunches and snacks |
+| `tiffin@example.com` | `sample-pass-2024` | **Dakshin Tiffin Corner**: South Indian breakfast |
+| `bakery@example.com` | `sample-pass-2024` | **Crumbs Bakery Café**: bakes and cold drinks |
+| `mess@example.com` | `sample-pass-2024` | **Hostel 7 Mess**: dinners |
+| `chai@example.com` | `sample-pass-2024` | **Chai Adda**: street snacks and chai |
 | `pending-kitchen@example.com` | `sample-pass-2024` | a kitchen **awaiting approval** |
 | your admin | the password you chose | admin dashboard |
 
-Sample meals are created with pickup windows starting “now”, so they close after an hour or so. **Run
-`python -m app.cli seed-sample` again** whenever you want fresh ones. The command refuses to run when
-`APP_ENV=production`.
+The five sample kitchens list a full menu of 34 dishes (₹15–₹60) across every meal type, each within the
+food-safety time limits for how it's stored. In development the backend re-lists a sample dish when its
+pickup window ends, so your local site always has food (turn off with `SAMPLE_AUTO_REFRESH=false`). It never
+touches real kitchens. `seed-sample` refuses to run when `APP_ENV=production`.
 
 ---
 
@@ -204,6 +242,7 @@ Sample meals are created with pickup windows starting “now”, so they close a
 | `FRONTEND_DIST` | *(empty)* | path to `frontend/dist`, so FastAPI serves the website too |
 | `MEDIA_DIR` | `backend/media` | where listing photos are stored |
 | `RESERVATION_CUTOFF_MINUTES` | `10` | reservations close this long before pickup ends |
+| `SAMPLE_AUTO_REFRESH` | `true` | development only: re-list the sample kitchens' dishes when their pickup window ends, so a local copy always has food. Ignored in production. |
 | `MAX_SAFE_HOURS_ROOM_TEMP` / `_HOT_HELD` / `_REFRIGERATED` / `_SHELF_STABLE` | `2` / `4` / `24` / `48` | food-safety window per storage type |
 
 Secrets never go in code. `.env` is ignored by Git, and only `.env.example` is committed.
@@ -215,7 +254,7 @@ Secrets never go in code. `.env` is ignored by Git, and only `.env.example` is c
 **Automated**
 
 ```bash
-# backend (needs PostgreSQL running): lint + 46 tests incl. the concurrency proof
+# backend (needs PostgreSQL running): lint + 57 tests incl. the concurrency proof
 cd foodloop/backend
 ruff check . && pytest
 
@@ -232,8 +271,8 @@ The same checks run on GitHub Actions for every push that touches `foodloop/`
 
 **By hand, in about 10 minutes**
 
-1. Log in as `customer@example.com` → **Browse** → tap *Lunch* → open the Veg thali → reserve 2 → note the
-   pickup code.
+1. Log in as `customer@example.com` → **Explore Meals** → tap *Lunch* → open the Veg thali → reserve 2 →
+   note the pickup code. Look at **Menu** and **Kitchens** too.
 2. Open **My reservations**: the code and countdown are shown. Try **Cancel** on another reservation and
    watch “left” go back up on the meal page.
 3. Log out, then log in as `kitchen@example.com` → **Pickups** → type the code → “Handed over to …”. Typing
@@ -241,7 +280,8 @@ The same checks run on GitHub Actions for every push that touches `foodloop/`
 4. **Listings** → *List surplus food*. Try a room-temperature meal prepared 3 hours ago: the form refuses it
    with the safety-policy message. Fix the times, tick the checklist and publish.
 5. In a private window, **Register your kitchen**. The new kitchen can't list food (“Waiting for approval”).
-6. Log in as admin → approve it (or reject/suspend with a reason) → check the **Activity log**.
+6. Send a message from **Contact**. Log in as admin → approve the kitchen (or reject/suspend with a reason)
+   → read the message under **Messages** → check the **Activity log**.
 7. Shrink the browser to phone width: every page works without sideways scrolling.
 
 ---
@@ -268,10 +308,12 @@ pilot shows the idea works ([docs/pilot](docs/pilot/README.md)).
 | `password authentication failed for user "foodloop"` | The user/password in `DATABASE_URL` doesn't match what you created in step 1. |
 | Docker: `port is already allocated` | Another PostgreSQL uses 5432. Change the compose port to `"5433:5432"` and use `:5433` in both URLs in `.env`. |
 | `Refusing to run: the test database name must end in '_test'` | A safety check: point `TEST_DATABASE_URL` at `foodloop_test`, never your real database. |
-| Website says “Can't reach FoodLoop” | The backend isn't running on port 8000 (step 2). |
+| Banner: “Can't connect to the FoodLoop server” | The backend isn't running on port 8000. Start it (step 2, or `python run.py`). The page reconnects by itself. |
+| Banner: “FoodLoop's database isn't reachable” | PostgreSQL isn't running. Open Docker Desktop and run `docker compose up -d`. The page reconnects by itself. |
+| “Too many attempts. Please wait 15 minutes” | The login protection counts logins per email. Wait, or restart the backend to reset it. |
 | `403 Cross-site request blocked` | Open the site at `http://localhost:5173`. To test on your phone, run `npm run dev -- --host`, open `http://<your-PC-IP>:5173`, and add that address to `ALLOWED_ORIGINS`. |
 | PowerShell won't activate the venv | Run once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
-| “Reservations for this meal have closed” on sample meals | Sample windows are short. Run `python -m app.cli seed-sample` again. |
+| “Reservations for this meal have closed” on sample meals | Sample windows are short; new ones are listed within 5 minutes in development, or run `python -m app.cli seed-sample`. |
 
 ---
 

@@ -172,6 +172,7 @@ def browse(
     sort: Sort,
     limit: int,
     offset: int,
+    kitchen_slug: str | None = None,
 ) -> tuple[list[Listing], int]:
     now = utcnow()
     closes_after = now + timedelta(minutes=get_settings().reservation_cutoff_minutes)
@@ -197,6 +198,8 @@ def browse(
                 Provider.city.ilike(pattern, escape="\\"),
             )
         )
+    if kitchen_slug:
+        stmt = stmt.where(Provider.slug == kitchen_slug)
     if meal_types:
         stmt = stmt.where(Listing.meal_type.in_(meal_types))
     if diets:
