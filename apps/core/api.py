@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
-from rest_framework import exceptions, serializers
+from rest_framework import exceptions, serializers, throttling
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
@@ -22,6 +22,7 @@ from rest_framework.views import exception_handler as drf_exception_handler
 
 from apps.accounts.permissions import has_cap
 from apps.core.errors import DomainError
+from apps.core.http import client_ip
 
 
 def error_body(code: str, message: str, detail=None) -> dict:
@@ -124,3 +125,21 @@ class StandardPagination(PageNumberPagination):
     page_size = 25
     page_size_query_param = "page_size"
     max_page_size = 100
+
+
+# ── Throttling ──────────────────────────────────────────────────────────────
+
+
+class ClientAddressMixin:
+    """Key anonymous callers on the same client address as the sign-in limiter and the audit log."""
+
+    def get_ident(self, request):
+        return client_ip(request) or super().get_ident(request)
+
+
+class AnonRateThrottle(ClientAddressMixin, throttling.AnonRateThrottle):
+    pass
+
+
+class UserRateThrottle(ClientAddressMixin, throttling.UserRateThrottle):
+    """Signed-in callers are keyed by user id; the address only matters for anonymous ones."""

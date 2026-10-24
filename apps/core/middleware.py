@@ -29,23 +29,29 @@ class InstitutionMiddleware:
 class SecurityHeadersMiddleware:
     """Content-Security-Policy and Permissions-Policy (camera allowed for QR scanning, same origin only)."""
 
-    CSP = "; ".join(
-        [
-            "default-src 'self'",
-            "img-src 'self' data: blob:",
-            "style-src 'self' 'unsafe-inline'",
-            "font-src 'self'",
-            "script-src 'self'",
-            "connect-src 'self'",
-            "media-src 'self' blob:",
-            "frame-ancestors 'none'",
-            "base-uri 'self'",
-            "form-action 'self'",
-        ]
-    )
+    @staticmethod
+    def build_csp(media_origin: str = "") -> str:
+        # Uploaded photos live in private object storage in production; their pre-signed URLs are
+        # the one cross-origin resource a page loads, and only as images (settings.MEDIA_ORIGIN).
+        img_src = " ".join(filter(None, ["img-src 'self' data: blob:", media_origin]))
+        return "; ".join(
+            [
+                "default-src 'self'",
+                img_src,
+                "style-src 'self' 'unsafe-inline'",
+                "font-src 'self'",
+                "script-src 'self'",
+                "connect-src 'self'",
+                "media-src 'self' blob:",
+                "frame-ancestors 'none'",
+                "base-uri 'self'",
+                "form-action 'self'",
+            ]
+        )
 
     def __init__(self, get_response):
         self.get_response = get_response
+        self.CSP = self.build_csp(getattr(settings, "MEDIA_ORIGIN", ""))
 
     def __call__(self, request):
         response = self.get_response(request)

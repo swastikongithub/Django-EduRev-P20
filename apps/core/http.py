@@ -22,12 +22,24 @@ def client_ip(request) -> str | None:
     X-Forwarded-For is written left to right by each hop, and anything left of our own proxies is
     whatever the client chose to send. With TRUSTED_PROXY_HOPS = n reverse proxies in front of the
     app, the real client is the n-th entry from the right. With 0 (the default) the header is
-    ignored and REMOTE_ADDR is used. Shared by the audit log and the rate limiter
-    (RATELIMIT_IP_META_KEY), so both see the same address.
+    ignored and REMOTE_ADDR is used. Shared by the audit log, the rate limiter
+    (RATELIMIT_IP_META_KEY) and the API throttle, so all of them see the same address.
+
+    Some platforms instead put the client address in one header that their edge always sets
+    (Railway: X-Real-IP). CLIENT_IP_HEADER names it; it then takes precedence over
+    X-Forwarded-For. Only set it when the edge overwrites that header on every request, or
+    clients can choose their own address.
     """
     if request is None:
         return None
     remote = request.META.get("REMOTE_ADDR") or None
+    header = getattr(settings, "CLIENT_IP_HEADER", "")
+    if header:
+        value = request.META.get("HTTP_" + header.upper().replace("-", "_"), "").strip()
+        try:
+            return str(ipaddress.ip_address(value))
+        except ValueError:
+            return remote
     hops = getattr(settings, "TRUSTED_PROXY_HOPS", 0)
     if hops > 0:
         chain = [part.strip() for part in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",") if part.strip()]

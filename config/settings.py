@@ -155,19 +155,45 @@ STORAGES = {
         )
     },
 }
-# Uploaded media: local disk outside the static root in development. In production
-# set USE_S3=1 to route uploads to S3-compatible storage with pre-signed URLs.
+# Uploaded media (resource photos): local disk in development. In production set USE_S3=1 to
+# keep uploads in S3-compatible object storage (Railway Buckets, AWS S3, R2) and serve them through
+# pre-signed URLs that expire after 15 minutes (CES §1.4); the bucket itself stays private.
+# Credentials come from AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY in the environment.
 MEDIA_URL = "media/"
 MEDIA_ROOT = Path(env("MEDIA_ROOT", default=str(BASE_DIR / ".media")))
-if env.bool("USE_S3", default=False):  # pragma: no cover - production only
+USE_S3 = env.bool("USE_S3", default=False)
+# The origin pre-signed image URLs point at; SecurityHeadersMiddleware adds it to CSP img-src.
+MEDIA_ORIGIN = ""
+if USE_S3:
+    from urllib.parse import urlsplit
+
+    from django.core.exceptions import ImproperlyConfigured
+
+    S3_BUCKET = env("S3_BUCKET")
+    S3_ENDPOINT_URL = env("S3_ENDPOINT_URL")
+    # "virtual" (bucket.endpoint-host) is the S3 default and what current Railway Buckets use;
+    # older Railway Buckets say "path" in their Credentials tab.
+    S3_ADDRESSING_STYLE = env("S3_ADDRESSING_STYLE", default="virtual")
+    _endpoint = urlsplit(S3_ENDPOINT_URL)
+    if _endpoint.scheme != "https" or not _endpoint.hostname or S3_ADDRESSING_STYLE not in ("virtual", "path"):
+        raise ImproperlyConfigured(
+            "USE_S3 needs S3_ENDPOINT_URL as an https:// URL and S3_ADDRESSING_STYLE 'virtual' or 'path'."
+        )
+    MEDIA_ORIGIN = (
+        f"https://{S3_BUCKET}.{_endpoint.netloc}" if S3_ADDRESSING_STYLE == "virtual" else f"https://{_endpoint.netloc}"
+    )
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {
-            "bucket_name": env("S3_BUCKET"),
-            "endpoint_url": env("S3_ENDPOINT_URL", default=None),
+            "bucket_name": S3_BUCKET,
+            "endpoint_url": S3_ENDPOINT_URL,
+            "region_name": env("S3_REGION", default="auto"),
+            "addressing_style": S3_ADDRESSING_STYLE,
+            "signature_version": "s3v4",
             "querystring_auth": True,
             "querystring_expire": 900,
             "file_overwrite": False,
+            "default_acl": None,
         },
     }
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
@@ -192,6 +218,9 @@ CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+# On a platform the worker and beat can start before Redis accepts connections; keep retrying
+# instead of exiting (and being restarted) while it comes up.
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_BEAT_SCHEDULE = {
     "auto-release-no-shows": {"task": "checkins.sweep_no_shows", "schedule": 60.0},
     "complete-finished-bookings": {"task": "checkins.sweep_completed", "schedule": 300.0},
@@ -211,6 +240,9 @@ CELERY_BEAT_SCHEDULE = {
 # balancer: 1). 0 means clients connect directly and the header is ignored (SEC-07). The audit
 # log, the sign-in rate limiter and the API throttle all derive the client address from it.
 TRUSTED_PROXY_HOPS = env.int("TRUSTED_PROXY_HOPS", default=0)
+# Alternatively, the one header the platform's edge always overwrites with the client address
+# (Railway documents X-Real-IP). When set it wins over X-Forwarded-For; see apps.core.http.
+CLIENT_IP_HEADER = env("CLIENT_IP_HEADER", default="")
 
 REST_FRAMEWORK = {
     # Without this DRF's throttles key anonymous callers on the raw, client-supplied header.
@@ -222,8 +254,8 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 25,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.UserRateThrottle",
-        "rest_framework.throttling.AnonRateThrottle",
+        "apps.core.api.UserRateThrottle",
+        "apps.core.api.AnonRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {"user": env("API_USER_RATE", default="600/min"), "anon": "60/min"},
     "EXCEPTION_HANDLER": "apps.core.api.exception_handler",
@@ -283,6 +315,20 @@ LOGIN_LOCKOUT_MINUTES = 15
 # ── Email ───────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="LPU Reserve <reserve@lpu.example>")
+# Read only by the SMTP backend. Use TLS (587) or SSL (465), never neither: credentials and
+# booking details would cross the network in the clear. A hung relay must not hold a Celery
+# worker (or a web request) for ever, hence the timeout.
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=15)
+if EMAIL_USE_TLS and EMAIL_USE_SSL:
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured("Set EMAIL_USE_TLS (port 587) or EMAIL_USE_SSL (port 465), not both.")
 SITE_URL = env("SITE_URL", default="http://localhost:8000")
 
 # ── Logging ─────────────────────────────────────────────────────────────────

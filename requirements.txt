@@ -10,6 +10,8 @@ qrcode[pil]>=8.0
 ics>=0.7,<0.8
 Pillow>=11.0
 whitenoise>=6.7
+# Uploaded media in S3-compatible object storage (Railway Buckets) with pre-signed URLs.
+django-storages[s3]>=1.14,<2
 gunicorn>=23.0
 python-json-logger>=3.0
 django-ratelimit>=4.1
