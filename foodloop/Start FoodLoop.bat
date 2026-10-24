@@ -3,7 +3,7 @@ rem Double-click this file to start FoodLoop (database, backend and website). Cl
 title FoodLoop
 cd /d "%~dp0"
 set "PY=python"
-where py >/dev/null 2>/dev/null && set "PY=py -3"
+where py >nul 2>&1 && set "PY=py -3"
 %PY% run.py %*
 if errorlevel 1 (
   echo.
