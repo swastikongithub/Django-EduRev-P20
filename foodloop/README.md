@@ -16,8 +16,14 @@ real pilot.
 |---|---|---|
 | ![Meal detail](docs/screenshots/meal-detail.webp) | ![My reservations](docs/screenshots/my-reservations.webp) | ![Browse on mobile](docs/screenshots/browse-mobile.webp) |
 
-> Everything in the screenshots is **sample data**, labelled “Sample data” in the app. The food pictures are
-> illustrations drawn for FoodLoop, and the app always says when a picture is not a photo of the actual food.
+> Everything in the screenshots is **sample data**, labelled “Sample data” in the app. The food photos are
+> licensed stock photos used as **representative images**, and the app labels them that way, so nobody
+> mistakes them for the actual batch. A kitchen's own upload always replaces them.
+>
+> **About the photos:** they are licensed from Adobe Stock and are **not stored in this public repository**
+> (the licence doesn't allow redistributing them on their own). Without them the app still works and shows
+> FoodLoop's own meal illustrations instead. See [docs/image-credits.md](docs/image-credits.md) and
+> `frontend/public/photos/README.md`.
 
 ---
 
@@ -27,8 +33,9 @@ real pilot.
 - Browse meals that can be reserved right now: search, meal-type chips, diet (veg / vegan / egg / non-veg),
   max price, “pickup open now”, “avoid allergens”, and four sort orders. Filters live in the URL, so a view
   can be shared.
-- Meal page: photo or illustration, price and saving, pickup window with countdown, eat-by time, storage
-  method, allergens, kitchen address, pickup instructions and FSSAI number.
+- Meal page: the kitchen's photo or a labelled representative photo, price and saving, pickup window with
+  countdown, eat-by time, storage method, allergens, kitchen address, pickup instructions and FSSAI number.
+  On phones a bottom bar keeps the price and **Reserve** in reach.
 - Reserve 1–N portions (within the kitchen's per-order limit) and get a 6-character **pickup code**.
 - “My reservations”: code, countdown, call-the-kitchen link, and **cancel** (the portions go back on sale).
 
@@ -36,7 +43,7 @@ real pilot.
 - Register the kitchen with FSSAI details. It starts as **awaiting approval** and nothing it creates is
   visible until an admin approves it.
 - Dashboard: waiting pickups, today's listed / reserved / collected numbers, money recovered over the last 7
-  days.
+  days, and a **“Last 7 days” chart** (listed → reserved → collected) drawn from the kitchen's real data.
 - Create, edit, pause, publish and remove listings, with a photo upload, a **food-safety checklist**, an
   **explicit allergen declaration** and storage-based time limits.
 - **Hand over** a meal by typing the customer's pickup code, or cancel a reservation with a reason (e.g.
@@ -99,16 +106,16 @@ foodloop/
 ├── frontend/
 │   └── src/
 │       ├── api/               # fetch wrapper, types, data hooks (TanStack Query)
-│       ├── components/        # Layout, ListingCard, UI states, forms
+│       ├── components/        # Layout, ListingCard, Photo, Toast, PageHeader, UI states, forms
 │       ├── pages/             # Landing, Browse, Meal, Auth, Reservations, kitchen/, admin/
-│       ├── lib/               # ₹ and IST formatting (with unit tests), illustrations
+│       ├── lib/               # ₹ and IST formatting (with unit tests), photos, illustrations
 │       └── index.css          # brand design tokens
 ├── e2e/journey.py             # browser test of the whole journey
 ├── docs/                      # database, food safety & compliance, pilot kit
 └── docker-compose.yml         # local PostgreSQL
 ```
 
-More detail: [docs/database.md](docs/database.md) · [docs/food-safety-and-compliance.md](docs/food-safety-and-compliance.md) · [docs/pilot/](docs/pilot/README.md)
+More detail: [docs/database.md](docs/database.md) · [docs/food-safety-and-compliance.md](docs/food-safety-and-compliance.md) · [docs/design-system.md](docs/design-system.md) · [docs/pilot/](docs/pilot/README.md)
 
 ---
 

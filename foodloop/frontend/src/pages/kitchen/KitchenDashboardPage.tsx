@@ -20,10 +20,11 @@ import { Link, useSearchParams } from "react-router";
 
 import { api, ApiError, errorMessage } from "../../api/client";
 import { keys, useKitchen, useKitchenListings, useKitchenReservations, useKitchenStats, useMe } from "../../api/queries";
-import type { Kitchen, KitchenInput, ProviderListing, ProviderReservation } from "../../api/types";
+import type { Funnel, Kitchen, KitchenInput, ProviderListing, ProviderReservation } from "../../api/types";
 import { KitchenFields } from "../../components/KitchenFields";
 import { MealImage } from "../../components/MealImage";
-import { EmptyState, ErrorState, Notice, Skeleton, StatTile, StatusPill, Tabs } from "../../components/ui";
+import { useToast } from "../../components/Toast";
+import { BusyLabel, EmptyState, ErrorState, Notice, PageHeader, Skeleton, StatTile, StatusPill, Tabs } from "../../components/ui";
 import { formatDateTime, formatRupees, formatTime, formatWindow, plural, relativeTime } from "../../lib/format";
 import { useNow } from "../../lib/useNow";
 
@@ -41,7 +42,7 @@ function StatusBanner({ kitchen }: { kitchen: Kitchen }) {
     suspended: { tone: "danger" as const, title: "Kitchen suspended", body: "Your listings are hidden and can't be reserved. Contact FoodLoop to resolve this." },
   }[kitchen.status];
   return (
-    <Notice tone={content.tone} title={content.title} className="mt-6">
+    <Notice tone={content.tone} title={content.title} className="mb-6">
       {content.body}
       {kitchen.status_reason && <span className="mt-1 block font-medium">Reason: {kitchen.status_reason}</span>}
     </Notice>
@@ -86,14 +87,89 @@ function Stats() {
   );
 }
 
+/** Last 7 days as a funnel: each bar is a share of the portions listed. Real numbers only, never padded. */
+function WeekFunnel() {
+  const { data } = useKitchenStats();
+  if (!data) return <Skeleton className="h-64 w-full rounded-[1.25rem]" />;
+  const week: Funnel = data.last_7_days;
+  const listed = week.portions_listed;
+  const rows = [
+    { label: "Listed", value: listed, note: "portions offered" },
+    { label: "Reserved", value: week.portions_reserved, note: week.sell_through_percent !== null ? `${week.sell_through_percent}% of listed` : "" },
+    { label: "Collected", value: week.portions_collected, note: week.collection_rate_percent !== null ? `${week.collection_rate_percent}% of reserved` : "" },
+  ];
+  return (
+    <section className="card p-5 sm:p-6" aria-labelledby="funnel-title">
+      <h2 id="funnel-title" className="font-sans text-base font-semibold tracking-normal">
+        Last 7 days
+      </h2>
+      <p className="mt-0.5 text-[13px] text-ink-500">From portions listed to meals handed over, grouped by pickup day.</p>
+      {listed === 0 ? (
+        <p className="mt-5 rounded-2xl bg-sage-50 px-4 py-6 text-center text-[14px] text-ink-600">
+          No listings in the last 7 days yet. Your numbers will appear here after your first listing.
+        </p>
+      ) : (
+        <>
+          <ul className="mt-5 space-y-4">
+            {rows.map((row) => {
+              const share = Math.round((100 * row.value) / listed);
+              return (
+                <li key={row.label} className="group relative">
+                  <div className="flex items-baseline justify-between gap-3 text-[14px]">
+                    <span className="font-semibold text-ink-900">{row.label}</span>
+                    <span className="text-ink-600">
+                      <span className="font-semibold text-ink-900 tabular-nums">{row.value}</span>
+                      {row.note && <span className="ml-1.5 text-[12.5px] text-ink-500">{row.note}</span>}
+                    </span>
+                  </div>
+                  <div
+                    className="mt-1.5 h-3 overflow-hidden rounded-full bg-leaf-50"
+                    role="img"
+                    aria-label={`${row.label}: ${row.value} of ${listed} portions listed (${share}%)`}
+                    tabIndex={0}
+                  >
+                    <div className="h-full rounded-full bg-leaf-500 transition-[width] duration-700" style={{ width: `${Math.max(share, row.value ? 2 : 0)}%` }} />
+                  </div>
+                  <span
+                    className="pointer-events-none absolute -top-9 right-0 z-10 rounded-lg bg-ink-900 px-2.5 py-1 text-[12px] font-medium whitespace-nowrap text-white opacity-0 shadow-lift transition group-focus-within:opacity-100 group-hover:opacity-100"
+                    aria-hidden="true"
+                  >
+                    {row.value} of {listed} listed · {share}%
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <dl className="mt-5 grid grid-cols-3 gap-2 border-t border-line pt-4 text-center">
+            <div>
+              <dt className="text-[12px] text-ink-500">Cancelled</dt>
+              <dd className="font-semibold tabular-nums">{week.portions_cancelled}</dd>
+            </div>
+            <div>
+              <dt className="text-[12px] text-ink-500">Not collected</dt>
+              <dd className="font-semibold tabular-nums">{week.portions_missed}</dd>
+            </div>
+            <div>
+              <dt className="text-[12px] text-ink-500">Recovered</dt>
+              <dd className="font-semibold tabular-nums">{formatRupees(week.revenue_recovered_paise)}</dd>
+            </div>
+          </dl>
+        </>
+      )}
+    </section>
+  );
+}
+
 function CollectBox() {
   const [code, setCode] = useState("");
   const queryClient = useQueryClient();
+  const toast = useToast();
   const collect = useMutation({
     mutationFn: (pickup_code: string) =>
       api<ProviderReservation>("/provider/reservations/collect", { method: "POST", body: { pickup_code } }),
-    onSuccess: () => {
+    onSuccess: (reservation) => {
       setCode("");
+      toast.success("Pickup confirmed", `Collect ${formatRupees(reservation.total_paise)} from ${reservation.customer_name}.`);
       queryClient.invalidateQueries({ queryKey: ["kitchen"] });
     },
   });
@@ -103,7 +179,7 @@ function CollectBox() {
   }
   return (
     <div className="card overflow-hidden">
-      <div className="bg-ink-900 px-5 py-4 text-white sm:px-6">
+      <div className="bg-leaf-900 px-5 py-4 text-white sm:px-6">
         <h2 className="flex items-center gap-2 font-sans text-base font-semibold tracking-normal">
           <ClipboardCheck className="size-5 text-turmeric-300" aria-hidden="true" /> Hand over a meal
         </h2>
@@ -124,7 +200,9 @@ function CollectBox() {
           />
         </label>
         <button className="btn-primary h-12 px-6" disabled={collect.isPending || !code.trim()}>
-          {collect.isPending ? "Checking…" : "Confirm pickup"}
+          <BusyLabel busy={collect.isPending} busyText="Checking…">
+            Confirm pickup
+          </BusyLabel>
         </button>
       </form>
       <div aria-live="polite" className="px-5 pb-5 sm:px-6">
@@ -144,9 +222,13 @@ function CancelReservation({ reservation }: { reservation: ProviderReservation }
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const queryClient = useQueryClient();
+  const toast = useToast();
   const cancel = useMutation({
     mutationFn: () => api(`/provider/reservations/${reservation.id}/cancel`, { method: "POST", body: { reason } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["kitchen"] }),
+    onSuccess: () => {
+      toast.success("Reservation cancelled", `${reservation.customer_name} will see your reason.`);
+      queryClient.invalidateQueries({ queryKey: ["kitchen"] });
+    },
   });
   if (!open) {
     return (
@@ -171,7 +253,9 @@ function CancelReservation({ reservation }: { reservation: ProviderReservation }
         Back
       </button>
       <button className="btn-danger btn-sm" disabled={cancel.isPending}>
-        Cancel reservation
+        <BusyLabel busy={cancel.isPending} busyText="Cancelling…">
+          Cancel reservation
+        </BusyLabel>
       </button>
       {cancel.isError && <p className="w-full text-sm text-danger-600">{errorMessage(cancel.error)}</p>}
     </form>
@@ -183,9 +267,10 @@ function Pickups() {
   const { data, isLoading, isError, error, refetch } = useKitchenReservations(scope);
   const now = useNow();
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
-      <div className="lg:sticky lg:top-24 lg:self-start">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.3fr]">
+      <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
         <CollectBox />
+        <WeekFunnel />
       </div>
       <section>
         <div className="flex items-center justify-between gap-3">
@@ -207,7 +292,7 @@ function Pickups() {
             </div>
           ) : (
             data.map((reservation) => (
-              <article key={reservation.id} className="card p-4 sm:p-5">
+              <article key={reservation.id} className="card animate-rise p-4 sm:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold">{reservation.customer_name}</p>
@@ -242,6 +327,7 @@ function Pickups() {
 function ListingRow({ listing, canEdit }: { listing: ProviderListing; canEdit: boolean }) {
   const now = useNow();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [removing, setRemoving] = useState(false);
   const [reason, setReason] = useState("");
   const refresh = () => {
@@ -250,20 +336,27 @@ function ListingRow({ listing, canEdit }: { listing: ProviderListing; canEdit: b
   };
   const setStatus = useMutation({
     mutationFn: (status: string) => api(`/provider/listings/${listing.id}/status`, { method: "POST", body: { status } }),
-    onSuccess: refresh,
+    onSuccess: (_data, status) => {
+      if (status === "paused") toast.success("Listing paused", "Customers can't reserve it until you publish it again.");
+      else toast.success("Listing published", "Customers can reserve it now.");
+      refresh();
+    },
   });
   const remove = useMutation({
     mutationFn: () => api(`/provider/listings/${listing.id}/remove`, { method: "POST", body: { reason } }),
-    onSuccess: refresh,
+    onSuccess: () => {
+      toast.success("Listing removed");
+      refresh();
+    },
   });
   const live = listing.status === "active";
   const ended = listing.availability === "expired";
   const error = setStatus.error ?? remove.error;
 
   return (
-    <article className="card p-4 sm:p-5">
+    <article className="card min-w-0 p-4 transition hover:shadow-lift sm:p-5">
       <div className="flex gap-4">
-        <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-cream-200 sm:size-24">
+        <div className="size-20 shrink-0 overflow-hidden rounded-2xl bg-cream-200 sm:size-24">
           <MealImage imageUrl={listing.image_url} mealType={listing.meal_type} title={listing.title} seed={listing.id} alt="" sizes="96px" />
         </div>
         <div className="min-w-0 flex-1">
@@ -279,6 +372,12 @@ function ListingRow({ listing, canEdit }: { listing: ProviderListing; canEdit: b
             <strong>{listing.quantity_available}</strong> of {listing.quantity_total} left · {listing.reserved_quantity} waiting ·{" "}
             {listing.collected_quantity} collected
           </p>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-leaf-50" aria-hidden="true">
+            <div
+              className="h-full rounded-full bg-leaf-500"
+              style={{ width: `${listing.quantity_total ? Math.round((100 * (listing.quantity_total - listing.quantity_available)) / listing.quantity_total) : 0}%` }}
+            />
+          </div>
         </div>
       </div>
       {canEdit && !ended && (
@@ -318,7 +417,9 @@ function ListingRow({ listing, canEdit }: { listing: ProviderListing; canEdit: b
               Keep
             </button>
             <button className="btn-danger btn-sm" disabled={remove.isPending}>
-              Remove listing
+              <BusyLabel busy={remove.isPending} busyText="Removing…">
+                Remove listing
+              </BusyLabel>
             </button>
           </div>
         </form>
@@ -336,17 +437,13 @@ function Listings({ approved }: { approved: boolean }) {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">Your listings</h2>
-        {approved ? (
-          <Link to="/kitchen/listings/new" className="btn-primary">
-            <Plus className="size-4" aria-hidden="true" /> List surplus food
-          </Link>
-        ) : (
+        {!approved && (
           <button type="button" className="btn-primary" disabled title="Available once your kitchen is approved">
             <Plus className="size-4" aria-hidden="true" /> List surplus food
           </button>
         )}
       </div>
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
         {isLoading ? (
           <Skeleton className="h-32 w-full rounded-[1.25rem]" />
         ) : isError ? (
@@ -366,7 +463,7 @@ function Listings({ approved }: { approved: boolean }) {
       {past.length > 0 && (
         <details className="mt-8">
           <summary className="cursor-pointer text-sm font-semibold text-ink-600">Ended listings ({past.length})</summary>
-          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
             {past.map((listing) => (
               <ListingRow key={listing.id} listing={listing} canEdit={false} />
             ))}
@@ -393,11 +490,13 @@ function Profile({ kitchen }: { kitchen: Kitchen }) {
     fssai_valid_until: k.fssai_valid_until,
     pickup_instructions: k.pickup_instructions,
   });
+  const toast = useToast();
   const [form, setForm] = useState<KitchenInput>(toInput(kitchen));
   useEffect(() => setForm(toInput(kitchen)), [kitchen]);
   const save = useMutation({
     mutationFn: () => api<Kitchen>("/provider/me", { method: "PUT", body: form }),
     onSuccess: (updated) => {
+      toast.success("Kitchen profile saved", updated.status === "pending" ? "Your kitchen will be re-checked before listings go live again." : undefined);
       queryClient.setQueryData(keys.kitchen, updated);
       queryClient.invalidateQueries({ queryKey: keys.me });
     },
@@ -423,7 +522,9 @@ function Profile({ kitchen }: { kitchen: Kitchen }) {
       </div>
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <button className="btn-primary" disabled={save.isPending}>
-          {save.isPending ? "Saving…" : "Save changes"}
+          <BusyLabel busy={save.isPending} busyText="Saving…">
+            Save changes
+          </BusyLabel>
         </button>
         {save.isSuccess && <span className="text-sm font-medium text-leaf-700">Saved.</span>}
         {save.isError && !Object.keys(errors).length && <span className="text-sm text-danger-600">{errorMessage(save.error)}</span>}
@@ -439,32 +540,43 @@ export function KitchenDashboardPage() {
   const tab = (params.get("tab") as Tab) ?? "pickups";
   const { data: stats } = useKitchenStats();
 
-  if (isLoading) return <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6"><Skeleton className="h-40 w-full rounded-[2rem]" /></div>;
+  if (isLoading) {
+    return (
+      <div className="container-page py-12">
+        <Skeleton className="h-40 w-full rounded-[2rem]" />
+      </div>
+    );
+  }
   if (isError || !kitchen) return <ErrorState error={error} onRetry={() => refetch()} />;
   const approved = kitchen.status === "approved";
 
   return (
     <div>
-      <section className="bg-leaf-900 text-cream-100">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-          <p className="flex items-center gap-2 text-xs font-bold tracking-[0.14em] text-turmeric-300 uppercase">
+      <PageHeader
+        eyebrow={
+          <span className="flex items-center gap-2">
             <ChefHat className="size-4" aria-hidden="true" /> Kitchen dashboard
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold text-white sm:text-4xl">{kitchen.name}</h1>
-            <StatusPill status={kitchen.status} />
-          </div>
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-leaf-100">
-            <Store className="size-4" aria-hidden="true" /> {kitchen.area}, {kitchen.city} · signed in as {me?.user.full_name}
-          </p>
-        </div>
-      </section>
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <StatusBanner kitchen={kitchen} />
-        <div className="mt-6">
-          <Stats />
-        </div>
-        <div className="mt-8 overflow-x-auto">
+          </span>
+        }
+        title={
+          <span className="flex flex-wrap items-center gap-3">
+            {kitchen.name} <StatusPill status={kitchen.status} />
+          </span>
+        }
+        description={
+          <span className="flex items-center gap-1.5">
+            <Store className="size-4 text-leaf-600" aria-hidden="true" /> {kitchen.area}, {kitchen.city} · signed in as {me?.user.full_name}
+          </span>
+        }
+        actions={
+          approved ? (
+            <Link to="/kitchen/listings/new" className="btn-primary">
+              <Plus className="size-4" aria-hidden="true" /> List surplus food
+            </Link>
+          ) : undefined
+        }
+      >
+        <div className="overflow-x-auto pb-1">
           <Tabs<Tab>
             label="Kitchen sections"
             value={tab}
@@ -476,7 +588,11 @@ export function KitchenDashboardPage() {
             ]}
           />
         </div>
-        <div className="mt-6">
+      </PageHeader>
+      <div className="container-page py-8">
+        <StatusBanner kitchen={kitchen} />
+        <Stats />
+        <div className="mt-8">
           {tab === "pickups" && <Pickups />}
           {tab === "listings" && <Listings approved={approved} />}
           {tab === "profile" && <Profile kitchen={kitchen} />}

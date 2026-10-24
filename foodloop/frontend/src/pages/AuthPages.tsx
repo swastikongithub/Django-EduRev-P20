@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChefHat, Eye, EyeOff } from "lucide-react";
+import { BadgeCheck, ChefHat, Eye, EyeOff, ShieldCheck, Store } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router";
 
@@ -7,8 +7,9 @@ import { api, ApiError } from "../api/client";
 import { keys, useMe } from "../api/queries";
 import type { KitchenInput, Me, Role } from "../api/types";
 import { EMPTY_KITCHEN, KitchenFields } from "../components/KitchenFields";
-import { describedBy, Field, Notice } from "../components/ui";
-import { MEAL_ILLUSTRATIONS } from "../lib/meals";
+import { Photo } from "../components/Photo";
+import { BusyLabel, describedBy, Field, Notice } from "../components/ui";
+import { type Photo as PhotoItem, PHOTOS } from "../lib/photos";
 
 const HOME: Record<Role, string> = { customer: "/meals", provider: "/kitchen", admin: "/admin" };
 
@@ -17,17 +18,35 @@ function safeNext(next: string | null): string | null {
   return next && next.startsWith("/") && !next.startsWith("//") ? next : null;
 }
 
-function AuthShell({ title, subtitle, children, art = MEAL_ILLUSTRATIONS.breakfast }: { title: string; subtitle: ReactNode; children: ReactNode; art?: string }) {
+function AuthShell({
+  title,
+  subtitle,
+  children,
+  photo = PHOTOS.idliVada,
+  caption,
+}: {
+  title: string;
+  subtitle: ReactNode;
+  children: ReactNode;
+  photo?: PhotoItem;
+  caption: string;
+}) {
   return (
-    <div className="mx-auto grid max-w-6xl items-start gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_0.9fr] lg:py-16">
-      <div className="card animate-rise p-6 sm:p-10">
-        <h1 className="text-3xl font-semibold sm:text-4xl">{title}</h1>
+    <div className="mx-auto grid max-w-6xl items-stretch gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_0.95fr] lg:py-14">
+      <div className="card animate-rise self-start p-6 sm:p-10">
+        <h1 className="text-[2rem] leading-tight sm:text-4xl">{title}</h1>
         <p className="mt-2 text-[15px] text-ink-600">{subtitle}</p>
         <div className="mt-8">{children}</div>
       </div>
-      <div className="sticky top-24 hidden lg:block" aria-hidden="true">
-        <img src={art} alt="" className="w-full rotate-2 rounded-[2rem] shadow-lift ring-8 ring-white" />
-        <p className="font-display mt-8 text-center text-2xl text-ink-700 italic">Good food. Less waste.</p>
+      <div className="relative hidden min-h-[560px] overflow-hidden rounded-[2rem] shadow-lift lg:block" aria-hidden="true">
+        <Photo photo={photo} alt="" sizes="(min-width: 1024px) 520px, 0px" priority />
+        <div className="absolute inset-0 bg-gradient-to-t from-leaf-900/85 via-leaf-900/15 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 p-8 text-white">
+          <p className="font-display text-[1.9rem] leading-tight font-semibold">{caption}</p>
+          <p className="mt-3 flex items-center gap-2 text-[14px] text-white/85">
+            <ShieldCheck className="size-4" /> Only FSSAI-checked kitchens. Nothing past its safe-until time.
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -90,7 +109,7 @@ export function LoginPage() {
   }
   const errors = fieldErrors(login.error);
   return (
-    <AuthShell title="Welcome back" subtitle={<>New here? <Link className="font-semibold text-leaf-700 underline-offset-4 hover:underline" to="/register">Create an account</Link></>}>
+    <AuthShell title="Welcome back" caption="Good food deserves another chance." subtitle={<>New here? <Link className="font-semibold text-leaf-700 underline-offset-4 hover:underline" to="/register">Create an account</Link></>}>
       <form className="space-y-5" onSubmit={submit} noValidate={false}>
         {login.isError && Object.keys(errors).length === 0 && <Notice tone="danger">{login.error.message}</Notice>}
         <Field id="email" label="Email" error={errors.email}>
@@ -100,7 +119,9 @@ export function LoginPage() {
           <PasswordInput id="password" value={password} onChange={setPassword} error={errors.password} autoComplete="current-password" />
         </Field>
         <button className="btn-primary w-full" disabled={login.isPending}>
-          {login.isPending ? "Logging in…" : "Log in"}
+          <BusyLabel busy={login.isPending} busyText="Logging in…">
+            Log in
+          </BusyLabel>
         </button>
       </form>
     </AuthShell>
@@ -123,7 +144,8 @@ export function RegisterPage() {
     <AuthShell
       title="Create your account"
       subtitle={<>Already have one? <Link className="font-semibold text-leaf-700 underline-offset-4 hover:underline" to="/login">Log in</Link></>}
-      art={MEAL_ILLUSTRATIONS.lunch}
+      photo={PHOTOS.steelThali}
+      caption="Fresh surplus from kitchens near you, at a lower price."
     >
       <form className="space-y-5" onSubmit={submit}>
         {register.isError && Object.keys(errors).length === 0 && <Notice tone="danger">{register.error.message}</Notice>}
@@ -140,7 +162,9 @@ export function RegisterPage() {
           <PasswordInput id="password" value={form.password} onChange={(password) => setForm({ ...form, password })} error={errors.password} autoComplete="new-password" />
         </Field>
         <button className="btn-primary w-full" disabled={register.isPending}>
-          {register.isPending ? "Creating account…" : "Create account"}
+          <BusyLabel busy={register.isPending} busyText="Creating account…">
+            Create account
+          </BusyLabel>
         </button>
         <p className="text-center text-sm text-ink-600">
           Run a canteen, mess or PG kitchen?{" "}
@@ -168,15 +192,32 @@ export function RegisterKitchenPage() {
   }
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:py-14">
-      <div className="animate-rise">
-        <p className="eyebrow flex items-center gap-2">
-          <ChefHat className="size-4" aria-hidden="true" /> For kitchens
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold sm:text-5xl">Register your kitchen</h1>
-        <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-ink-600">
-          Tell us about your kitchen. FoodLoop reviews every kitchen, including its FSSAI registration, before it can
-          list food. You'll be able to set up your dashboard straight away.
-        </p>
+      <div className="relative animate-rise overflow-hidden rounded-[2rem] bg-leaf-900 text-white shadow-lift">
+        <div className="absolute inset-0 opacity-45">
+          <Photo photo={PHOTOS.chefKitchen} alt="" sizes="(min-width: 768px) 768px, 100vw" priority />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-leaf-900 via-leaf-900/85 to-leaf-900/30" />
+        <div className="relative p-7 sm:p-10">
+          <p className="flex items-center gap-2 text-[13px] font-semibold tracking-[0.14em] text-turmeric-300 uppercase">
+            <ChefHat className="size-4" aria-hidden="true" /> For kitchens
+          </p>
+          <h1 className="mt-3 text-[2.2rem] leading-tight text-white sm:text-5xl">Register your kitchen</h1>
+          <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-white/85">
+            Tell us about your kitchen. FoodLoop reviews every kitchen, including its FSSAI registration, before it can
+            list food. You'll be able to set up your dashboard straight away.
+          </p>
+          <ul className="mt-6 flex flex-wrap gap-2 text-[13px]">
+            {[
+              { icon: Store, text: "Customers pay at your counter" },
+              { icon: BadgeCheck, text: "FSSAI checked" },
+              { icon: ShieldCheck, text: "You set the pickup window" },
+            ].map((item) => (
+              <li key={item.text} className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-3 py-1.5 ring-1 ring-white/20 backdrop-blur">
+                <item.icon className="size-4" aria-hidden="true" /> {item.text}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
       <form className="mt-8 space-y-6" onSubmit={submit}>
         {register.isError && <Notice tone="danger">{register.error.message}</Notice>}
@@ -208,7 +249,9 @@ export function RegisterKitchenPage() {
           surplus. Nothing you add is visible to customers before then.
         </Notice>
         <button className="btn-primary w-full sm:w-auto sm:px-8" disabled={register.isPending}>
-          {register.isPending ? "Submitting…" : "Submit for approval"}
+          <BusyLabel busy={register.isPending} busyText="Submitting…">
+            Submit for approval
+          </BusyLabel>
         </button>
       </form>
     </div>

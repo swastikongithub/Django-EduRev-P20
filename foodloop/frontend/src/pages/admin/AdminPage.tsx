@@ -7,7 +7,8 @@ import { api, errorMessage } from "../../api/client";
 import { useAdminKitchens, useAdminListings, useAdminOverview, useMeta } from "../../api/queries";
 import type { AdminKitchen, AuditEntry, ProviderListing } from "../../api/types";
 import { MealImage } from "../../components/MealImage";
-import { EmptyState, ErrorState, Notice, SampleBadge, Skeleton, StatTile, StatusPill, Tabs } from "../../components/ui";
+import { useToast } from "../../components/Toast";
+import { BusyLabel, EmptyState, ErrorState, Notice, PageHeader, SampleBadge, Skeleton, StatTile, StatusPill, Tabs } from "../../components/ui";
 import { formatDateTime, formatRupees, formatWindow } from "../../lib/format";
 
 type Tab = "kitchens" | "listings" | "activity";
@@ -30,7 +31,9 @@ function ReasonForm({ label, onSubmit, onCancel, pending }: { label: string; onS
         Back
       </button>
       <button className="btn-danger btn-sm" disabled={pending}>
-        {label}
+        <BusyLabel busy={pending} busyText="Saving…">
+          {label}
+        </BusyLabel>
       </button>
     </form>
   );
@@ -39,17 +42,21 @@ function ReasonForm({ label, onSubmit, onCancel, pending }: { label: string; onS
 function KitchenCard({ kitchen }: { kitchen: AdminKitchen }) {
   const { data: meta } = useMeta();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [action, setAction] = useState<"reject" | "suspend" | null>(null);
   const mutate = useMutation({
     mutationFn: ({ verb, reason }: { verb: string; reason?: string }) =>
       api(`/admin/providers/${kitchen.id}/${verb}`, { method: "POST", body: reason ? { reason } : undefined }),
-    onSuccess: () => {
+    onSuccess: (_data, { verb }) => {
       setAction(null);
+      const done: Record<string, string> = { approve: "Kitchen approved", reject: "Application rejected", suspend: "Kitchen suspended" };
+      toast.success(done[verb] ?? "Saved", kitchen.name);
       queryClient.invalidateQueries({ queryKey: ["admin"] });
     },
+    onError: (error) => toast.error("That didn't work", errorMessage(error)),
   });
   return (
-    <article className="card p-5">
+    <article className="card animate-rise p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -83,7 +90,9 @@ function KitchenCard({ kitchen }: { kitchen: AdminKitchen }) {
       <div className="mt-4 flex flex-wrap gap-2">
         {kitchen.status !== "approved" && (
           <button type="button" className="btn-primary btn-sm" disabled={mutate.isPending || kitchen.fssai_expired} onClick={() => mutate.mutate({ verb: "approve" })}>
-            <BadgeCheck className="size-4" aria-hidden="true" /> {kitchen.status === "pending" ? "Approve" : "Re-approve"}
+            <BusyLabel busy={mutate.isPending && mutate.variables?.verb === "approve"} busyText="Approving…">
+              <BadgeCheck className="size-4" aria-hidden="true" /> {kitchen.status === "pending" ? "Approve" : "Re-approve"}
+            </BusyLabel>
           </button>
         )}
         {kitchen.status === "pending" && (
@@ -150,19 +159,21 @@ function Kitchens() {
 
 function AdminListingRow({ listing }: { listing: ProviderListing }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [removing, setRemoving] = useState(false);
   const remove = useMutation({
     mutationFn: (reason: string) => api(`/admin/listings/${listing.id}/remove`, { method: "POST", body: { reason } }),
     onSuccess: () => {
       setRemoving(false);
+      toast.success("Listing removed", "The kitchen and any customers with reservations can see your reason.");
       queryClient.invalidateQueries({ queryKey: ["admin"] });
       queryClient.invalidateQueries({ queryKey: ["listings"] });
     },
   });
   return (
-    <article className="card p-4">
+    <article className="card p-4 transition hover:shadow-lift">
       <div className="flex gap-4">
-        <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-cream-200">
+        <div className="size-16 shrink-0 overflow-hidden rounded-2xl bg-cream-200">
           <MealImage imageUrl={listing.image_url} mealType={listing.meal_type} title={listing.title} seed={listing.id} alt="" sizes="64px" />
         </div>
         <div className="min-w-0 flex-1">
@@ -257,7 +268,11 @@ function Activity({ entries }: { entries: AuditEntry[] }) {
     <ol className="card divide-y divide-line">
       {entries.map((entry) => (
         <li key={entry.id} className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3.5">
-          <div>
+          <div className="relative pl-5">
+            <span
+              className={`absolute top-1.5 left-0 size-2.5 rounded-full ${/removed|suspended|rejected|cancelled/.test(entry.action) ? "bg-saffron-500" : "bg-leaf-500"}`}
+              aria-hidden="true"
+            />
             <p className="text-[14.5px] font-semibold">{ACTION_LABELS[entry.action] ?? entry.action}</p>
             <p className="text-[13px] text-ink-500">
               by {entry.actor_name ?? "system"}
@@ -281,16 +296,34 @@ export function AdminPage() {
 
   return (
     <div>
-      <section className="bg-ink-900 text-white">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-          <p className="flex items-center gap-2 text-xs font-bold tracking-[0.14em] text-turmeric-300 uppercase">
+      <PageHeader
+        eyebrow={
+          <span className="flex items-center gap-2">
             <ShieldCheck className="size-4" aria-hidden="true" /> FoodLoop admin
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">Platform overview</h1>
-          <p className="mt-2 text-sm text-white/70">Approve kitchens, keep listings honest, and watch over safety.</p>
+          </span>
+        }
+        title="Platform overview"
+        description="Approve kitchens, keep listings honest, and watch over safety."
+        actions={
+          <Link to="/meals" className="btn-secondary">
+            View public site
+          </Link>
+        }
+      >
+        <div className="overflow-x-auto pb-1">
+          <Tabs<Tab>
+            label="Admin sections"
+            value={tab}
+            onChange={(value) => setParams({ tab: value }, { replace: true })}
+            tabs={[
+              { value: "kitchens", label: "Kitchens", count: data?.providers.pending },
+              { value: "listings", label: "Listings" },
+              { value: "activity", label: "Activity log" },
+            ]}
+          />
         </div>
-      </section>
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      </PageHeader>
+      <div className="container-page py-8">
         {isLoading ? (
           <Skeleton className="h-24 w-full rounded-[1.25rem]" />
         ) : isError || !data ? (
@@ -316,26 +349,11 @@ export function AdminPage() {
             </div>
           </>
         )}
-        <div className="mt-8 overflow-x-auto">
-          <Tabs<Tab>
-            label="Admin sections"
-            value={tab}
-            onChange={(value) => setParams({ tab: value }, { replace: true })}
-            tabs={[
-              { value: "kitchens", label: "Kitchens", count: data?.providers.pending },
-              { value: "listings", label: "Listings" },
-              { value: "activity", label: "Activity log" },
-            ]}
-          />
-        </div>
-        <div className="mt-6">
+        <div className="mt-8">
           {tab === "kitchens" && <Kitchens />}
           {tab === "listings" && <Listings />}
           {tab === "activity" && <Activity entries={data?.recent_activity ?? []} />}
         </div>
-        <p className="mt-10 text-center text-[13px] text-ink-500">
-          Need the public view? <Link to="/meals" className="font-semibold text-leaf-700">Browse meals</Link>
-        </p>
       </div>
     </div>
   );

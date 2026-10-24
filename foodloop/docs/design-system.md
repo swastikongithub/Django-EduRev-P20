@@ -52,6 +52,24 @@ All text pairs meet **WCAG AA** (4.5 : 1). Orange is never used for body text on
 **Radii:** cards 20px, feature panels 28–40px, images inside cards 16–20px, buttons fully rounded.
 **Shadows:** `shadow-soft` at rest, `shadow-lift` on hover.
 
+## Shared React pieces
+
+| Component | Where | Use |
+|---|---|---|
+| `PageHeader` | `components/ui.tsx` | the sage band at the top of My reservations, the kitchen dashboard, the listing form and admin: eyebrow, title, description, actions and tabs. `narrow` lines it up with a form-width page |
+| `BusyLabel` | `components/ui.tsx` | button text that swaps to a spinner and “Saving…”-style text while a request runs |
+| `useToast()` | `components/Toast.tsx` | short confirmations (“Reservation confirmed”, “Listing published”) and errors. Bottom of the screen on phones, bottom right on desktop, read out by screen readers, gone after a few seconds |
+| `StatTile`, `Notice`, `EmptyState`, `ErrorState`, `Skeleton`, `Tabs` | `components/ui.tsx` | numbers, messages, empty, error and loading states |
+| `ListingCard`, `MealImage`, `Photo` | `components/` | meal cards and every food picture |
+
+**Charts:** the kitchen dashboard's “Last 7 days” card is the only chart. Each bar is a share of the portions
+listed (listed → reserved → collected) in one green (`leaf-500`, checked for contrast against white) on a
+pale green track, with the number written beside it. It uses the kitchen's real numbers only, and shows a
+plain message instead of empty bars when nothing has been listed yet.
+
+**Phones:** on a meal page the order is photo → name, price and Reserve → food details. A bottom bar with the
+price and a Reserve button appears once the reserve panel scrolls out of view.
+
 ## Photography (`src/lib/photos.ts`, `src/components/Photo.tsx`)
 
 - Real food photos from Adobe Stock, stored as WebP at 480/800/1200 px (the hero also has 1600 px). They

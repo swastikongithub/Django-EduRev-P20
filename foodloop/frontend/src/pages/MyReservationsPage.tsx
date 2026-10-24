@@ -7,7 +7,8 @@ import { api, errorMessage } from "../api/client";
 import { keys, useMyReservations } from "../api/queries";
 import type { CustomerReservation } from "../api/types";
 import { MealImage } from "../components/MealImage";
-import { EmptyState, ErrorState, Notice, SampleBadge, Skeleton, StatusPill, Tabs } from "../components/ui";
+import { useToast } from "../components/Toast";
+import { BusyLabel, EmptyState, ErrorState, Notice, PageHeader, SampleBadge, Skeleton, StatusPill, Tabs } from "../components/ui";
 import { formatDateTime, formatRupees, formatWindow, minutesUntil, plural, relativeTime } from "../lib/format";
 import { useNow } from "../lib/useNow";
 
@@ -36,9 +37,11 @@ function CopyCode({ code }: { code: string }) {
 function CancelControl({ reservation }: { reservation: CustomerReservation }) {
   const [confirming, setConfirming] = useState(false);
   const queryClient = useQueryClient();
+  const toast = useToast();
   const cancel = useMutation({
     mutationFn: () => api(`/reservations/${reservation.id}/cancel`, { method: "POST", body: { reason: "" } }),
     onSuccess: () => {
+      toast.success("Reservation cancelled", "Thanks for releasing it. Someone else can now have it.");
       queryClient.invalidateQueries({ queryKey: keys.myReservations });
       queryClient.invalidateQueries({ queryKey: ["listings"] });
     },
@@ -57,7 +60,9 @@ function CancelControl({ reservation }: { reservation: CustomerReservation }) {
         Keep it
       </button>
       <button type="button" className="btn-danger btn-sm" disabled={cancel.isPending} onClick={() => cancel.mutate()}>
-        {cancel.isPending ? "Cancelling…" : "Yes, cancel"}
+        <BusyLabel busy={cancel.isPending} busyText="Cancelling…">
+          Yes, cancel
+        </BusyLabel>
       </button>
       {cancel.isError && <p className="w-full text-sm text-danger-600">{errorMessage(cancel.error)}</p>}
     </div>
@@ -144,8 +149,8 @@ function PastReservation({ reservation, now }: { reservation: CustomerReservatio
         ? `Collected ${reservation.collected_at ? formatDateTime(reservation.collected_at, now) : ""}. Enjoy!`
         : "The pickup window ended before this was collected.";
   return (
-    <article className="card flex gap-4 p-4">
-      <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-cream-200">
+    <article className="card flex gap-4 p-4 transition hover:shadow-lift">
+      <div className="size-16 shrink-0 overflow-hidden rounded-2xl bg-cream-200">
         <MealImage imageUrl={reservation.listing.image_url} mealType={reservation.listing.meal_type} title={reservation.listing.title} seed={reservation.listing.id} alt="" sizes="64px" />
       </div>
       <div className="min-w-0 flex-1">
@@ -171,10 +176,18 @@ export function MyReservationsPage() {
   const shown = tab === "active" ? active : past;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
-      <p className="eyebrow">Your meals</p>
-      <h1 className="mt-2 text-4xl font-semibold">My reservations</h1>
-      <div className="mt-6">
+    <div>
+      <PageHeader
+        narrow
+        eyebrow="Your meals"
+        title="My reservations"
+        description="Your pickup codes, times and kitchen addresses, all in one place."
+        actions={
+          <Link to="/meals" className="btn-secondary">
+            Find more meals
+          </Link>
+        }
+      >
         <Tabs
           label="Reservations"
           value={tab}
@@ -184,36 +197,38 @@ export function MyReservationsPage() {
             { value: "past", label: "Past" },
           ]}
         />
-      </div>
-      <div className="mt-6 space-y-4">
-        {isLoading ? (
-          [0, 1].map((key) => <Skeleton key={key} className="h-56 w-full rounded-[1.25rem]" />)
-        ) : isError ? (
-          <ErrorState error={error} onRetry={() => refetch()} />
-        ) : shown.length === 0 ? (
-          <div className="card">
-            <EmptyState
-              icon={<Ticket className="size-7" />}
-              title={tab === "active" ? "No upcoming pickups" : "Nothing here yet"}
-              action={
-                <Link to="/meals" className="btn-primary">
-                  Browse meals
-                </Link>
-              }
-            >
-              {tab === "active" ? "Reserve a meal and your pickup code will appear here." : "Collected and cancelled reservations will show up here."}
-            </EmptyState>
-          </div>
-        ) : tab === "active" ? (
-          <>
-            <Notice tone="info">Show the pickup code at the counter and pay the kitchen directly (UPI or cash).</Notice>
-            {shown.map((reservation) => (
-              <ActiveReservation key={reservation.id} reservation={reservation} now={now} />
-            ))}
-          </>
-        ) : (
-          shown.map((reservation) => <PastReservation key={reservation.id} reservation={reservation} now={now} />)
-        )}
+      </PageHeader>
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+        <div className="space-y-4">
+          {isLoading ? (
+            [0, 1].map((key) => <Skeleton key={key} className="h-56 w-full rounded-[1.25rem]" />)
+          ) : isError ? (
+            <ErrorState error={error} onRetry={() => refetch()} />
+          ) : shown.length === 0 ? (
+            <div className="card">
+              <EmptyState
+                icon={<Ticket className="size-7" />}
+                title={tab === "active" ? "No upcoming pickups" : "Nothing here yet"}
+                action={
+                  <Link to="/meals" className="btn-primary">
+                    Browse meals
+                  </Link>
+                }
+              >
+                {tab === "active" ? "Reserve a meal and your pickup code will appear here." : "Collected and cancelled reservations will show up here."}
+              </EmptyState>
+            </div>
+          ) : tab === "active" ? (
+            <>
+              <Notice tone="info">Show the pickup code at the counter and pay the kitchen directly (UPI or cash).</Notice>
+              {shown.map((reservation) => (
+                <ActiveReservation key={reservation.id} reservation={reservation} now={now} />
+              ))}
+            </>
+          ) : (
+            shown.map((reservation) => <PastReservation key={reservation.id} reservation={reservation} now={now} />)
+          )}
+        </div>
       </div>
     </div>
   );

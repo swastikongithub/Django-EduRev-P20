@@ -10,11 +10,11 @@ of metadata, and are **not committed** to this public repository.
 | File prefix | Adobe Stock ID | Shows | Used for |
 |---|---|---|---|
 | `thali-spread` | 275393147 | Indian vegetarian dishes in steel bowls | Landing hero |
-| `steel-thali` | 193123927 | Thali on a steel plate, top view | Lunch meals, “browse by craving” |
+| `steel-thali` | 193123927 | Thali on a steel plate, top view | Lunch meals, “browse by meal”, sign-up page |
 | `lunch-tray` | 658806691 | Mini-meal tray | Lunch meals, “how it works” step 1 |
 | `biryani-pan` | 293587256 | Biryani in a pan | Dinner / biryani meals |
 | `biryani-bowl` | 546604660 | Chicken biryani in a brass bowl | Dinner meals |
-| `idli-vada` | 1061312447 | Idli, vada, sambar and chutneys | Breakfast / South Indian meals |
+| `idli-vada` | 1061312447 | Idli, vada, sambar and chutneys | Breakfast / South Indian meals, log-in page |
 | `idli-top` | 454170131 | Idli with chutney, top view | Breakfast meals |
 | `samosa` | 466422677 | Punjabi samosas with chutney | Snacks |
 | `veg-wrap` | 199453427 | Vegetable wrap | Wraps, rolls and sandwiches |
@@ -24,7 +24,7 @@ of metadata, and are **not committed** to this public repository.
 | `chai-pour` | 512910564 | Chai being poured | Beverages |
 | `salad-bowl` | 473887927 | Vegetable salad bowl | Salads |
 | `canteen-serving` | 620893993 | Canteen serving line | “For providers” section |
-| `chef-kitchen` | 382648453 | Chefs in a commercial kitchen | “For providers” section |
+| `chef-kitchen` | 382648453 | Chefs in a commercial kitchen | “For providers” section, kitchen registration header |
 | `takeaway-bag` | 862469565 | Takeaway boxes and paper bag | “How it works” step 3 |
 | `food-waste` | 551313735 | Food scraps in a kitchen bin | Sustainability section |
 

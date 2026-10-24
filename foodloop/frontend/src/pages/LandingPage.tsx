@@ -148,7 +148,7 @@ function Cravings() {
     <section aria-labelledby="cravings-title" className="container-page">
       <div className="flex items-end justify-between gap-4">
         <h2 id="cravings-title" className="text-2xl sm:text-[1.75rem]">
-          Browse by craving
+          Browse by meal
         </h2>
         <Link to="/meals" className="text-sm font-semibold text-leaf-700 underline-offset-4 hover:underline">
           See everything

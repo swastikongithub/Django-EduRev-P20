@@ -15,6 +15,18 @@ export function Spinner({ label = "Loading" }: { label?: string }) {
   );
 }
 
+/** Button content that swaps to a spinner while an action is running. */
+export function BusyLabel({ busy, busyText, children }: { busy: boolean; busyText: string; children: ReactNode }) {
+  return busy ? (
+    <>
+      <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+      {busyText}
+    </>
+  ) : (
+    <>{children}</>
+  );
+}
+
 export function PageLoader() {
   return (
     <div className="grid min-h-[50vh] place-items-center">
@@ -269,6 +281,40 @@ export function Tabs<T extends string>({
           )}
         </button>
       ))}
+    </div>
+  );
+}
+
+/** The calm sage band at the top of dashboard-style pages: eyebrow, title, short description and actions. */
+export function PageHeader({
+  eyebrow,
+  title,
+  description,
+  actions,
+  children,
+  narrow = false,
+}: {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+  children?: ReactNode;
+  /** Line up with a narrow (max-w-4xl) page body such as a form. */
+  narrow?: boolean;
+}) {
+  return (
+    <div className="border-b border-sage-200/70 bg-sage-50">
+      <div className={`${narrow ? "mx-auto max-w-4xl px-4 sm:px-6" : "container-page"} py-8 sm:py-10`}>
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <div className="min-w-0 animate-rise">
+            {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+            <h1 className="mt-2 text-[2rem] leading-tight sm:text-[2.5rem]">{title}</h1>
+            {description && <div className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-600">{description}</div>}
+          </div>
+          {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+        </div>
+        {children && <div className="mt-6">{children}</div>}
+      </div>
     </div>
   );
 }

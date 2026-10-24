@@ -59,12 +59,12 @@ with sync_playwright() as p:
     page.goto(BASE + "/meals")
     page.wait_for_selector("a[href^='/meals/']")
     shot(page, "02-browse-desktop")
-    page.get_by_role("button", name="Lunch").click()
+    page.get_by_role("button", name="Lunch", exact=True).click()
     page.wait_for_timeout(600)
     assert "meal=lunch" in page.url
     cards = page.locator("a[href^='/meals/']")
     print("lunch cards:", cards.count())
-    page.get_by_role("button", name=re.compile("Clear filters")).click()
+    page.get_by_role("button", name="Clear all", exact=True).click()
 
     # 2. Customer signs up and reserves
     email = f"e2e-{uuid.uuid4().hex[:6]}@example.com"

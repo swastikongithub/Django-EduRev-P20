@@ -90,10 +90,10 @@ export function photoForMeal(mealType: MealType, title = "", seed = title): Phot
 }
 
 export const CATEGORY_PHOTOS: { mealType: MealType; label: string; photo: Photo }[] = [
-  { mealType: "lunch", label: "Thalis & meals", photo: PHOTOS.steelThali },
-  { mealType: "dinner", label: "Biryani & rice", photo: PHOTOS.biryaniPan },
-  { mealType: "breakfast", label: "South Indian", photo: PHOTOS.idliVada },
-  { mealType: "snacks", label: "Snacks & wraps", photo: PHOTOS.samosa },
+  { mealType: "breakfast", label: "Breakfast", photo: PHOTOS.idliVada },
+  { mealType: "lunch", label: "Lunch", photo: PHOTOS.steelThali },
+  { mealType: "snacks", label: "Snacks", photo: PHOTOS.samosa },
+  { mealType: "dinner", label: "Dinner", photo: PHOTOS.biryaniPan },
   { mealType: "bakery", label: "Bakery", photo: PHOTOS.croissants },
-  { mealType: "beverages", label: "Chai & drinks", photo: PHOTOS.masalaChai },
+  { mealType: "beverages", label: "Drinks", photo: PHOTOS.masalaChai },
 ];
