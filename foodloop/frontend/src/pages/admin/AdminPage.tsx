@@ -17,7 +17,7 @@ function ReasonForm({ label, onSubmit, onCancel, pending }: { label: string; onS
   const [reason, setReason] = useState("");
   return (
     <form
-      className="mt-3 flex flex-col gap-2 rounded-2xl bg-cream-100 p-3 sm:flex-row"
+      className="mt-3 flex flex-col gap-2 rounded-2xl bg-raised p-3 sm:flex-row"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit(reason);
@@ -64,29 +64,29 @@ function KitchenCard({ kitchen }: { kitchen: AdminKitchen }) {
             <StatusPill status={kitchen.status} />
             {kitchen.is_sample && <SampleBadge />}
           </div>
-          <p className="mt-1 text-sm text-ink-600">
+          <p className="mt-1 text-sm text-fg-soft">
             {meta?.labels.provider_kind[kitchen.kind]} · {kitchen.address_line}, {kitchen.area}, {kitchen.city} {kitchen.pincode}
           </p>
-          <p className="mt-1 text-sm text-ink-600">
+          <p className="mt-1 text-sm text-fg-soft">
             {kitchen.owner_name} · {kitchen.owner_email} · {kitchen.contact_phone}
           </p>
         </div>
-        <p className="text-right text-[13px] text-ink-500">
+        <p className="text-right text-[13px] text-fg-muted">
           Applied {formatDateTime(kitchen.created_at)}
           <br />
           {kitchen.active_listings} live listing{kitchen.active_listings === 1 ? "" : "s"}
         </p>
       </div>
-      <div className={`mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl px-3.5 py-2.5 text-sm ${kitchen.fssai_expired ? "bg-danger-50 text-danger-600" : "bg-cream-100 text-ink-700"}`}>
+      <div className={`mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl px-3.5 py-2.5 text-sm ${kitchen.fssai_expired ? "bg-danger-950 text-danger-400" : "bg-raised text-fg-soft"}`}>
         <span>
           {meta?.labels.fssai_kind[kitchen.fssai_kind]}: <span className="font-mono font-semibold">{kitchen.fssai_number}</span>
         </span>
         <span>Valid until {kitchen.fssai_valid_until}{kitchen.fssai_expired && " (EXPIRED)"}</span>
-        <a className="inline-flex items-center gap-1 font-semibold text-leaf-700 underline-offset-4 hover:underline" href="https://foscos.fssai.gov.in/" target="_blank" rel="noreferrer noopener">
+        <a className="inline-flex items-center gap-1 font-semibold text-brand-400 underline-offset-4 hover:underline" href="https://foscos.fssai.gov.in/" target="_blank" rel="noreferrer noopener">
           Verify on FoSCoS <ExternalLink className="size-3.5" aria-hidden="true" />
         </a>
       </div>
-      {kitchen.status_reason && <p className="mt-2 text-sm text-ink-600">Note: {kitchen.status_reason}</p>}
+      {kitchen.status_reason && <p className="mt-2 text-sm text-fg-soft">Note: {kitchen.status_reason}</p>}
       <div className="mt-4 flex flex-wrap gap-2">
         {kitchen.status !== "approved" && (
           <button type="button" className="btn-primary btn-sm" disabled={mutate.isPending || kitchen.fssai_expired} onClick={() => mutate.mutate({ verb: "approve" })}>
@@ -114,8 +114,8 @@ function KitchenCard({ kitchen }: { kitchen: AdminKitchen }) {
           onSubmit={(reason) => mutate.mutate({ verb: action, reason })}
         />
       )}
-      {action === "suspend" && <p className="mt-2 text-[13px] text-ink-500">Suspending hides all its listings and cancels open reservations immediately.</p>}
-      {mutate.isError && <p className="mt-2 text-sm text-danger-600">{errorMessage(mutate.error)}</p>}
+      {action === "suspend" && <p className="mt-2 text-[13px] text-fg-muted">Suspending hides all its listings and cancels open reservations immediately.</p>}
+      {mutate.isError && <p className="mt-2 text-sm text-danger-400">{errorMessage(mutate.error)}</p>}
     </article>
   );
 }
@@ -173,7 +173,7 @@ function AdminListingRow({ listing }: { listing: ProviderListing }) {
   return (
     <article className="card p-4 transition hover:shadow-lift">
       <div className="flex gap-4">
-        <div className="size-16 shrink-0 overflow-hidden rounded-2xl bg-cream-200">
+        <div className="size-16 shrink-0 overflow-hidden rounded-2xl bg-raised">
           <MealImage imageUrl={listing.image_url} mealType={listing.meal_type} title={listing.title} seed={listing.id} alt="" sizes="64px" />
         </div>
         <div className="min-w-0 flex-1">
@@ -182,11 +182,11 @@ function AdminListingRow({ listing }: { listing: ProviderListing }) {
             {listing.provider.is_sample && <SampleBadge />}
           </div>
           <h3 className="mt-1 truncate font-sans text-[15px] font-semibold tracking-normal">{listing.title}</h3>
-          <p className="text-[13px] text-ink-500">
+          <p className="text-[13px] text-fg-muted">
             {listing.provider.name} · {formatRupees(listing.price_paise)} · {formatWindow(listing.pickup_start, listing.pickup_end)} ·{" "}
             {listing.quantity_available}/{listing.quantity_total} left
           </p>
-          {listing.removed_reason && <p className="mt-1 text-[13px] text-danger-600">Removed: {listing.removed_reason}</p>}
+          {listing.removed_reason && <p className="mt-1 text-[13px] text-danger-400">Removed: {listing.removed_reason}</p>}
         </div>
         {listing.status !== "removed" && !removing && (
           <button type="button" className="btn-danger btn-sm self-start" onClick={() => setRemoving(true)}>
@@ -195,7 +195,7 @@ function AdminListingRow({ listing }: { listing: ProviderListing }) {
         )}
       </div>
       {removing && <ReasonForm label="Remove listing" pending={remove.isPending} onCancel={() => setRemoving(false)} onSubmit={(reason) => remove.mutate(reason)} />}
-      {remove.isError && <p className="mt-2 text-sm text-danger-600">{errorMessage(remove.error)}</p>}
+      {remove.isError && <p className="mt-2 text-sm text-danger-400">{errorMessage(remove.error)}</p>}
     </article>
   );
 }
@@ -302,21 +302,21 @@ function Messages() {
                 <div>
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{message.name}</span>
-                    <span className="badge bg-sage-100 text-ink-700">{meta?.labels.contact_topic?.[message.topic] ?? message.topic}</span>
-                    {message.topic === "safety" && <span className="badge bg-danger-50 text-danger-600">Safety</span>}
+                    <span className="badge bg-raised text-fg-soft">{meta?.labels.contact_topic?.[message.topic] ?? message.topic}</span>
+                    {message.topic === "safety" && <span className="badge bg-danger-950 text-danger-400">Safety</span>}
                   </p>
-                  <a href={`mailto:${message.email}`} className="mt-0.5 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-leaf-700 underline-offset-4 hover:underline">
+                  <a href={`mailto:${message.email}`} className="mt-0.5 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-brand-400 underline-offset-4 hover:underline">
                     <Mail className="size-3.5" aria-hidden="true" /> {message.email}
                   </a>
                 </div>
-                <time className="text-[13px] text-ink-500" dateTime={message.created_at}>
+                <time className="text-[13px] text-fg-muted" dateTime={message.created_at}>
                   {formatDateTime(message.created_at)}
                 </time>
               </div>
-              <p className="mt-3 text-[15px] leading-relaxed whitespace-pre-line text-ink-700">{message.message}</p>
+              <p className="mt-3 text-[15px] leading-relaxed whitespace-pre-line text-fg-soft">{message.message}</p>
               <div className="mt-4 border-t border-line pt-3">
                 {message.handled_at ? (
-                  <p className="flex items-center gap-1.5 text-[13.5px] font-semibold text-leaf-700">
+                  <p className="flex items-center gap-1.5 text-[13.5px] font-semibold text-brand-400">
                     <CircleCheck className="size-4" aria-hidden="true" /> Handled {formatDateTime(message.handled_at)}
                   </p>
                 ) : (
@@ -354,17 +354,17 @@ function Activity({ entries }: { entries: AuditEntry[] }) {
         <li key={entry.id} className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3.5">
           <div className="relative pl-5">
             <span
-              className={`absolute top-1.5 left-0 size-2.5 rounded-full ${/removed|suspended|rejected|cancelled/.test(entry.action) ? "bg-saffron-500" : "bg-leaf-500"}`}
+              className={`absolute top-1.5 left-0 size-2.5 rounded-full ${/removed|suspended|rejected|cancelled/.test(entry.action) ? "bg-danger-400" : "bg-leaf-500"}`}
               aria-hidden="true"
             />
             <p className="text-[14.5px] font-semibold">{ACTION_LABELS[entry.action] ?? entry.action}</p>
-            <p className="text-[13px] text-ink-500">
+            <p className="text-[13px] text-fg-muted">
               by {entry.actor_name ?? "system"}
               {typeof entry.details.reason === "string" && ` · “${entry.details.reason}”`}
               {typeof entry.details.title === "string" && ` · ${entry.details.title}`}
             </p>
           </div>
-          <time className="text-[13px] text-ink-500" dateTime={entry.created_at}>
+          <time className="text-[13px] text-fg-muted" dateTime={entry.created_at}>
             {formatDateTime(entry.created_at)}
           </time>
         </li>
@@ -428,9 +428,9 @@ export function AdminPage() {
                 value={data.portions_reserved_today.reserved + data.portions_reserved_today.collected + data.portions_reserved_today.no_show}
                 sub={`${data.portions_reserved_today.collected} collected · ${data.portions_reserved_today.cancelled} cancelled`}
                 icon={<Ticket className="size-5" />}
-                tone="saffron"
+                tone="attention"
               />
-              <StatTile label="Customers" value={data.customers} sub={`${data.portions_collected_all_time} portions collected all-time`} icon={<Users className="size-5" />} tone="ink" />
+              <StatTile label="Customers" value={data.customers} sub={`${data.portions_collected_all_time} portions collected all-time`} icon={<Users className="size-5" />} tone="neutral" />
             </div>
           </>
         )}

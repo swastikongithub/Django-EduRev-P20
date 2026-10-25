@@ -264,7 +264,7 @@ export function ListingFormPage() {
                 <legend className="label">Veg or non-veg</legend>
                 <div className="grid grid-cols-2 gap-2">
                   {DIETS.map((diet) => (
-                    <label key={diet} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-line bg-white px-3 has-[:checked]:border-leaf-600 has-[:checked]:bg-leaf-50">
+                    <label key={diet} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-line bg-panel px-3 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-950">
                       <input type="radio" name="diet" className="sr-only" checked={form.diet === diet} onChange={() => set("diet", diet)} />
                       <DietMark diet={diet} label={meta?.labels.diet[diet] ?? diet} />
                     </label>
@@ -300,15 +300,15 @@ export function ListingFormPage() {
           <section className="card space-y-5 p-6 sm:p-8">
             <div>
               <h2 className="text-xl font-semibold">Timing &amp; storage</h2>
-              <p className="mt-1 text-sm text-ink-600">All times are India Standard Time (IST).</p>
+              <p className="mt-1 text-sm text-fg-soft">All times are India Standard Time (IST).</p>
             </div>
             <fieldset>
               <legend className="label">How has the food been kept since cooking?</legend>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {STORAGE.map(({ value, icon: Icon }) => (
-                  <label key={value} className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-line bg-white px-3.5 has-[:checked]:border-leaf-600 has-[:checked]:bg-leaf-50">
+                  <label key={value} className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-line bg-panel px-3.5 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-950">
                     <input type="radio" name="storage" className="sr-only" checked={form.storage === value} onChange={() => set("storage", value)} />
-                    <Icon className="size-5 text-leaf-700" aria-hidden="true" />
+                    <Icon className="size-5 text-brand-400" aria-hidden="true" />
                     <span className="text-sm font-semibold">{meta?.labels.storage[value] ?? value}</span>
                   </label>
                 ))}
@@ -332,7 +332,7 @@ export function ListingFormPage() {
               </Field>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-ink-600">Quick pickup window from now:</span>
+              <span className="text-sm text-fg-soft">Quick pickup window from now:</span>
               {[30, 60, 90].map((minutes) => (
                 <button key={minutes} type="button" className="chip" onClick={() => quickWindow(minutes)}>
                   {minutes} min
@@ -347,16 +347,16 @@ export function ListingFormPage() {
           <section className="card space-y-5 p-6 sm:p-8">
             <div>
               <h2 className="text-xl font-semibold">Allergens</h2>
-              <p className="mt-1 text-sm text-ink-600">Tick everything this food contains. Customers filter and decide based on this.</p>
+              <p className="mt-1 text-sm text-fg-soft">Tick everything this food contains. Customers filter and decide based on this.</p>
             </div>
             <fieldset aria-describedby={errors.allergens ? "allergens-error" : undefined}>
               <legend className="sr-only">Allergens present</legend>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {ALLERGEN_KEYS.map((allergen) => (
-                  <label key={allergen} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-line bg-white px-3.5 text-sm has-[:checked]:border-saffron-400 has-[:checked]:bg-saffron-50 ${form.noAllergens ? "opacity-50" : ""}`}>
+                  <label key={allergen} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-line bg-panel px-3.5 text-sm has-[:checked]:border-brand-400 has-[:checked]:bg-brand-950 ${form.noAllergens ? "opacity-50" : ""}`}>
                     <input
                       type="checkbox"
-                      className="size-4 accent-[var(--color-saffron-600)]"
+                      className="size-4 accent-[var(--color-brand-400)]"
                       disabled={form.noAllergens}
                       checked={form.allergens.includes(allergen)}
                       onChange={(e) =>
@@ -367,8 +367,8 @@ export function ListingFormPage() {
                   </label>
                 ))}
               </div>
-              <label className="mt-3 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-line px-3.5 text-sm font-semibold has-[:checked]:border-leaf-600 has-[:checked]:bg-leaf-50">
-                <input type="checkbox" className="size-4 accent-[var(--color-leaf-600)]" checked={form.noAllergens} onChange={(e) => setForm((f) => ({ ...f, noAllergens: e.target.checked, allergens: e.target.checked ? [] : f.allergens }))} />
+              <label className="mt-3 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-line px-3.5 text-sm font-semibold has-[:checked]:border-brand-500 has-[:checked]:bg-brand-950">
+                <input type="checkbox" className="size-4 accent-[var(--color-brand-500)]" checked={form.noAllergens} onChange={(e) => setForm((f) => ({ ...f, noAllergens: e.target.checked, allergens: e.target.checked ? [] : f.allergens }))} />
                 None of these allergens
               </label>
               {errors.allergens && (
@@ -385,7 +385,7 @@ export function ListingFormPage() {
           <section className="card p-6 sm:p-8">
             <h2 className="text-xl font-semibold">Photo</h2>
             <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-[200px_1fr] sm:items-center">
-              <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-cream-200">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-raised">
                 <MealImage
                   key={preview ?? listing?.image_url ?? "representative"}
                   imageUrl={preview ?? listing?.image_url ?? null}
@@ -406,7 +406,7 @@ export function ListingFormPage() {
                 <p className="hint !mt-0">JPG, PNG or WebP up to 5 MB. Without one, customers see a stock food photo labelled “Representative image”.</p>
                 {errors.image && <p className="field-error">{errors.image}</p>}
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" className="size-4 accent-[var(--color-leaf-600)]" checked={form.image_is_representative} onChange={(e) => set("image_is_representative", e.target.checked)} />
+                  <input type="checkbox" className="size-4 accent-[var(--color-brand-500)]" checked={form.image_is_representative} onChange={(e) => set("image_is_representative", e.target.checked)} />
                   This is a representative photo, not today's actual batch
                 </label>
               </div>
@@ -414,20 +414,20 @@ export function ListingFormPage() {
           </section>
 
           <section className="card overflow-hidden">
-            <div className="flex items-center gap-2 bg-leaf-900 px-6 py-4 text-white sm:px-8">
+            <div className="flex items-center gap-2 bg-night px-6 py-4 text-white sm:px-8">
               <ShieldCheck className="size-5 text-turmeric-300" aria-hidden="true" />
               <h2 className="font-sans text-base font-semibold tracking-normal">Food-safety checklist</h2>
             </div>
             <div className="space-y-2 p-6 sm:p-8">
               {CHECKLIST.map((item, index) => (
-                <label key={item} className="flex cursor-pointer items-start gap-3 rounded-xl p-2 hover:bg-cream-100">
+                <label key={item} className="flex cursor-pointer items-start gap-3 rounded-xl p-2 hover:bg-raised">
                   <input
                     type="checkbox"
-                    className="mt-0.5 size-5 shrink-0 accent-[var(--color-leaf-600)]"
+                    className="mt-0.5 size-5 shrink-0 accent-[var(--color-brand-500)]"
                     checked={form.checklist[index]}
                     onChange={(e) => set("checklist", form.checklist.map((value, i) => (i === index ? e.target.checked : value)))}
                   />
-                  <span className="text-[15px] text-ink-700">{item}</span>
+                  <span className="text-[15px] text-fg-soft">{item}</span>
                 </label>
               ))}
               {errors.safety_confirmed && (
@@ -435,14 +435,14 @@ export function ListingFormPage() {
                   <CircleAlert className="mt-px size-4 shrink-0" aria-hidden="true" /> {errors.safety_confirmed}
                 </p>
               )}
-              <p className="pt-2 text-[13px] text-ink-500">Your confirmation is recorded with your name and the time, for every save.</p>
+              <p className="pt-2 text-[13px] text-fg-muted">Your confirmation is recorded with your name and the time, for every save.</p>
             </div>
           </section>
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
             {!editing ? (
               <label className="flex items-center gap-2 text-sm font-medium">
-                <input type="checkbox" className="size-4 accent-[var(--color-leaf-600)]" checked={form.publish} onChange={(e) => set("publish", e.target.checked)} />
+                <input type="checkbox" className="size-4 accent-[var(--color-brand-500)]" checked={form.publish} onChange={(e) => set("publish", e.target.checked)} />
                 Publish now (untick to save as a draft)
               </label>
             ) : (

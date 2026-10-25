@@ -48,21 +48,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={item.id}
             role={item.tone === "error" ? "alert" : "status"}
-            className="pointer-events-auto flex w-full max-w-sm animate-rise items-start gap-3 rounded-2xl border border-line bg-white p-4 shadow-lift"
+            className="pointer-events-auto flex w-full max-w-sm animate-rise items-start gap-3 rounded-2xl border border-line bg-panel p-4 shadow-lift"
           >
             {item.tone === "success" ? (
-              <CircleCheck className="mt-0.5 size-5 shrink-0 text-leaf-600" aria-hidden="true" />
+              <CircleCheck className="mt-0.5 size-5 shrink-0 text-leaf-400" aria-hidden="true" />
             ) : (
-              <CircleAlert className="mt-0.5 size-5 shrink-0 text-danger-600" aria-hidden="true" />
+              <CircleAlert className="mt-0.5 size-5 shrink-0 text-danger-400" aria-hidden="true" />
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-[14.5px] font-semibold text-ink-900">{item.title}</p>
-              {item.body && <p className="mt-0.5 text-[13.5px] leading-snug text-ink-600">{item.body}</p>}
+              <p className="text-[14.5px] font-semibold text-fg">{item.title}</p>
+              {item.body && <p className="mt-0.5 text-[13.5px] leading-snug text-fg-soft">{item.body}</p>}
             </div>
             <button
               type="button"
               onClick={() => dismiss(item.id)}
-              className="-m-1 grid size-8 shrink-0 place-items-center rounded-full text-ink-500 hover:bg-cream-200"
+              className="-m-1 grid size-8 shrink-0 place-items-center rounded-full text-fg-muted hover:bg-raised"
               aria-label="Dismiss notification"
             >
               <X className="size-4" aria-hidden="true" />

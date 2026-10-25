@@ -63,7 +63,7 @@ function Stats() {
   const { today, last_7_days: week } = data;
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <StatTile label="Waiting for pickup" value={data.open_pickups} sub={`${plural(data.live_listings, "live listing")}`} icon={<Ticket className="size-5" />} tone="saffron" />
+      <StatTile label="Waiting for pickup" value={data.open_pickups} sub={`${plural(data.live_listings, "live listing")}`} icon={<Ticket className="size-5" />} tone="attention" />
       <StatTile
         label="Today: reserved / listed"
         value={`${today.portions_reserved} / ${today.portions_listed}`}
@@ -81,7 +81,7 @@ function Stats() {
         value={formatRupees(week.revenue_recovered_paise)}
         sub={week.collection_rate_percent !== null ? `${week.collection_rate_percent}% of reservations collected` : "From collected meals"}
         icon={<IndianRupee className="size-5" />}
-        tone="ink"
+        tone="neutral"
       />
     </div>
   );
@@ -103,9 +103,9 @@ function WeekFunnel() {
       <h2 id="funnel-title" className="font-sans text-base font-semibold tracking-normal">
         Last 7 days
       </h2>
-      <p className="mt-0.5 text-[13px] text-ink-500">From portions listed to meals handed over, grouped by pickup day.</p>
+      <p className="mt-0.5 text-[13px] text-fg-muted">From portions listed to meals handed over, grouped by pickup day.</p>
       {listed === 0 ? (
-        <p className="mt-5 rounded-2xl bg-sage-50 px-4 py-6 text-center text-[14px] text-ink-600">
+        <p className="mt-5 rounded-2xl bg-panel px-4 py-6 text-center text-[14px] text-fg-soft">
           No listings in the last 7 days yet. Your numbers will appear here after your first listing.
         </p>
       ) : (
@@ -116,22 +116,22 @@ function WeekFunnel() {
               return (
                 <li key={row.label} className="group relative">
                   <div className="flex items-baseline justify-between gap-3 text-[14px]">
-                    <span className="font-semibold text-ink-900">{row.label}</span>
-                    <span className="text-ink-600">
-                      <span className="font-semibold text-ink-900 tabular-nums">{row.value}</span>
-                      {row.note && <span className="ml-1.5 text-[12.5px] text-ink-500">{row.note}</span>}
+                    <span className="font-semibold text-fg">{row.label}</span>
+                    <span className="text-fg-soft">
+                      <span className="font-semibold text-fg tabular-nums">{row.value}</span>
+                      {row.note && <span className="ml-1.5 text-[12.5px] text-fg-muted">{row.note}</span>}
                     </span>
                   </div>
                   <div
-                    className="mt-1.5 h-3 overflow-hidden rounded-full bg-leaf-50"
+                    className="mt-1.5 h-3 overflow-hidden rounded-full bg-brand-950"
                     role="img"
                     aria-label={`${row.label}: ${row.value} of ${listed} portions listed (${share}%)`}
                     tabIndex={0}
                   >
-                    <div className="h-full rounded-full bg-leaf-500 transition-[width] duration-700" style={{ width: `${Math.max(share, row.value ? 2 : 0)}%` }} />
+                    <div className="h-full rounded-full bg-brand-500 transition-[width] duration-700" style={{ width: `${Math.max(share, row.value ? 2 : 0)}%` }} />
                   </div>
                   <span
-                    className="pointer-events-none absolute -top-9 right-0 z-10 rounded-lg bg-ink-900 px-2.5 py-1 text-[12px] font-medium whitespace-nowrap text-white opacity-0 shadow-lift transition group-focus-within:opacity-100 group-hover:opacity-100"
+                    className="pointer-events-none absolute -top-9 right-0 z-10 rounded-lg bg-night px-2.5 py-1 text-[12px] font-medium whitespace-nowrap text-white opacity-0 shadow-lift transition group-focus-within:opacity-100 group-hover:opacity-100"
                     aria-hidden="true"
                   >
                     {row.value} of {listed} listed · {share}%
@@ -142,15 +142,15 @@ function WeekFunnel() {
           </ul>
           <dl className="mt-5 grid grid-cols-3 gap-2 border-t border-line pt-4 text-center">
             <div>
-              <dt className="text-[12px] text-ink-500">Cancelled</dt>
+              <dt className="text-[12px] text-fg-muted">Cancelled</dt>
               <dd className="font-semibold tabular-nums">{week.portions_cancelled}</dd>
             </div>
             <div>
-              <dt className="text-[12px] text-ink-500">Not collected</dt>
+              <dt className="text-[12px] text-fg-muted">Not collected</dt>
               <dd className="font-semibold tabular-nums">{week.portions_missed}</dd>
             </div>
             <div>
-              <dt className="text-[12px] text-ink-500">Recovered</dt>
+              <dt className="text-[12px] text-fg-muted">Recovered</dt>
               <dd className="font-semibold tabular-nums">{formatRupees(week.revenue_recovered_paise)}</dd>
             </div>
           </dl>
@@ -179,7 +179,7 @@ function CollectBox() {
   }
   return (
     <div className="card overflow-hidden">
-      <div className="bg-leaf-900 px-5 py-4 text-white sm:px-6">
+      <div className="bg-night px-5 py-4 text-white sm:px-6">
         <h2 className="flex items-center gap-2 font-sans text-base font-semibold tracking-normal">
           <ClipboardCheck className="size-5 text-turmeric-300" aria-hidden="true" /> Hand over a meal
         </h2>
@@ -232,14 +232,14 @@ function CancelReservation({ reservation }: { reservation: ProviderReservation }
   });
   if (!open) {
     return (
-      <button type="button" className="btn-ghost btn-sm text-ink-600" onClick={() => setOpen(true)}>
+      <button type="button" className="btn-ghost btn-sm text-fg-soft" onClick={() => setOpen(true)}>
         Can't hand over?
       </button>
     );
   }
   return (
     <form
-      className="mt-3 flex w-full flex-col gap-2 rounded-2xl bg-cream-100 p-3 sm:flex-row"
+      className="mt-3 flex w-full flex-col gap-2 rounded-2xl bg-raised p-3 sm:flex-row"
       onSubmit={(event) => {
         event.preventDefault();
         cancel.mutate();
@@ -257,7 +257,7 @@ function CancelReservation({ reservation }: { reservation: ProviderReservation }
           Cancel reservation
         </BusyLabel>
       </button>
-      {cancel.isError && <p className="w-full text-sm text-danger-600">{errorMessage(cancel.error)}</p>}
+      {cancel.isError && <p className="w-full text-sm text-danger-400">{errorMessage(cancel.error)}</p>}
     </form>
   );
 }
@@ -296,7 +296,7 @@ function Pickups() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold">{reservation.customer_name}</p>
-                    <p className="text-sm text-ink-600">
+                    <p className="text-sm text-fg-soft">
                       {plural(reservation.quantity, "portion")} · {reservation.listing.title}
                     </p>
                   </div>
@@ -305,7 +305,7 @@ function Pickups() {
                     <p className="mt-1 text-sm font-semibold">{formatRupees(reservation.total_paise)}</p>
                   </div>
                 </div>
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[13px] text-ink-500">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[13px] text-fg-muted">
                   <span className="flex items-center gap-1.5">
                     <Clock className="size-3.5" aria-hidden="true" />
                     {reservation.display_status === "reserved"
@@ -314,7 +314,7 @@ function Pickups() {
                   </span>
                   {reservation.display_status === "reserved" && <CancelReservation reservation={reservation} />}
                 </div>
-                {reservation.cancel_reason && <p className="mt-2 text-[13px] text-ink-600">Reason: {reservation.cancel_reason}</p>}
+                {reservation.cancel_reason && <p className="mt-2 text-[13px] text-fg-soft">Reason: {reservation.cancel_reason}</p>}
               </article>
             ))
           )}
@@ -356,7 +356,7 @@ function ListingRow({ listing, canEdit }: { listing: ProviderListing; canEdit: b
   return (
     <article className="card min-w-0 p-4 transition hover:shadow-lift sm:p-5">
       <div className="flex gap-4">
-        <div className="size-20 shrink-0 overflow-hidden rounded-2xl bg-cream-200 sm:size-24">
+        <div className="size-20 shrink-0 overflow-hidden rounded-2xl bg-raised sm:size-24">
           <MealImage imageUrl={listing.image_url} mealType={listing.meal_type} title={listing.title} seed={listing.id} alt="" sizes="96px" />
         </div>
         <div className="min-w-0 flex-1">
@@ -365,16 +365,16 @@ function ListingRow({ listing, canEdit }: { listing: ProviderListing; canEdit: b
             {live && listing.availability !== "available" && !ended && <StatusPill status={listing.availability} />}
           </div>
           <h3 className="mt-1.5 truncate font-sans text-base font-semibold tracking-normal">{listing.title}</h3>
-          <p className="mt-0.5 text-[13px] text-ink-500">
+          <p className="mt-0.5 text-[13px] text-fg-muted">
             {formatWindow(listing.pickup_start, listing.pickup_end, now)} · {formatRupees(listing.price_paise)}
           </p>
-          <p className="mt-1 text-[13px] text-ink-700">
+          <p className="mt-1 text-[13px] text-fg-soft">
             <strong>{listing.quantity_available}</strong> of {listing.quantity_total} left · {listing.reserved_quantity} waiting ·{" "}
             {listing.collected_quantity} collected
           </p>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-leaf-50" aria-hidden="true">
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-brand-950" aria-hidden="true">
             <div
-              className="h-full rounded-full bg-leaf-500"
+              className="h-full rounded-full bg-brand-500"
               style={{ width: `${listing.quantity_total ? Math.round((100 * (listing.quantity_total - listing.quantity_available)) / listing.quantity_total) : 0}%` }}
             />
           </div>
@@ -394,20 +394,20 @@ function ListingRow({ listing, canEdit }: { listing: ProviderListing; canEdit: b
               <Play className="size-3.5" aria-hidden="true" /> Publish
             </button>
           )}
-          <button type="button" className="btn-ghost btn-sm ml-auto text-danger-600" onClick={() => setRemoving(true)}>
+          <button type="button" className="btn-ghost btn-sm ml-auto text-danger-400" onClick={() => setRemoving(true)}>
             <Trash2 className="size-3.5" aria-hidden="true" /> Remove
           </button>
         </div>
       )}
       {removing && (
         <form
-          className="mt-3 rounded-2xl bg-danger-50 p-3"
+          className="mt-3 rounded-2xl bg-danger-950 p-3"
           onSubmit={(event) => {
             event.preventDefault();
             remove.mutate();
           }}
         >
-          <p className="text-sm text-ink-700">
+          <p className="text-sm text-fg-soft">
             Removing hides this listing for good.
             {listing.reserved_quantity > 0 && ` ${plural(listing.reserved_quantity, "portion")} waiting for pickup will be cancelled and the customers told why.`}
           </p>
@@ -424,7 +424,7 @@ function ListingRow({ listing, canEdit }: { listing: ProviderListing; canEdit: b
           </div>
         </form>
       )}
-      {error && <p className="mt-2 text-sm text-danger-600">{errorMessage(error)}</p>}
+      {error && <p className="mt-2 text-sm text-danger-400">{errorMessage(error)}</p>}
     </article>
   );
 }
@@ -462,7 +462,7 @@ function Listings({ approved }: { approved: boolean }) {
       </div>
       {past.length > 0 && (
         <details className="mt-8">
-          <summary className="cursor-pointer text-sm font-semibold text-ink-600">Ended listings ({past.length})</summary>
+          <summary className="cursor-pointer text-sm font-semibold text-fg-soft">Ended listings ({past.length})</summary>
           <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
             {past.map((listing) => (
               <ListingRow key={listing.id} listing={listing} canEdit={false} />
@@ -526,8 +526,8 @@ function Profile({ kitchen }: { kitchen: Kitchen }) {
             Save changes
           </BusyLabel>
         </button>
-        {save.isSuccess && <span className="text-sm font-medium text-leaf-700">Saved.</span>}
-        {save.isError && !Object.keys(errors).length && <span className="text-sm text-danger-600">{errorMessage(save.error)}</span>}
+        {save.isSuccess && <span className="text-sm font-medium text-leaf-400">Saved.</span>}
+        {save.isError && !Object.keys(errors).length && <span className="text-sm text-danger-400">{errorMessage(save.error)}</span>}
       </div>
     </form>
   );
@@ -565,7 +565,7 @@ export function KitchenDashboardPage() {
         }
         description={
           <span className="flex items-center gap-1.5">
-            <Store className="size-4 text-leaf-600" aria-hidden="true" /> {kitchen.area}, {kitchen.city} · signed in as {me?.user.full_name}
+            <Store className="size-4 text-brand-400" aria-hidden="true" /> {kitchen.area}, {kitchen.city} · signed in as {me?.user.full_name}
           </span>
         }
         actions={

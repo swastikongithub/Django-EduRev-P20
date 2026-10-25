@@ -125,9 +125,9 @@ export function KitchenPage() {
 
   return (
     <div>
-      <section className="relative overflow-hidden bg-leaf-900 text-white">
+      <section className="relative overflow-hidden bg-night text-white">
         <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-40 -right-20 size-[30rem] rounded-full bg-saffron-500/20 blur-3xl" />
+          <div className="absolute -top-40 -right-20 size-[30rem] rounded-full bg-brand-500/20 blur-3xl" />
           <div className="absolute inset-0 bg-[radial-gradient(rgb(255_255_255/0.06)_1px,transparent_1.3px)] [background-size:22px_22px]" />
         </div>
         <div className="container-page relative grid grid-cols-1 gap-10 py-10 sm:py-14 lg:grid-cols-[1.1fr_1fr] lg:items-center">
@@ -174,19 +174,19 @@ export function KitchenPage() {
       <div className="container-page py-10">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="card flex gap-3 p-5">
-            <MapPin className="mt-0.5 size-5 shrink-0 text-leaf-600" aria-hidden="true" />
+            <MapPin className="mt-0.5 size-5 shrink-0 text-brand-400" aria-hidden="true" />
             <div>
               <p className="font-semibold">Where to collect</p>
-              <p className="mt-0.5 text-[14.5px] text-ink-600">
+              <p className="mt-0.5 text-[14.5px] text-fg-soft">
                 {kitchen.address_line}, {kitchen.area}, {kitchen.city} {kitchen.pincode}
               </p>
             </div>
           </div>
           <div className="card flex gap-3 p-5">
-            <Clock className="mt-0.5 size-5 shrink-0 text-leaf-600" aria-hidden="true" />
+            <Clock className="mt-0.5 size-5 shrink-0 text-brand-400" aria-hidden="true" />
             <div>
               <p className="font-semibold">At the counter</p>
-              <p className="mt-0.5 text-[14.5px] text-ink-600">
+              <p className="mt-0.5 text-[14.5px] text-fg-soft">
                 {kitchen.pickup_instructions || "Show your pickup code at the counter."} Pay the kitchen directly when you collect.
               </p>
             </div>
@@ -195,7 +195,7 @@ export function KitchenPage() {
 
         <section className="mt-12" aria-labelledby="kitchen-menu-title">
           <h2 id="kitchen-menu-title" className="flex items-center gap-2 text-3xl">
-            <Utensils className="size-6 text-leaf-600" aria-hidden="true" /> On the menu now
+            <Utensils className="size-6 text-brand-400" aria-hidden="true" /> On the menu now
           </h2>
           <div className="mt-6">
             {listings.isLoading ? (

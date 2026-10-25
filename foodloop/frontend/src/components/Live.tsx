@@ -94,7 +94,7 @@ export function LiveDot({ className = "" }: { className?: string }) {
   return (
     <span className={`relative inline-flex size-2.5 ${className}`} aria-hidden="true">
       <span className="absolute inline-flex size-full animate-ping-soft rounded-full bg-leaf-500/70" />
-      <span className="relative inline-flex size-2.5 rounded-full bg-leaf-500" />
+      <span className="relative inline-flex size-2.5 rounded-full bg-leaf-400" />
     </span>
   );
 }
@@ -125,7 +125,7 @@ export function Countdown({ to, label = "Closes in", className = "" }: { to: str
         : `${String(minutes).padStart(2, "0")}:${String(Math.floor((left % 60_000) / 1000)).padStart(2, "0")}`;
   const urgent = left > 0 && minutes < 30;
   return (
-    <span className={`inline-flex items-center gap-1 font-semibold tabular-nums ${urgent ? "text-saffron-600" : "text-ink-700"} ${className}`}>
+    <span className={`inline-flex items-center gap-1 font-semibold tabular-nums ${urgent ? "text-brand-400" : "text-fg-soft"} ${className}`}>
       <Timer className="size-3.5" aria-hidden="true" />
       {left > 0 && <span className="font-medium">{label}</span>} {text}
     </span>
@@ -159,8 +159,8 @@ export function DealTicker({ listings }: { listings: Listing[] }) {
         {row(false)}
         {row(true)}
       </div>
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-leaf-900 to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-leaf-900 to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-night to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-night to-transparent" />
     </div>
   );
 }
@@ -180,7 +180,7 @@ export function Rail({ children, label }: { children: ReactNode; label: string }
             key={direction}
             type="button"
             onClick={() => scroll(direction)}
-            className="pointer-events-auto grid size-11 place-items-center rounded-full bg-white text-ink-900 shadow-lift ring-1 ring-black/5 transition hover:scale-105 hover:bg-leaf-50"
+            className="pointer-events-auto grid size-11 place-items-center rounded-full bg-panel text-fg shadow-lift ring-1 ring-white/5 transition hover:scale-105 hover:bg-brand-950"
             aria-label={direction === 1 ? `Scroll ${label} right` : `Scroll ${label} left`}
           >
             {direction === 1 ? <ChevronRight className="size-5" aria-hidden="true" /> : <ChevronLeft className="size-5" aria-hidden="true" />}

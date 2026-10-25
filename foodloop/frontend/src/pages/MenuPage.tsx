@@ -59,9 +59,9 @@ export function MenuPage() {
 
   return (
     <div>
-      <section className="relative overflow-hidden bg-leaf-900 text-white">
+      <section className="relative overflow-hidden bg-night text-white">
         <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-40 right-0 size-[30rem] rounded-full bg-saffron-500/20 blur-3xl" />
+          <div className="absolute -top-40 right-0 size-[30rem] rounded-full bg-brand-500/20 blur-3xl" />
           <div className="absolute inset-0 bg-[radial-gradient(rgb(255_255_255/0.06)_1px,transparent_1.3px)] [background-size:22px_22px]" />
         </div>
         <div className="container-page relative py-10 sm:py-14">
@@ -77,7 +77,7 @@ export function MenuPage() {
           <div className="mt-7 flex flex-col gap-3 lg:flex-row lg:items-center">
             <label className="relative flex-1 lg:max-w-md">
               <span className="sr-only">Search the menu</span>
-              <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-500" aria-hidden="true" />
+              <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-fg-muted" aria-hidden="true" />
               <input
                 type="search"
                 value={query}
@@ -93,7 +93,7 @@ export function MenuPage() {
                   type="button"
                   aria-pressed={diet === filter.value}
                   onClick={() => setDiet(filter.value)}
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-white/10 px-4 text-[13.5px] font-semibold text-white ring-1 ring-white/15 transition hover:bg-white/20 aria-pressed:bg-white aria-pressed:text-ink-900"
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-white/10 px-4 text-[13.5px] font-semibold text-white ring-1 ring-white/15 transition hover:bg-white/20 aria-pressed:bg-panel aria-pressed:text-fg"
                 >
                   {filter.diet && <DietMark diet={filter.diet} />}
                   {filter.label}
@@ -117,7 +117,7 @@ export function MenuPage() {
 
       <nav
         aria-label="Menu sections"
-        className="sticky top-[4.25rem] z-20 border-b border-line/70 bg-cream-50/90 backdrop-blur-xl"
+        className="sticky top-[4.25rem] z-20 border-b border-line/70 bg-page/90 backdrop-blur-xl"
       >
         <div className="container-page rail gap-2 py-3">
           {groups.map((group) => (
@@ -128,7 +128,7 @@ export function MenuPage() {
               aria-disabled={group.items.length === 0 || undefined}
             >
               {group.label}
-              <span className="rounded-full bg-sage-100 px-1.5 text-[11px] text-ink-600">{group.items.length}</span>
+              <span className="rounded-full bg-raised px-1.5 text-[11px] text-fg-soft">{group.items.length}</span>
             </a>
           ))}
         </div>
@@ -186,14 +186,14 @@ export function MenuPage() {
               .map((group) => (
                 <section key={group.mealType} id={`menu-${group.mealType}`} className="scroll-mt-36" aria-labelledby={`menu-${group.mealType}-title`}>
                   <div className="flex items-center gap-4 border-b border-line pb-4">
-                    <span className="size-14 shrink-0 overflow-hidden rounded-full shadow-soft ring-4 ring-white">
+                    <span className="size-14 shrink-0 overflow-hidden rounded-full shadow-soft ring-4 ring-panel">
                       <Photo photo={group.photo} sizes="56px" alt="" />
                     </span>
                     <div>
                       <h2 id={`menu-${group.mealType}-title`} className="text-2xl">
                         {group.label}
                       </h2>
-                      <p className="text-[13.5px] text-ink-500">
+                      <p className="text-[13.5px] text-fg-muted">
                         {group.items.length} {group.items.length === 1 ? "dish" : "dishes"} · from{" "}
                         {formatRupees(Math.min(...group.items.map((item) => item.price_paise)))}
                       </p>
@@ -209,7 +209,7 @@ export function MenuPage() {
           </div>
         )}
         {dataUpdatedAt > 0 && !isError && (
-          <p className="mt-12 flex items-center justify-center gap-2 text-center text-[13px] text-ink-500">
+          <p className="mt-12 flex items-center justify-center gap-2 text-center text-[13px] text-fg-muted">
             <LiveDot /> Prices and portions update by themselves every 30 seconds.
           </p>
         )}

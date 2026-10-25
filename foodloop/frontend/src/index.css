@@ -1,58 +1,61 @@
 @import "tailwindcss";
 
-/* FoodLoop design system.
-   Forest green for actions, warm cream and white surfaces, soft sage for calm sections, and orange
-   only as a small accent (discounts, urgency). Every text colour here passes WCAG AA on the
-   backgrounds it is used on (see docs/design-system.md). Token names stay stable across redesigns. */
+/* FoodLoop design system: dark charcoal with orange.
+   Tokens are named by role, not by colour (page, panel, fg, brand...), so a redesign changes values
+   here and nothing else. Green appears only where it means something: veg marks, success and "live".
+   Every text colour passes WCAG AA on the surfaces it is used on (see docs/design-system.md). */
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Bricolage Grotesque Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 
-  /* Surfaces */
-  --color-cream-50: #fffdf9;
-  --color-cream-100: #faf6ee;
-  --color-cream-200: #f2ebde;
-  --color-cream-300: #e6dccb;
-  --color-sage-50: #f2f6f0;
-  --color-sage-100: #e5ede1;
-  --color-sage-200: #d2dfcb;
-  --color-sage-300: #b5c9ac;
-  --color-line: #e8e1d4;
+  /* Surfaces, darkest first */
+  --color-night: #0e0d0c;
+  --color-page: #151412;
+  --color-panel: #1d1b19;
+  --color-raised: #282522;
+  --color-line: #34302c;
+  --color-line-strong: #4a453f;
 
-  /* Text */
-  --color-ink-900: #141d18;
-  --color-ink-700: #33403a;
-  --color-ink-600: #47534d;
-  --color-ink-500: #5d6862;
+  /* Text, brightest first */
+  --color-fg: #f8f4ef;
+  --color-fg-soft: #d2cbc2;
+  --color-fg-muted: #a1998f;
 
-  /* Primary: fresh forest green ("leaf" kept as the token name) */
-  --color-leaf-50: #edf5ef;
-  --color-leaf-100: #d8eadd;
-  --color-leaf-200: #b3d5be;
-  --color-leaf-300: #86ba97;
-  --color-leaf-500: #2e7f52;
-  --color-leaf-600: #1d6a43;
-  --color-leaf-700: #165536;
-  --color-leaf-800: #114229;
-  --color-leaf-900: #0b2e1c;
+  /* Brand: orange. Bright shades take dark text (text-night), never white. */
+  --color-brand-50: #fff4ec;
+  --color-brand-100: #ffe4cf;
+  --color-brand-200: #ffc89f;
+  --color-brand-300: #ffa96a;
+  --color-brand-400: #ff8c3a;
+  --color-brand-500: #ff7518;
+  --color-brand-600: #e8620b;
+  --color-brand-700: #b44b09;
+  --color-brand-800: #74330c;
+  --color-brand-900: #3b1d0b;
+  --color-brand-950: #261409;
 
-  /* Accent: warm orange ("saffron"), used sparingly */
-  --color-saffron-50: #fff2e8;
-  --color-saffron-100: #ffe2cc;
-  --color-saffron-400: #f08a3e;
-  --color-saffron-500: #d9661a;
-  --color-saffron-600: #ad4c0c;
+  /* Meaning, not decoration */
+  --color-leaf-300: #86dba5;
+  --color-leaf-400: #4cc27a;
+  --color-leaf-500: #2fa862;
+  --color-leaf-900: #143322;
+  --color-leaf-950: #0d2217;
   --color-turmeric-300: #f5d06f;
   --color-turmeric-400: #edb93f;
+  --color-turmeric-950: #2b2208;
+  --color-info-300: #93c4f3;
+  --color-info-950: #0f2033;
+  --color-danger-300: #ffaaa1;
+  --color-danger-400: #ff8073;
+  --color-danger-500: #e5484d;
+  --color-danger-900: #4a1714;
+  --color-danger-950: #2c100e;
+  --color-veg: #23a14f;
+  --color-nonveg: #b5532c;
 
-  --color-danger-50: #fef3f2;
-  --color-danger-600: #b42318;
-  --color-veg: #138a36;
-  --color-nonveg: #7a3e1d;
-
-  --shadow-soft: 0 1px 2px rgb(20 29 24 / 0.04), 0 8px 24px -12px rgb(20 29 24 / 0.16);
-  --shadow-lift: 0 2px 6px rgb(20 29 24 / 0.06), 0 26px 50px -22px rgb(20 29 24 / 0.32);
-  --shadow-ring: 0 0 0 1px rgb(20 29 24 / 0.06);
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.35), 0 10px 28px -14px rgb(0 0 0 / 0.7);
+  --shadow-lift: 0 2px 8px rgb(0 0 0 / 0.4), 0 32px 60px -24px rgb(0 0 0 / 0.85);
+  --shadow-glow: 0 12px 32px -10px rgb(255 117 24 / 0.6);
 
   --animate-rise: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   --animate-fade: fade 0.5s ease-out both;
@@ -124,24 +127,23 @@
 
 @layer base {
   html {
-    color-scheme: light;
-    background: var(--color-cream-50);
-    color: var(--color-ink-900);
+    color-scheme: dark;
+    background: var(--color-page);
+    color: var(--color-fg);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     scroll-behavior: smooth;
   }
-  /* A bright, warm page with soft saffron and green glows and a fine dot texture. */
+  /* Charcoal with a warm orange glow in two corners and a fine dot texture. */
   body {
     font-family: var(--font-sans);
     font-feature-settings: "cv11", "ss01";
     background:
-      radial-gradient(60rem 38rem at 108% -8%, rgb(240 138 62 / 0.11), transparent 62%),
-      radial-gradient(52rem 36rem at -12% 38%, rgb(46 127 82 / 0.09), transparent 60%),
-      radial-gradient(48rem 30rem at 60% 108%, rgb(237 185 63 / 0.1), transparent 60%),
-      radial-gradient(rgb(20 29 24 / 0.05) 1px, transparent 1.3px) 0 0 / 22px 22px,
-      var(--color-cream-50);
+      radial-gradient(56rem 36rem at 105% -6%, rgb(255 117 24 / 0.1), transparent 62%),
+      radial-gradient(50rem 34rem at -10% 105%, rgb(255 140 58 / 0.07), transparent 60%),
+      radial-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1.3px) 0 0 / 22px 22px,
+      var(--color-page);
     background-attachment: fixed;
     min-height: 100dvh;
   }
@@ -159,10 +161,11 @@
     text-wrap: pretty;
   }
   ::selection {
-    background: var(--color-leaf-200);
+    background: var(--color-brand-500);
+    color: var(--color-night);
   }
   :focus-visible {
-    outline: 3px solid var(--color-leaf-600);
+    outline: 3px solid var(--color-brand-400);
     outline-offset: 2px;
     border-radius: 10px;
   }
@@ -187,23 +190,24 @@
 }
 
 @utility btn-primary {
-  @apply btn bg-leaf-600 text-white shadow-[0_8px_20px_-10px_rgb(29_106_67/0.75)] hover:-translate-y-px hover:bg-leaf-700 hover:shadow-[0_12px_24px_-10px_rgb(29_106_67/0.8)] active:translate-y-0 active:scale-[0.98];
+  @apply btn bg-brand-500 text-night shadow-glow hover:-translate-y-px hover:bg-brand-400 active:translate-y-0 active:scale-[0.98];
 }
 
 @utility btn-secondary {
-  @apply btn border border-line bg-white text-ink-900 shadow-[0_1px_2px_rgb(20_29_24/0.05)] hover:-translate-y-px hover:border-leaf-200 hover:bg-leaf-50;
+  @apply btn border border-line-strong bg-raised/70 text-fg hover:-translate-y-px hover:border-brand-500/70 hover:bg-raised;
 }
 
+/* The one big call to action per screen: an orange gradient with a glow. */
 @utility btn-accent {
-  @apply btn bg-turmeric-400 text-ink-900 hover:-translate-y-px hover:bg-turmeric-300;
+  @apply btn bg-gradient-to-r from-brand-400 to-brand-600 text-night shadow-glow hover:-translate-y-px hover:brightness-110;
 }
 
 @utility btn-ghost {
-  @apply btn text-ink-700 hover:bg-cream-200;
+  @apply btn text-fg-soft hover:bg-raised hover:text-fg;
 }
 
 @utility btn-danger {
-  @apply btn border border-danger-600/25 bg-white text-danger-600 hover:bg-danger-50;
+  @apply btn border border-danger-500/45 bg-transparent text-danger-400 hover:bg-danger-950;
 }
 
 @utility btn-sm {
@@ -215,27 +219,27 @@
 }
 
 @utility card {
-  @apply rounded-[1.25rem] border border-line/80 bg-white shadow-soft;
+  @apply rounded-[1.25rem] border border-line bg-panel shadow-soft;
 }
 
 @utility label {
-  @apply mb-1.5 block text-sm font-semibold text-ink-900;
+  @apply mb-1.5 block text-sm font-semibold text-fg;
 }
 
 @utility hint {
-  @apply mt-1.5 text-[13px] leading-snug text-ink-500;
+  @apply mt-1.5 text-[13px] leading-snug text-fg-muted;
 }
 
 @utility field-error {
-  @apply mt-1.5 flex items-start gap-1.5 text-[13px] font-medium text-danger-600;
+  @apply mt-1.5 flex items-start gap-1.5 text-[13px] font-medium text-danger-400;
 }
 
 @utility input {
-  @apply block min-h-11 w-full rounded-xl border border-line bg-white px-3.5 text-[15px] text-ink-900 shadow-[inset_0_1px_1px_rgb(20_29_24/0.04)] transition placeholder:text-ink-500/70 hover:border-cream-300 focus:border-leaf-600 focus:ring-4 focus:ring-leaf-100 focus:outline-none aria-[invalid=true]:border-danger-600 aria-[invalid=true]:focus:ring-danger-50;
+  @apply block min-h-11 w-full rounded-xl border border-line bg-raised px-3.5 text-[15px] text-fg transition placeholder:text-fg-muted hover:border-line-strong focus:border-brand-500 focus:ring-4 focus:ring-brand-500/20 focus:outline-none aria-[invalid=true]:border-danger-500 aria-[invalid=true]:focus:ring-danger-900;
 }
 
 @utility chip {
-  @apply inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-[13px] font-semibold text-ink-700 transition hover:border-leaf-200 hover:text-ink-900 aria-pressed:border-leaf-600 aria-pressed:bg-leaf-600 aria-pressed:text-white;
+  @apply inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line-strong bg-raised/60 px-3.5 text-[13px] font-semibold text-fg-soft transition hover:border-brand-500/60 hover:text-fg aria-pressed:border-brand-500 aria-pressed:bg-brand-500 aria-pressed:text-night;
 }
 
 @utility badge {
@@ -243,25 +247,30 @@
 }
 
 @utility skeleton {
-  @apply animate-shimmer rounded-xl bg-[linear-gradient(90deg,var(--color-cream-200)_0px,var(--color-cream-50)_160px,var(--color-cream-200)_320px)] bg-[length:960px_100%];
+  @apply animate-shimmer rounded-xl bg-[linear-gradient(90deg,var(--color-raised)_0px,var(--color-line)_160px,var(--color-raised)_320px)] bg-[length:960px_100%];
 }
 
 @utility eyebrow {
-  @apply text-xs font-bold tracking-[0.14em] text-leaf-700 uppercase;
+  @apply text-xs font-bold tracking-[0.14em] text-brand-400 uppercase;
 }
 
 @utility container-page {
   @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
 }
 
-/* Frosted panel for use on the dark green hero and bands. */
+/* Frosted panel for photos and dark bands. */
 @utility glass {
-  @apply bg-white/10 ring-1 ring-white/15 backdrop-blur-md;
+  @apply bg-white/[0.07] ring-1 ring-white/12 backdrop-blur-md;
 }
 
-/* Warm orange-to-turmeric text, for one highlighted phrase per section at most. */
+/* Orange gradient text, for one highlighted phrase per section at most. */
 @utility text-sunrise {
-  @apply bg-gradient-to-r from-saffron-400 via-turmeric-400 to-turmeric-300 bg-clip-text text-transparent;
+  @apply bg-gradient-to-r from-brand-300 via-brand-400 to-brand-600 bg-clip-text text-transparent;
+}
+
+/* A round food photo sitting on a plate-like ring, as in the menu cards. */
+@utility plate {
+  @apply overflow-hidden rounded-full shadow-lift ring-[6px] ring-raised;
 }
 
 /* Horizontal scrolling rows (carousels) without a visible scrollbar. */

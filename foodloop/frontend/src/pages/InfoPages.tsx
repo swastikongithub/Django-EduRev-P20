@@ -58,9 +58,9 @@ const PRINCIPLES = [
 export function AboutPage() {
   return (
     <div>
-      <section className="relative overflow-hidden bg-leaf-900 text-white">
+      <section className="relative overflow-hidden bg-night text-white">
         <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-40 -right-20 size-[34rem] rounded-full bg-saffron-500/20 blur-3xl" />
+          <div className="absolute -top-40 -right-20 size-[34rem] rounded-full bg-brand-500/20 blur-3xl" />
           <div className="absolute inset-0 bg-[radial-gradient(rgb(255_255_255/0.06)_1px,transparent_1.3px)] [background-size:22px_22px]" />
         </div>
         <div className="container-page relative grid grid-cols-1 gap-10 py-14 sm:py-20 lg:grid-cols-[1.1fr_1fr] lg:items-center">
@@ -86,7 +86,7 @@ export function AboutPage() {
             <div className="absolute inset-y-0 right-0 left-10 overflow-hidden rounded-[2rem] shadow-lift ring-1 ring-white/10">
               <Photo photo={PHOTOS.canteenServing} sizes="(min-width: 1024px) 40vw, 90vw" priority />
             </div>
-            <div className="absolute bottom-6 left-0 w-44 overflow-hidden rounded-2xl shadow-lift ring-4 ring-leaf-900 sm:w-56">
+            <div className="absolute bottom-6 left-0 w-44 overflow-hidden rounded-2xl shadow-lift ring-4 ring-night sm:w-56">
               <div className="aspect-[4/3]">
                 <Photo photo={PHOTOS.chefKitchen} sizes="224px" alt="" />
               </div>
@@ -99,16 +99,16 @@ export function AboutPage() {
         <Reveal>
           <p className="eyebrow">The problem</p>
           <h2 className="mt-3 text-3xl sm:text-4xl">Good food, nowhere to go.</h2>
-          <p className="mt-4 text-[16px] leading-relaxed text-ink-700">
+          <p className="mt-4 text-[16px] leading-relaxed text-fg-soft">
             At the end of service, a canteen often has trays of food that are still perfectly safe and tasty. Without
             a quick way to offer it to people nearby, much of it is thrown away. Worldwide, an estimated{" "}
             <strong>1.05 billion tonnes</strong> of food was wasted in 2022, about <strong>19%</strong> of the food
             available to consumers.
           </p>
-          <p className="mt-3 text-[13px] text-ink-500">
+          <p className="mt-3 text-[13px] text-fg-muted">
             Source:{" "}
             <a
-              className="inline-flex items-center gap-1 font-medium text-leaf-700 underline-offset-4 hover:underline"
+              className="inline-flex items-center gap-1 font-medium text-brand-400 underline-offset-4 hover:underline"
               href="https://www.unep.org/resources/publication/food-waste-index-report-2024"
               target="_blank"
               rel="noreferrer noopener"
@@ -127,17 +127,17 @@ export function AboutPage() {
               { icon: HandHeart, text: "You collect it before the deadline and pay at the counter. The food gets eaten, not binned." },
             ].map((step, index) => (
               <li key={step.text} className="flex gap-4">
-                <span className="font-display grid size-10 shrink-0 place-items-center rounded-full bg-leaf-600 text-lg font-bold text-white">
+                <span className="font-display grid size-10 shrink-0 place-items-center rounded-full bg-brand-500 text-lg font-bold text-night">
                   {index + 1}
                 </span>
-                <p className="pt-1.5 text-[15.5px] leading-relaxed text-ink-700">{step.text}</p>
+                <p className="pt-1.5 text-[15.5px] leading-relaxed text-fg-soft">{step.text}</p>
               </li>
             ))}
           </ol>
         </Reveal>
       </section>
 
-      <section className="border-y border-line/70 bg-white/85 backdrop-blur">
+      <section className="border-y border-line/70 bg-panel/85 backdrop-blur">
         <div className="container-page py-16 sm:py-20">
           <Reveal className="mx-auto max-w-2xl text-center">
             <p className="eyebrow">What we stand for</p>
@@ -146,11 +146,11 @@ export function AboutPage() {
           <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {PRINCIPLES.map((item, index) => (
               <Reveal key={item.title} delay={index * 80} className="card p-6 transition duration-300 hover:-translate-y-1 hover:shadow-lift">
-                <div className="grid size-12 place-items-center rounded-2xl bg-leaf-50 text-leaf-700">
+                <div className="grid size-12 place-items-center rounded-2xl bg-brand-950 text-brand-400">
                   <item.icon className="size-6" aria-hidden="true" />
                 </div>
                 <h3 className="mt-4 text-lg">{item.title}</h3>
-                <p className="mt-1.5 text-[14.5px] leading-relaxed text-ink-600">{item.body}</p>
+                <p className="mt-1.5 text-[14.5px] leading-relaxed text-fg-soft">{item.body}</p>
               </Reveal>
             ))}
           </div>
@@ -161,7 +161,7 @@ export function AboutPage() {
         <div className="card grid grid-cols-1 items-center gap-8 overflow-hidden p-8 sm:p-12 lg:grid-cols-[1.4fr_1fr]">
           <div>
             <h2 className="text-3xl sm:text-4xl">Join the loop.</h2>
-            <p className="mt-3 max-w-xl text-[16px] text-ink-600">
+            <p className="mt-3 max-w-xl text-[16px] text-fg-soft">
               Hungry? See what's available nearby. Run a kitchen? Turn tonight's surplus into tomorrow's regulars.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -177,7 +177,7 @@ export function AboutPage() {
             {[PHOTOS.vadaPav, PHOTOS.masalaDosa, PHOTOS.gulabJamun].map((item, index) => (
               <div
                 key={item.slug}
-                className="absolute top-1/2 size-36 -translate-y-1/2 overflow-hidden rounded-full shadow-lift ring-[6px] ring-white"
+                className="absolute top-1/2 size-36 -translate-y-1/2 overflow-hidden rounded-full shadow-lift ring-[6px] ring-panel"
                 style={{ left: `${index * 72}px`, zIndex: index === 1 ? 2 : 1 }}
               >
                 <Photo photo={item} sizes="144px" alt="" />
@@ -221,7 +221,7 @@ export function FaqPage() {
         <div className="card flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
           <div>
             <h2 className="text-xl">Still have a question?</h2>
-            <p className="mt-1 text-[15px] text-ink-600">Send us a message and we'll reply by email.</p>
+            <p className="mt-1 text-[15px] text-fg-soft">Send us a message and we'll reply by email.</p>
           </div>
           <Link to="/contact" className="btn-primary">
             Contact us
@@ -274,11 +274,11 @@ export function ContactPage() {
         <div className="card p-6 sm:p-8">
           {sent ? (
             <div className="animate-rise py-8 text-center">
-              <div className="mx-auto grid size-16 place-items-center rounded-full bg-leaf-50 text-leaf-600 ring-8 ring-leaf-50/50">
+              <div className="mx-auto grid size-16 place-items-center rounded-full bg-brand-950 text-brand-400 ring-8 ring-brand-950/50">
                 <CircleCheck className="size-8" aria-hidden="true" />
               </div>
               <h2 className="mt-5 text-2xl">Thanks, your message is on its way</h2>
-              <p className="mt-2 text-[15px] text-ink-600">We'll reply to {form.email} by email.</p>
+              <p className="mt-2 text-[15px] text-fg-soft">We'll reply to {form.email} by email.</p>
               <div className="mt-6 flex justify-center gap-3">
                 <Link to="/menu" className="btn-primary">
                   Back to the menu
@@ -366,13 +366,13 @@ export function ContactPage() {
             { icon: BadgeCheck, title: "About a reservation?", body: "Your pickup codes and kitchen phone numbers are in My reservations.", to: "/reservations", cta: "My reservations" },
           ].map((item) => (
             <div key={item.title} className="card flex gap-4 p-5">
-              <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-leaf-50 text-leaf-700">
+              <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-950 text-brand-400">
                 <item.icon className="size-5" aria-hidden="true" />
               </div>
               <div>
                 <p className="font-semibold">{item.title}</p>
-                <p className="mt-0.5 text-[14px] text-ink-600">{item.body}</p>
-                <Link to={item.to} className="mt-2 inline-flex items-center gap-1 text-[14px] font-semibold text-leaf-700 underline-offset-4 hover:underline">
+                <p className="mt-0.5 text-[14px] text-fg-soft">{item.body}</p>
+                <Link to={item.to} className="mt-2 inline-flex items-center gap-1 text-[14px] font-semibold text-brand-400 underline-offset-4 hover:underline">
                   {item.cta} <ArrowRight className="size-3.5" aria-hidden="true" />
                 </Link>
               </div>

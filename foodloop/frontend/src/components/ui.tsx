@@ -9,7 +9,7 @@ import type { Diet, DisplayStatus } from "../api/types";
 
 export function Spinner({ label = "Loading" }: { label?: string }) {
   return (
-    <span role="status" className="inline-flex items-center gap-2 text-sm text-ink-500">
+    <span role="status" className="inline-flex items-center gap-2 text-sm text-fg-muted">
       <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
       {label}
     </span>
@@ -53,11 +53,11 @@ export function EmptyState({
 }) {
   return (
     <div className="mx-auto flex max-w-md animate-rise flex-col items-center px-6 py-14 text-center">
-      <div className="mb-5 grid size-16 place-items-center rounded-full bg-leaf-50 text-leaf-600 ring-8 ring-leaf-50/50">
+      <div className="mb-5 grid size-16 place-items-center rounded-full bg-brand-950 text-brand-400 ring-8 ring-brand-950/50">
         {icon}
       </div>
-      <h3 className="text-xl font-semibold text-ink-900">{title}</h3>
-      {children && <div className="mt-2 text-[15px] leading-relaxed text-ink-600">{children}</div>}
+      <h3 className="text-xl font-semibold text-fg">{title}</h3>
+      {children && <div className="mt-2 text-[15px] leading-relaxed text-fg-soft">{children}</div>}
       {action && <div className="mt-6">{action}</div>}
     </div>
   );
@@ -69,13 +69,13 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
   return (
     <div role="alert" className="mx-auto flex max-w-md flex-col items-center px-6 py-12 text-center">
       <div
-        className={`mb-4 grid size-14 place-items-center rounded-full ${text ? "bg-saffron-50 text-saffron-600" : "bg-danger-50 text-danger-600"}`}
+        className={`mb-4 grid size-14 place-items-center rounded-full ${text ? "bg-brand-950 text-brand-400" : "bg-danger-950 text-danger-400"}`}
       >
         {text ? <PlugZap className="size-7" aria-hidden="true" /> : <CircleAlert className="size-7" aria-hidden="true" />}
       </div>
       <h3 className="text-lg font-semibold">{text ? text.title : "We couldn't load this"}</h3>
-      <p className="mt-1.5 text-[15px] text-ink-600">{text ? text.body : errorMessage(error)}</p>
-      {text && import.meta.env.DEV && text.devHint && <p className="mt-2 text-[13px] leading-relaxed text-ink-500">{text.devHint}</p>}
+      <p className="mt-1.5 text-[15px] text-fg-soft">{text ? text.body : errorMessage(error)}</p>
+      {text && import.meta.env.DEV && text.devHint && <p className="mt-2 text-[13px] leading-relaxed text-fg-muted">{text.devHint}</p>}
       {onRetry && (
         <button type="button" className="btn-secondary mt-5" onClick={onRetry}>
           <RefreshCw className="size-4" aria-hidden="true" /> Try again
@@ -86,10 +86,10 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
 }
 
 const NOTICE_STYLES = {
-  info: { box: "border-leaf-200 bg-leaf-50 text-leaf-900", icon: Info },
-  success: { box: "border-leaf-200 bg-leaf-50 text-leaf-900", icon: CircleCheck },
-  warning: { box: "border-turmeric-300 bg-[#fdf6e3] text-[#5c4210]", icon: TriangleAlert },
-  danger: { box: "border-danger-600/25 bg-danger-50 text-danger-600", icon: CircleAlert },
+  info: { box: "border-brand-800/80 bg-brand-950 text-brand-100", icon: Info },
+  success: { box: "border-leaf-900 bg-leaf-950 text-leaf-300", icon: CircleCheck },
+  warning: { box: "border-turmeric-400/35 bg-turmeric-950 text-turmeric-300", icon: TriangleAlert },
+  danger: { box: "border-danger-500/40 bg-danger-950 text-danger-300", icon: CircleAlert },
 } as const;
 
 export function Notice({
@@ -123,7 +123,7 @@ export function Notice({
 export function DietMark({ diet, label }: { diet: Diet; label?: string }) {
   const color = diet === "non_veg" ? "var(--color-nonveg)" : diet === "egg" ? "#c58a12" : "var(--color-veg)";
   return (
-    <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink-700">
+    <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-soft">
       <svg viewBox="0 0 16 16" className="size-4 shrink-0" aria-hidden="true">
         <rect x="1" y="1" width="14" height="14" rx="2" fill="#fff" stroke={color} strokeWidth="1.6" />
         {diet === "non_veg" ? <path d="M8 4.2 11.6 11H4.4Z" fill={color} /> : <circle cx="8" cy="8" r="3.6" fill={color} />}
@@ -136,7 +136,7 @@ export function DietMark({ diet, label }: { diet: Diet; label?: string }) {
 export function SampleBadge({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`badge bg-ink-900/85 text-[11px] tracking-wide text-white uppercase backdrop-blur ${className}`}
+      className={`badge bg-night/85 text-[11px] tracking-wide text-white uppercase backdrop-blur ${className}`}
       title="Development sample data. Not a real kitchen or meal."
     >
       Sample data
@@ -145,24 +145,24 @@ export function SampleBadge({ className = "" }: { className?: string }) {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  reserved: "bg-leaf-100 text-leaf-800",
-  collected: "bg-[#e3eefb] text-[#1e4a7a]",
-  cancelled: "bg-cream-200 text-ink-600",
-  no_show: "bg-saffron-100 text-saffron-600",
-  missed: "bg-saffron-100 text-saffron-600",
-  pending: "bg-[#fdf3d6] text-[#6b4a08]",
-  approved: "bg-leaf-100 text-leaf-800",
-  rejected: "bg-danger-50 text-danger-600",
-  suspended: "bg-danger-50 text-danger-600",
-  active: "bg-leaf-100 text-leaf-800",
-  draft: "bg-cream-200 text-ink-600",
-  paused: "bg-[#fdf3d6] text-[#6b4a08]",
-  removed: "bg-danger-50 text-danger-600",
-  available: "bg-leaf-100 text-leaf-800",
-  sold_out: "bg-cream-200 text-ink-600",
-  closed: "bg-saffron-100 text-saffron-600",
-  expired: "bg-cream-200 text-ink-600",
-  unavailable: "bg-cream-200 text-ink-600",
+  reserved: "bg-brand-900 text-brand-200",
+  collected: "bg-info-950 text-info-300",
+  cancelled: "bg-raised text-fg-muted",
+  no_show: "bg-danger-950 text-danger-300",
+  missed: "bg-danger-950 text-danger-300",
+  pending: "bg-turmeric-950 text-turmeric-300",
+  approved: "bg-leaf-950 text-leaf-300",
+  rejected: "bg-danger-950 text-danger-300",
+  suspended: "bg-danger-950 text-danger-300",
+  active: "bg-leaf-950 text-leaf-300",
+  draft: "bg-raised text-fg-muted",
+  paused: "bg-turmeric-950 text-turmeric-300",
+  removed: "bg-danger-950 text-danger-300",
+  available: "bg-leaf-950 text-leaf-300",
+  sold_out: "bg-raised text-fg-muted",
+  closed: "bg-turmeric-950 text-turmeric-300",
+  expired: "bg-raised text-fg-muted",
+  unavailable: "bg-raised text-fg-muted",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -187,7 +187,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function StatusPill({ status }: { status: DisplayStatus | string }) {
-  return <span className={`badge ${STATUS_STYLES[status] ?? "bg-cream-200 text-ink-700"}`}>{STATUS_LABELS[status] ?? status}</span>;
+  return <span className={`badge ${STATUS_STYLES[status] ?? "bg-raised text-fg-soft"}`}>{STATUS_LABELS[status] ?? status}</span>;
 }
 
 export function Field({
@@ -209,7 +209,7 @@ export function Field({
     <div>
       <label htmlFor={id} className="label">
         {label}
-        {optional && <span className="ml-1.5 font-normal text-ink-500">(optional)</span>}
+        {optional && <span className="ml-1.5 font-normal text-fg-muted">(optional)</span>}
       </label>
       {children}
       {error ? (
@@ -238,22 +238,22 @@ export function StatTile({
   value,
   sub,
   icon,
-  tone = "leaf",
+  tone = "brand",
 }: {
   label: string;
   value: ReactNode;
   sub?: ReactNode;
   icon?: ReactNode;
-  tone?: "leaf" | "saffron" | "ink";
+  tone?: "brand" | "attention" | "neutral";
 }) {
-  const ring = { leaf: "bg-leaf-50 text-leaf-700", saffron: "bg-saffron-50 text-saffron-600", ink: "bg-cream-200 text-ink-700" }[tone];
+  const ring = { brand: "bg-brand-950 text-brand-400", attention: "bg-turmeric-950 text-turmeric-300", neutral: "bg-raised text-fg-soft" }[tone];
   return (
     <div className="card flex items-start gap-3.5 p-4 sm:p-5">
       {icon && <div className={`grid size-10 shrink-0 place-items-center rounded-xl ${ring}`}>{icon}</div>}
       <div className="min-w-0">
-        <p className="text-[13px] font-medium text-ink-500">{label}</p>
-        <p className="font-display mt-0.5 text-2xl font-semibold text-ink-900 tabular-nums">{value}</p>
-        {sub && <p className="mt-0.5 text-[12.5px] text-ink-500">{sub}</p>}
+        <p className="text-[13px] font-medium text-fg-muted">{label}</p>
+        <p className="font-display mt-0.5 text-2xl font-semibold text-fg tabular-nums">{value}</p>
+        {sub && <p className="mt-0.5 text-[12.5px] text-fg-muted">{sub}</p>}
       </div>
     </div>
   );
@@ -271,7 +271,7 @@ export function Tabs<T extends string>({
   label: string;
 }) {
   return (
-    <div role="tablist" aria-label={label} className="inline-flex gap-1 rounded-full border border-line bg-white p-1 shadow-soft">
+    <div role="tablist" aria-label={label} className="inline-flex gap-1 rounded-full border border-line bg-panel p-1 shadow-soft">
       {tabs.map((tab) => (
         <button
           key={tab.value}
@@ -279,11 +279,11 @@ export function Tabs<T extends string>({
           type="button"
           aria-selected={value === tab.value}
           onClick={() => onChange(tab.value)}
-          className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold text-ink-600 transition hover:text-ink-900 aria-selected:bg-ink-900 aria-selected:text-white"
+          className="group inline-flex min-h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold text-fg-soft transition hover:text-fg aria-selected:bg-brand-500 aria-selected:text-night"
         >
           {tab.label}
           {tab.count !== undefined && tab.count > 0 && (
-            <span className="rounded-full bg-saffron-400 px-1.5 text-[11px] leading-[18px] text-white">{tab.count}</span>
+            <span className="rounded-full bg-brand-500 px-1.5 text-[11px] leading-[18px] text-night group-aria-selected:bg-night group-aria-selected:text-brand-300">{tab.count}</span>
           )}
         </button>
       ))}
@@ -309,13 +309,13 @@ export function PageHeader({
   narrow?: boolean;
 }) {
   return (
-    <div className="border-b border-sage-200/70 bg-sage-50">
+    <div className="border-b border-line/70 bg-panel">
       <div className={`${narrow ? "mx-auto max-w-4xl px-4 sm:px-6" : "container-page"} py-8 sm:py-10`}>
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div className="min-w-0 animate-rise">
             {eyebrow && <p className="eyebrow">{eyebrow}</p>}
             <h1 className="mt-2 text-[2rem] leading-tight sm:text-[2.5rem]">{title}</h1>
-            {description && <div className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-600">{description}</div>}
+            {description && <div className="mt-2 max-w-2xl text-[15px] leading-relaxed text-fg-soft">{description}</div>}
           </div>
           {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
         </div>

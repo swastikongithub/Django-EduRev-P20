@@ -74,15 +74,15 @@ function Header() {
           ? "text-white"
           : "text-white/75 hover:text-white"
         : active
-          ? "text-leaf-700"
-          : "text-ink-600 hover:text-ink-900"
+          ? "text-brand-400"
+          : "text-fg-soft hover:text-fg"
     }`;
 
   return (
     <header
       className={`sticky top-0 z-40 transition-[background-color,box-shadow,border-color] duration-300 ${
         scrolled || open
-          ? "border-b border-line/70 bg-cream-50/90 shadow-[0_6px_24px_-18px_rgb(20_29_24/0.35)] backdrop-blur-xl"
+          ? "border-b border-line/70 bg-page/90 shadow-[0_6px_24px_-18px_rgb(20_29_24/0.35)] backdrop-blur-xl"
           : "border-b border-transparent bg-transparent"
       }`}
     >
@@ -94,7 +94,7 @@ function Header() {
               {link.label}
               {isActive(link) && (
                 <span
-                  className={`absolute inset-x-2.5 -bottom-0.5 h-0.5 rounded-full xl:inset-x-3.5 ${overDark ? "bg-turmeric-400" : "bg-leaf-600"}`}
+                  className={`absolute inset-x-2.5 -bottom-0.5 h-0.5 rounded-full xl:inset-x-3.5 ${overDark ? "bg-turmeric-400" : "bg-brand-500"}`}
                 />
               )}
             </Link>
@@ -110,7 +110,7 @@ function Header() {
                   to={account.to}
                   className={({ isActive: active }) =>
                     `btn-sm btn ${
-                      overDark ? "text-white hover:bg-white/10" : active ? "bg-leaf-50 text-leaf-800" : "text-ink-700 hover:bg-cream-200"
+                      overDark ? "text-white hover:bg-white/10" : active ? "bg-brand-950 text-brand-300" : "text-fg-soft hover:bg-raised"
                     }`
                   }
                 >
@@ -120,7 +120,7 @@ function Header() {
               <span className={`mx-1 h-6 w-px ${overDark ? "bg-white/25" : "bg-line"}`} aria-hidden="true" />
               <Link
                 to="/account"
-                className={`btn-sm btn max-w-40 ${overDark ? "text-white hover:bg-white/10" : "text-ink-700 hover:bg-cream-200"}`}
+                className={`btn-sm btn max-w-40 ${overDark ? "text-white hover:bg-white/10" : "text-fg-soft hover:bg-raised"}`}
                 title={`My account (${me.user.email})`}
               >
                 <CircleUserRound className="size-4 shrink-0" aria-hidden="true" />
@@ -139,7 +139,7 @@ function Header() {
             <>
               <Link
                 to="/login"
-                className={`btn-sm btn px-4 text-[14px] ${overDark ? "text-white hover:bg-white/10" : "text-ink-700 hover:bg-cream-200"}`}
+                className={`btn-sm btn px-4 text-[14px] ${overDark ? "text-white hover:bg-white/10" : "text-fg-soft hover:bg-raised"}`}
               >
                 Log in
               </Link>
@@ -161,7 +161,7 @@ function Header() {
         </button>
       </div>
       {open && (
-        <div id="mobile-menu" className="animate-fade border-t border-line/70 bg-cream-50 lg:hidden">
+        <div id="mobile-menu" className="animate-fade border-t border-line/70 bg-page lg:hidden">
           <nav aria-label="Mobile" className="container-page flex flex-col gap-1 py-4">
             {PUBLIC_LINKS.map((link) => (
               <Link
@@ -169,19 +169,19 @@ function Header() {
                 to={link.to}
                 aria-current={isActive(link) ? "page" : undefined}
                 className={`flex min-h-12 items-center rounded-2xl px-4 text-[15px] font-semibold ${
-                  isActive(link) ? "bg-leaf-50 text-leaf-800" : "text-ink-700 hover:bg-cream-200"
+                  isActive(link) ? "bg-brand-950 text-brand-300" : "text-fg-soft hover:bg-raised"
                 }`}
               >
                 {link.label}
               </Link>
             ))}
             {account && (
-              <Link to={account.to} className="flex min-h-12 items-center gap-2 rounded-2xl px-4 text-[15px] font-semibold text-ink-700 hover:bg-cream-200">
+              <Link to={account.to} className="flex min-h-12 items-center gap-2 rounded-2xl px-4 text-[15px] font-semibold text-fg-soft hover:bg-raised">
                 <account.icon className="size-4" aria-hidden="true" /> {account.label}
               </Link>
             )}
             {me && (
-              <Link to="/account" className="flex min-h-12 items-center gap-2 rounded-2xl px-4 text-[15px] font-semibold text-ink-700 hover:bg-cream-200">
+              <Link to="/account" className="flex min-h-12 items-center gap-2 rounded-2xl px-4 text-[15px] font-semibold text-fg-soft hover:bg-raised">
                 <CircleUserRound className="size-4" aria-hidden="true" /> My account
               </Link>
             )}
@@ -241,12 +241,12 @@ const FOOTER_COLUMNS = [
 
 function Footer() {
   return (
-    <footer className="mt-24 bg-leaf-900 text-leaf-100">
+    <footer className="mt-24 bg-night text-fg-soft">
       <div className="container-page grid grid-cols-1 gap-12 py-16 lg:grid-cols-[1.3fr_2fr]">
         <div>
           <Logo tone="light" />
           <p className="font-display mt-5 text-2xl font-semibold text-white">Good food. Less waste.</p>
-          <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-leaf-100/85">
+          <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-fg-soft/85">
             FoodLoop helps approved canteens, cafeterias, hostel messes and PG kitchens sell safe surplus meals to
             people nearby, so good food gets eaten instead of thrown away.
           </p>
@@ -264,7 +264,7 @@ function Footer() {
               <ul className="mt-4 space-y-2.5 text-[14.5px]">
                 {column.links.map((link) => (
                   <li key={link.label}>
-                    <Link className="text-leaf-100/85 transition hover:text-white" to={link.to}>
+                    <Link className="text-fg-soft/85 transition hover:text-white" to={link.to}>
                       {link.label}
                     </Link>
                   </li>
@@ -275,7 +275,7 @@ function Footer() {
         </div>
       </div>
       <div className="border-t border-white/10">
-        <div className="container-page flex flex-col gap-2 py-6 text-[13px] text-leaf-100/70 sm:flex-row sm:items-center sm:justify-between">
+        <div className="container-page flex flex-col gap-2 py-6 text-[13px] text-fg-soft/70 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} FoodLoop. Kitchens are responsible for the food they list and must hold valid FSSAI registration.</p>
           <p>Listings marked “Sample data” are fictional demo content.</p>
         </div>
@@ -290,7 +290,7 @@ export function Layout() {
     <div className="flex min-h-dvh flex-col">
       <a
         href="#main"
-        className="sr-only z-50 rounded-full bg-ink-900 px-4 py-2 text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+        className="sr-only z-50 rounded-full bg-night px-4 py-2 text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
       >
         Skip to content
       </a>

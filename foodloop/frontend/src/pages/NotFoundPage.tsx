@@ -25,7 +25,7 @@ export function RouteError() {
   const status = isRouteErrorResponse(error) ? error.status : null;
   if (status === 404) return <NotFoundPage />;
   return (
-    <div className="grid min-h-dvh place-items-center bg-cream-100 px-4">
+    <div className="grid min-h-dvh place-items-center bg-raised px-4">
       <EmptyState
         icon={<CircleAlert className="size-7" />}
         title="Something went wrong"

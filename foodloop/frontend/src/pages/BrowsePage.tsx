@@ -21,7 +21,7 @@ const AVAILABILITY = [
 function FilterGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <fieldset>
-      <legend className="mb-2 text-[12px] font-bold tracking-[0.08em] text-ink-500 uppercase">{label}</legend>
+      <legend className="mb-2 text-[12px] font-bold tracking-[0.08em] text-fg-muted uppercase">{label}</legend>
       <div className="flex flex-wrap gap-2">{children}</div>
     </fieldset>
   );
@@ -153,13 +153,13 @@ export function BrowsePage() {
 
   return (
     <div>
-      <section className="border-b border-line/70 bg-sage-50">
+      <section className="border-b border-line/70 bg-panel">
         <div className="container-page pt-8 pb-7 sm:pt-12">
           <p className="eyebrow">Explore meals</p>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
             <div>
               <h1 className="text-[2.2rem] leading-tight sm:text-5xl">Good food, ready for pickup</h1>
-              <p className="mt-2 max-w-2xl text-[15.5px] text-ink-600">
+              <p className="mt-2 max-w-2xl text-[15.5px] text-fg-soft">
                 Surplus from approved kitchens near you, priced to move. Reserve now and collect before the window closes.
               </p>
             </div>
@@ -168,10 +168,10 @@ export function BrowsePage() {
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <label className="relative flex-1">
               <span className="sr-only">Search meals, kitchens or areas</span>
-              <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-500" aria-hidden="true" />
+              <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-fg-muted" aria-hidden="true" />
               <input
                 type="search"
-                className="input min-h-13 rounded-full border-white pl-12 text-[15.5px] shadow-soft"
+                className="input min-h-13 rounded-full border-panel pl-12 text-[15.5px] shadow-soft"
                 placeholder="Search thali, biryani, a kitchen or your area…"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
@@ -181,7 +181,7 @@ export function BrowsePage() {
               <label className="flex-1 sm:w-52">
                 <span className="sr-only">Sort meals</span>
                 <select
-                  className="input min-h-13 rounded-full border-white px-5 shadow-soft"
+                  className="input min-h-13 rounded-full border-panel px-5 shadow-soft"
                   value={sort}
                   onChange={(event) => update({ sort: event.target.value === "ending_soon" ? null : event.target.value })}
                 >
@@ -193,13 +193,13 @@ export function BrowsePage() {
               </label>
               <button
                 type="button"
-                className="btn-secondary min-h-13 shrink-0 border-white shadow-soft lg:hidden"
+                className="btn-secondary min-h-13 shrink-0 border-panel shadow-soft lg:hidden"
                 aria-expanded={showFilters}
                 aria-controls="filter-panel"
                 onClick={() => setShowFilters((value) => !value)}
               >
                 <SlidersHorizontal className="size-4" aria-hidden="true" /> Filters
-                {pills.length > 0 && <span className="rounded-full bg-leaf-600 px-1.5 text-[11px] leading-[18px] text-white">{pills.length}</span>}
+                {pills.length > 0 && <span className="rounded-full bg-brand-500 px-1.5 text-[11px] leading-[18px] text-night">{pills.length}</span>}
               </button>
             </div>
           </div>
@@ -209,9 +209,9 @@ export function BrowsePage() {
               type="button"
               aria-pressed={meals.length === 0}
               onClick={() => update({ meal: null })}
-              className="group flex shrink-0 items-center gap-2.5 rounded-full border border-line bg-white py-1.5 pr-4 pl-1.5 text-[14px] font-semibold text-ink-700 shadow-soft transition hover:border-leaf-200 aria-pressed:border-leaf-600 aria-pressed:bg-leaf-600 aria-pressed:text-white"
+              className="group flex shrink-0 items-center gap-2.5 rounded-full border border-line bg-panel py-1.5 pr-4 pl-1.5 text-[14px] font-semibold text-fg-soft shadow-soft transition hover:border-brand-700 aria-pressed:border-brand-500 aria-pressed:bg-brand-500 aria-pressed:text-night"
             >
-              <span className="grid size-9 place-items-center rounded-full bg-sage-100 text-leaf-700 group-aria-pressed:bg-white/15 group-aria-pressed:text-white">
+              <span className="grid size-9 place-items-center rounded-full bg-raised text-brand-400 group-aria-pressed:bg-night/15 group-aria-pressed:text-night">
                 <UtensilsCrossed className="size-4" aria-hidden="true" />
               </span>
               All meals
@@ -222,7 +222,7 @@ export function BrowsePage() {
                 type="button"
                 aria-pressed={meals.includes(category.mealType)}
                 onClick={() => toggle("meal", meals, category.mealType as MealType)}
-                className="flex shrink-0 items-center gap-2.5 rounded-full border border-line bg-white py-1.5 pr-4 pl-1.5 text-[14px] font-semibold text-ink-700 shadow-soft transition hover:border-leaf-200 aria-pressed:border-leaf-600 aria-pressed:bg-leaf-600 aria-pressed:text-white"
+                className="flex shrink-0 items-center gap-2.5 rounded-full border border-line bg-panel py-1.5 pr-4 pl-1.5 text-[14px] font-semibold text-fg-soft shadow-soft transition hover:border-brand-700 aria-pressed:border-brand-500 aria-pressed:bg-brand-500 aria-pressed:text-night"
               >
                 <span className="size-9 overflow-hidden rounded-full">
                   <Photo photo={category.photo} sizes="36px" alt="" />
@@ -244,11 +244,11 @@ export function BrowsePage() {
         </div>
 
         <div className="flex min-h-9 flex-wrap items-center gap-2" aria-live="polite">
-          <p className="mr-2 text-[14px] text-ink-600">
+          <p className="mr-2 text-[14px] text-fg-soft">
             {data && !isLoading && (
               <>
-                <span className="font-semibold text-ink-900">{data.total}</span> {data.total === 1 ? "meal" : "meals"}
-                {isFetching && <span className="ml-2 text-ink-500">· updating…</span>}
+                <span className="font-semibold text-fg">{data.total}</span> {data.total === 1 ? "meal" : "meals"}
+                {isFetching && <span className="ml-2 text-fg-muted">· updating…</span>}
               </>
             )}
           </p>
@@ -257,14 +257,14 @@ export function BrowsePage() {
               key={pill.key}
               type="button"
               onClick={pill.onRemove}
-              className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-leaf-50 py-1 pr-2 pl-3 text-[13px] font-semibold text-leaf-800 ring-1 ring-leaf-100 transition hover:bg-leaf-100"
+              className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-brand-950 py-1 pr-2 pl-3 text-[13px] font-semibold text-brand-300 ring-1 ring-brand-900 transition hover:bg-brand-900"
               aria-label={`Remove filter ${pill.label}`}
             >
               {pill.label} <X className="size-3.5" aria-hidden="true" />
             </button>
           ))}
           {pills.length > 0 && (
-            <button type="button" className="text-[13px] font-semibold text-ink-600 underline-offset-4 hover:underline" onClick={clearAll}>
+            <button type="button" className="text-[13px] font-semibold text-fg-soft underline-offset-4 hover:underline" onClick={clearAll}>
               Clear all
             </button>
           )}
@@ -299,7 +299,7 @@ export function BrowsePage() {
                 {[PHOTOS.samosa, PHOTOS.steelThali, PHOTOS.masalaChai].map((item, index) => (
                   <div
                     key={item.slug}
-                    className="absolute top-0 size-24 overflow-hidden rounded-full opacity-90 shadow-soft ring-4 ring-white"
+                    className="absolute top-0 size-24 overflow-hidden rounded-full opacity-90 shadow-soft ring-4 ring-panel"
                     style={{ left: `${index * 48}px`, zIndex: index === 1 ? 2 : 1 }}
                   >
                     <Photo photo={item} sizes="96px" alt="" />
@@ -307,7 +307,7 @@ export function BrowsePage() {
                 ))}
               </div>
               <h2 className="mt-6 text-2xl">{pills.length ? "No meals match these filters" : "No meals listed right now"}</h2>
-              <p className="mt-2 max-w-md text-[15px] leading-relaxed text-ink-600">
+              <p className="mt-2 max-w-md text-[15px] leading-relaxed text-fg-soft">
                 {pills.length
                   ? "Try removing a filter or searching for something else."
                   : "Kitchens usually post surplus right after lunch and dinner service. This page refreshes on its own."}

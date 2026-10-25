@@ -78,14 +78,14 @@ function ReservePanel({ listing, onReserved }: { listing: Listing; onReserved: (
     const reservation = reserve.data;
     return (
       <div className="card animate-rise overflow-hidden">
-        <div className="flex items-center gap-2 bg-leaf-600 px-5 py-4 font-semibold text-white">
+        <div className="flex items-center gap-2 bg-brand-500 px-5 py-4 font-semibold text-night">
           <CircleCheck className="size-5" aria-hidden="true" /> Reserved! Here's your pickup code
         </div>
         <div className="p-5">
-          <p className="rounded-2xl border-2 border-dashed border-leaf-200 bg-leaf-50 py-4 text-center font-mono text-3xl font-bold tracking-[0.3em] text-leaf-800">
+          <p className="rounded-2xl border-2 border-dashed border-brand-700 bg-brand-950 py-4 text-center font-mono text-3xl font-bold tracking-[0.3em] text-brand-300">
             {reservation.pickup_code}
           </p>
-          <p className="mt-4 text-[15px] leading-relaxed text-ink-700">
+          <p className="mt-4 text-[15px] leading-relaxed text-fg-soft">
             Show this code at <strong>{reservation.provider.name}</strong> by{" "}
             <strong>{formatTime(reservation.pickup_deadline)}</strong> and pay{" "}
             <strong>{formatRupees(reservation.total_paise)}</strong> at the counter.
@@ -113,14 +113,14 @@ function ReservePanel({ listing, onReserved }: { listing: Listing; onReserved: (
           <span id="qty-label" className="text-[15px] font-semibold">
             Portions
           </span>
-          <p className="text-[13px] text-ink-500">
+          <p className="text-[13px] text-fg-muted">
             Up to {listing.max_per_order} per order · {listing.quantity_available} left
           </p>
         </div>
-        <div className="inline-flex items-center gap-1 rounded-full border border-line bg-cream-50 p-1" role="group" aria-labelledby="qty-label">
+        <div className="inline-flex items-center gap-1 rounded-full border border-line bg-page p-1" role="group" aria-labelledby="qty-label">
           <button
             type="button"
-            className="grid size-10 place-items-center rounded-full bg-white shadow-soft transition hover:bg-leaf-50 disabled:opacity-40"
+            className="grid size-10 place-items-center rounded-full bg-panel shadow-soft transition hover:bg-brand-950 disabled:opacity-40"
             onClick={() => setQuantity((value) => Math.max(1, value - 1))}
             disabled={quantity <= 1}
             aria-label="One fewer"
@@ -132,7 +132,7 @@ function ReservePanel({ listing, onReserved }: { listing: Listing; onReserved: (
           </output>
           <button
             type="button"
-            className="grid size-10 place-items-center rounded-full bg-white shadow-soft transition hover:bg-leaf-50 disabled:opacity-40"
+            className="grid size-10 place-items-center rounded-full bg-panel shadow-soft transition hover:bg-brand-950 disabled:opacity-40"
             onClick={() => setQuantity((value) => Math.min(maxQuantity, value + 1))}
             disabled={quantity >= maxQuantity}
             aria-label="One more"
@@ -142,7 +142,7 @@ function ReservePanel({ listing, onReserved }: { listing: Listing; onReserved: (
         </div>
       </div>
       <div className="mt-5 flex items-baseline justify-between border-t border-line pt-4">
-        <span className="text-[14px] text-ink-600">Total, paid at pickup</span>
+        <span className="text-[14px] text-fg-soft">Total, paid at pickup</span>
         <span className="font-display text-3xl font-bold">{formatRupees(listing.price_paise * quantity)}</span>
       </div>
 
@@ -167,7 +167,7 @@ function ReservePanel({ listing, onReserved }: { listing: Listing; onReserved: (
           </BusyLabel>
         </button>
       )}
-      <p className="mt-3 text-center text-[12.5px] leading-snug text-ink-500">
+      <p className="mt-3 text-center text-[12.5px] leading-snug text-fg-muted">
         Free to cancel until the pickup window ends. If your plans change, please cancel so someone else can have it.
       </p>
     </div>
@@ -239,8 +239,8 @@ export function ListingDetailPage() {
   return (
     <div className="pb-28 lg:pb-0">
       <div className="container-page py-6 sm:py-8">
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13.5px] text-ink-500">
-          <Link to="/meals" className="font-medium text-leaf-700 underline-offset-4 hover:underline">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13.5px] text-fg-muted">
+          <Link to="/meals" className="font-medium text-brand-400 underline-offset-4 hover:underline">
             Explore meals
           </Link>
           <ChevronRight className="size-3.5" aria-hidden="true" />
@@ -252,7 +252,7 @@ export function ListingDetailPage() {
         {/* Phones read photo → name, price, reserve → details; desktop puts the reserve column beside both. */}
         <div className="mt-5 grid grid-cols-1 gap-8 lg:grid-cols-[1.2fr_1fr] lg:grid-rows-[auto_1fr] lg:gap-x-12">
           <div className="animate-rise lg:col-start-1 lg:row-start-1">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] bg-cream-200 shadow-soft">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] bg-raised shadow-soft">
               <MealImage
                 imageUrl={listing.image_url}
                 mealType={listing.meal_type}
@@ -263,7 +263,7 @@ export function ListingDetailPage() {
               />
               <div className="absolute top-4 left-4 flex gap-2">
                 {listing.discount_percent > 0 && (
-                  <span className="badge bg-saffron-600 px-3 py-1 text-[13px] font-bold tracking-wide text-white shadow-soft">
+                  <span className="badge bg-brand-600 px-3 py-1 text-[13px] font-bold tracking-wide text-night shadow-soft">
                     {listing.discount_percent}% OFF
                   </span>
                 )}
@@ -280,19 +280,19 @@ export function ListingDetailPage() {
               <div>
                 <div className="flex flex-wrap items-center gap-3">
                   <DietMark diet={listing.diet} label={meta?.labels.diet[listing.diet]} />
-                  <span className="rounded-full bg-sage-100 px-2.5 py-0.5 text-[12px] font-semibold text-ink-600">
+                  <span className="rounded-full bg-raised px-2.5 py-0.5 text-[12px] font-semibold text-fg-soft">
                     {meta?.labels.meal_type[listing.meal_type]}
                   </span>
                   {!available && <StatusPill status={listing.availability} />}
                 </div>
                 <h1 className="mt-3 text-[2rem] leading-tight sm:text-[2.5rem]">{listing.title}</h1>
-                <p className="mt-2 flex items-center gap-1.5 text-[14.5px] text-ink-600">
-                  <Store className="size-4 text-leaf-600" aria-hidden="true" /> {listing.provider.name} · {listing.provider.area}
+                <p className="mt-2 flex items-center gap-1.5 text-[14.5px] text-fg-soft">
+                  <Store className="size-4 text-brand-400" aria-hidden="true" /> {listing.provider.name} · {listing.provider.area}
                 </p>
                 <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <span className="font-display text-[2.6rem] leading-none font-bold">{formatRupees(listing.price_paise)}</span>
-                  <span className="text-lg text-ink-500 line-through">{formatRupees(listing.original_price_paise)}</span>
-                  <span className="rounded-full bg-leaf-50 px-2.5 py-0.5 text-[13px] font-semibold text-leaf-800">
+                  <span className="text-lg text-fg-muted line-through">{formatRupees(listing.original_price_paise)}</span>
+                  <span className="rounded-full bg-brand-950 px-2.5 py-0.5 text-[13px] font-semibold text-brand-300">
                     You save {formatRupees(listing.original_price_paise - listing.price_paise)}
                   </span>
                 </div>
@@ -304,33 +304,33 @@ export function ListingDetailPage() {
 
               <div className="card divide-y divide-line">
                 <div className="flex gap-3 p-4">
-                  <Clock className="mt-0.5 size-5 shrink-0 text-leaf-600" aria-hidden="true" />
+                  <Clock className="mt-0.5 size-5 shrink-0 text-brand-400" aria-hidden="true" />
                   <div>
                     <p className="font-semibold">
                       Pickup {formatTime(listing.pickup_start)} – {formatTime(listing.pickup_end)}
                     </p>
                     {available && (
-                      <p className="text-[13px] text-ink-500">Reservations close {relativeTime(listing.reservations_close_at, now)}</p>
+                      <p className="text-[13px] text-fg-muted">Reservations close {relativeTime(listing.reservations_close_at, now)}</p>
                     )}
                   </div>
                 </div>
                 <div className="flex gap-3 p-4">
-                  <MapPin className="mt-0.5 size-5 shrink-0 text-leaf-600" aria-hidden="true" />
+                  <MapPin className="mt-0.5 size-5 shrink-0 text-brand-400" aria-hidden="true" />
                   <div>
                     <p className="font-semibold">{listing.provider.name}</p>
-                    <p className="text-[14px] text-ink-600">
+                    <p className="text-[14px] text-fg-soft">
                       {listing.provider.address_line}, {listing.provider.area}, {listing.provider.city}
                     </p>
                     {listing.pickup_instructions && (
-                      <p className="mt-2 rounded-xl bg-sage-50 px-3 py-2 text-[14px] text-ink-700">{listing.pickup_instructions}</p>
+                      <p className="mt-2 rounded-xl bg-panel px-3 py-2 text-[14px] text-fg-soft">{listing.pickup_instructions}</p>
                     )}
                   </div>
                 </div>
                 <div className="flex gap-3 p-4">
-                  <BadgeCheck className="mt-0.5 size-5 shrink-0 text-leaf-600" aria-hidden="true" />
-                  <p className="text-[14px] text-ink-600">
+                  <BadgeCheck className="mt-0.5 size-5 shrink-0 text-brand-400" aria-hidden="true" />
+                  <p className="text-[14px] text-fg-soft">
                     {meta?.labels.fssai_kind[listing.provider.fssai_kind] ?? "FSSAI"} no.{" "}
-                    <span className="font-mono font-semibold text-ink-900">{listing.provider.fssai_number}</span>
+                    <span className="font-mono font-semibold text-fg">{listing.provider.fssai_number}</span>
                   </p>
                 </div>
               </div>
@@ -341,7 +341,7 @@ export function ListingDetailPage() {
             <h2 id="details-title" className="text-2xl">
               Food details
             </h2>
-            {listing.description && <p className="mt-3 text-[15.5px] leading-relaxed text-ink-700">{listing.description}</p>}
+            {listing.description && <p className="mt-3 text-[15.5px] leading-relaxed text-fg-soft">{listing.description}</p>}
             <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {[
                 { icon: StorageIcon, label: "Stored", value: meta?.labels.storage[listing.storage] ?? listing.storage },
@@ -349,31 +349,31 @@ export function ListingDetailPage() {
                 { icon: Hourglass, label: "Eat by", value: formatDateTime(listing.safe_until, now) },
               ].map((item) => (
                 <div key={item.label} className="card flex gap-3 p-4">
-                  <item.icon className="mt-0.5 size-5 shrink-0 text-leaf-600" aria-hidden="true" />
+                  <item.icon className="mt-0.5 size-5 shrink-0 text-brand-400" aria-hidden="true" />
                   <div className="min-w-0">
-                    <dt className="text-[12.5px] text-ink-500">{item.label}</dt>
-                    <dd className="text-[14.5px] font-semibold text-ink-900">{item.value}</dd>
+                    <dt className="text-[12.5px] text-fg-muted">{item.label}</dt>
+                    <dd className="text-[14.5px] font-semibold text-fg">{item.value}</dd>
                   </div>
                 </div>
               ))}
             </dl>
             <div className="card mt-3 p-5">
               <h3 className="flex items-center gap-2 font-sans text-[15px] font-semibold tracking-normal">
-                <Wheat className="size-5 text-leaf-600" aria-hidden="true" /> Allergens
+                <Wheat className="size-5 text-brand-400" aria-hidden="true" /> Allergens
               </h3>
               {listing.allergens.length > 0 ? (
                 <ul className="mt-3 flex flex-wrap gap-2">
                   {listing.allergens.map((allergen) => (
-                    <li key={allergen} className="badge bg-saffron-50 px-3 py-1 text-[13px] text-saffron-600 ring-1 ring-saffron-100">
+                    <li key={allergen} className="badge bg-brand-950 px-3 py-1 text-[13px] text-brand-400 ring-1 ring-brand-800">
                       {meta?.labels.allergen[allergen] ?? allergen}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-[15px] text-ink-600">The kitchen declared none of the listed allergens.</p>
+                <p className="mt-2 text-[15px] text-fg-soft">The kitchen declared none of the listed allergens.</p>
               )}
-              {listing.allergen_note && <p className="mt-3 text-sm text-ink-600">Note from the kitchen: {listing.allergen_note}</p>}
-              <p className="mt-3 text-[12.5px] text-ink-500">
+              {listing.allergen_note && <p className="mt-3 text-sm text-fg-soft">Note from the kitchen: {listing.allergen_note}</p>}
+              <p className="mt-3 text-[12.5px] text-fg-muted">
                 Allergen information comes from the kitchen. If you have a severe allergy, check with them before eating.
               </p>
             </div>
@@ -382,11 +382,11 @@ export function ListingDetailPage() {
       </div>
 
       {available && !reserved && !reserveVisible && (
-        <div className="fixed inset-x-0 bottom-0 z-30 animate-fade border-t border-line bg-white/95 px-4 py-3 shadow-[0_-10px_30px_-18px_rgb(20_29_24/0.4)] backdrop-blur lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-30 animate-fade border-t border-line bg-panel/95 px-4 py-3 shadow-[0_-10px_30px_-18px_rgb(20_29_24/0.4)] backdrop-blur lg:hidden">
           <div className="mx-auto flex max-w-xl items-center justify-between gap-4">
             <div>
               <p className="font-display text-2xl leading-none font-bold">{formatRupees(listing.price_paise)}</p>
-              <p className="mt-0.5 text-[12.5px] text-ink-500">
+              <p className="mt-0.5 text-[12.5px] text-fg-muted">
                 Pickup by {formatTime(listing.pickup_end)} · {listing.quantity_available} left
               </p>
             </div>

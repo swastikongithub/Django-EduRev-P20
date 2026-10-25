@@ -74,9 +74,9 @@ export function KitchenFields({
         </Field>
       </div>
 
-      <div className="rounded-2xl border border-leaf-200 bg-leaf-50/60 p-4 sm:col-span-2 sm:p-5">
-        <p className="text-sm font-semibold text-leaf-900">FSSAI registration</p>
-        <p className="mt-1 text-[13px] text-leaf-900/80">
+      <div className="rounded-2xl border border-brand-700 bg-brand-950/60 p-4 sm:col-span-2 sm:p-5">
+        <p className="text-sm font-semibold text-brand-200">FSSAI registration</p>
+        <p className="mt-1 text-[13px] text-brand-200/80">
           FoodLoop checks this on the FSSAI FoSCoS portal before approving your kitchen. It's shown on your listings.
         </p>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">

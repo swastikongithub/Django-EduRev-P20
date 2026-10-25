@@ -31,7 +31,7 @@ function ProfileForm({ me }: { me: Me }) {
   return (
     <form className="card space-y-5 p-6 sm:p-8" onSubmit={submit}>
       <h2 className="flex items-center gap-2 text-xl">
-        <UserRound className="size-5 text-leaf-600" aria-hidden="true" /> Your details
+        <UserRound className="size-5 text-brand-400" aria-hidden="true" /> Your details
       </h2>
       {save.isError && Object.keys(errors).length === 0 && <Notice tone="danger">{save.error.message}</Notice>}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -61,8 +61,8 @@ function ProfileForm({ me }: { me: Me }) {
       </div>
       <div>
         <p className="label">Email</p>
-        <p className="flex items-center gap-2 rounded-xl bg-cream-100 px-3.5 py-2.5 text-[15px] text-ink-700">
-          <Mail className="size-4 text-ink-500" aria-hidden="true" /> {me.user.email}
+        <p className="flex items-center gap-2 rounded-xl bg-raised px-3.5 py-2.5 text-[15px] text-fg-soft">
+          <Mail className="size-4 text-fg-muted" aria-hidden="true" /> {me.user.email}
         </p>
         <p className="hint">To change your email, contact us.</p>
       </div>
@@ -93,7 +93,7 @@ function PasswordForm() {
   return (
     <form className="card space-y-5 p-6 sm:p-8" onSubmit={submit}>
       <h2 className="flex items-center gap-2 text-xl">
-        <KeyRound className="size-5 text-leaf-600" aria-hidden="true" /> Change password
+        <KeyRound className="size-5 text-brand-400" aria-hidden="true" /> Change password
       </h2>
       {change.isError && Object.keys(errors).length === 0 && <Notice tone="danger">{change.error.message}</Notice>}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -147,7 +147,7 @@ export function AccountPage() {
         title={`Hello, ${me.user.full_name.split(" ")[0]}`}
         description={
           <span className="inline-flex items-center gap-2">
-            <span className="badge bg-leaf-100 text-leaf-800">{ROLE_LABEL[me.user.role]}</span>
+            <span className="badge bg-brand-900 text-brand-300">{ROLE_LABEL[me.user.role]}</span>
             {me.provider && <span>{me.provider.name}</span>}
           </span>
         }

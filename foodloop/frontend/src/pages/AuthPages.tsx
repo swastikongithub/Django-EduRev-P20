@@ -35,12 +35,12 @@ function AuthShell({
     <div className="mx-auto grid grid-cols-1 max-w-6xl items-stretch gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_0.95fr] lg:py-14">
       <div className="card animate-rise self-start p-6 sm:p-10">
         <h1 className="text-[2rem] leading-tight sm:text-4xl">{title}</h1>
-        <p className="mt-2 text-[15px] text-ink-600">{subtitle}</p>
+        <p className="mt-2 text-[15px] text-fg-soft">{subtitle}</p>
         <div className="mt-8">{children}</div>
       </div>
       <div className="relative hidden min-h-[560px] overflow-hidden rounded-[2rem] shadow-lift lg:block" aria-hidden="true">
         <Photo photo={photo} alt="" sizes="(min-width: 1024px) 520px, 0px" priority />
-        <div className="absolute inset-0 bg-gradient-to-t from-leaf-900/85 via-leaf-900/15 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-night/85 via-night/15 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-8 text-white">
           <p className="font-display text-[1.9rem] leading-tight font-semibold">{caption}</p>
           <p className="mt-3 flex items-center gap-2 text-[14px] text-white/85">
@@ -69,7 +69,7 @@ function PasswordInput({ id, value, onChange, error, autoComplete }: { id: strin
       />
       <button
         type="button"
-        className="absolute top-1/2 right-1.5 grid size-9 -translate-y-1/2 place-items-center rounded-full text-ink-500 hover:bg-cream-200"
+        className="absolute top-1/2 right-1.5 grid size-9 -translate-y-1/2 place-items-center rounded-full text-fg-muted hover:bg-raised"
         onClick={() => setVisible((v) => !v)}
         aria-label={visible ? "Hide password" : "Show password"}
       >
@@ -109,7 +109,7 @@ export function LoginPage() {
   }
   const errors = fieldErrors(login.error);
   return (
-    <AuthShell title="Welcome back" caption="Good food deserves another chance." subtitle={<>New here? <Link className="font-semibold text-leaf-700 underline-offset-4 hover:underline" to="/register">Create an account</Link></>}>
+    <AuthShell title="Welcome back" caption="Good food deserves another chance." subtitle={<>New here? <Link className="font-semibold text-brand-400 underline-offset-4 hover:underline" to="/register">Create an account</Link></>}>
       <form className="space-y-5" onSubmit={submit} noValidate={false}>
         {login.isError && Object.keys(errors).length === 0 && <Notice tone="danger">{login.error.message}</Notice>}
         <Field id="email" label="Email" error={errors.email}>
@@ -143,7 +143,7 @@ export function RegisterPage() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle={<>Already have one? <Link className="font-semibold text-leaf-700 underline-offset-4 hover:underline" to="/login">Log in</Link></>}
+      subtitle={<>Already have one? <Link className="font-semibold text-brand-400 underline-offset-4 hover:underline" to="/login">Log in</Link></>}
       photo={PHOTOS.steelThali}
       caption="Fresh surplus from kitchens near you, at a lower price."
     >
@@ -166,9 +166,9 @@ export function RegisterPage() {
             Create account
           </BusyLabel>
         </button>
-        <p className="text-center text-sm text-ink-600">
+        <p className="text-center text-sm text-fg-soft">
           Run a canteen, mess or PG kitchen?{" "}
-          <Link to="/register/kitchen" className="font-semibold text-leaf-700 underline-offset-4 hover:underline">
+          <Link to="/register/kitchen" className="font-semibold text-brand-400 underline-offset-4 hover:underline">
             Register your kitchen
           </Link>
         </p>
@@ -192,11 +192,11 @@ export function RegisterKitchenPage() {
   }
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:py-14">
-      <div className="relative animate-rise overflow-hidden rounded-[2rem] bg-leaf-900 text-white shadow-lift">
+      <div className="relative animate-rise overflow-hidden rounded-[2rem] bg-night text-white shadow-lift">
         <div className="absolute inset-0 opacity-45">
           <Photo photo={PHOTOS.chefKitchen} alt="" sizes="(min-width: 768px) 768px, 100vw" priority />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-r from-leaf-900 via-leaf-900/85 to-leaf-900/30" />
+        <div className="absolute inset-0 bg-gradient-to-r from-night via-night/85 to-night/30" />
         <div className="relative p-7 sm:p-10">
           <p className="flex items-center gap-2 text-[13px] font-semibold tracking-[0.14em] text-turmeric-300 uppercase">
             <ChefHat className="size-4" aria-hidden="true" /> For kitchens

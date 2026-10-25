@@ -216,6 +216,26 @@ def wait_until_up(url: str, seconds: int, processes: list[subprocess.Popen]) -> 
     return False
 
 
+def check_styles() -> None:
+    """Catch "the page shows plain, unstyled text": the stylesheet must come back compiled by Tailwind."""
+    try:
+        with urllib.request.urlopen(SITE + "/src/index.css?direct", timeout=30) as response:
+            css = response.read().decode("utf-8", "replace")
+    except OSError:  # includes the HTTP 500 that Vite returns for a CSS error
+        css = ""
+    if ".btn-primary" in css and "@utility" not in css:
+        say("    Styles compiled (Tailwind CSS)")
+        return
+    say("\nWARNING: the website's styles didn't compile, so pages would look plain and broken.")
+    source = (FRONTEND / "src" / "index.css").read_text(encoding="utf-8", errors="replace")
+    if "<<<<<<<" in source or ">>>>>>>" in source:
+        say("FIX:     frontend/src/index.css still has merge conflict markers (<<<<<<< / >>>>>>>). Open it in VS Code,")
+        say("         accept one side at each marked place and save. The page updates by itself.")
+    else:
+        say("FIX:     read the [web] lines above for the CSS error. If it names a missing package, stop FoodLoop")
+        say("         (Ctrl+C), delete frontend/node_modules and start FoodLoop again so it reinstalls them.")
+
+
 def serve(npm: str, open_browser: bool) -> None:
     for port, what in ((8000, "backend"), (5173, "website")):
         if port_open("127.0.0.1", port):
@@ -231,6 +251,7 @@ def serve(npm: str, open_browser: bool) -> None:
             stop("The backend didn't start.", "Read the [api] messages above for the reason.")
         if not wait_until_up(SITE, 60, processes):
             stop("The website didn't start.", "Read the [web] messages above for the reason.")
+        check_styles()
         say("")
         say("=" * 64)
         say(f"  FoodLoop is running:  {SITE}")

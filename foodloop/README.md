@@ -56,6 +56,8 @@ real pilot.
   other browsers).
 - If the server or database goes down, the site says exactly which one, keeps checking, and reloads the
   data by itself when it's back.
+- **Dark charcoal and orange design**: round "plate" food photos, orange pill tabs for every meal type, dish
+  cards with prices, an orange wave band for kitchens. See [docs/design-system.md](docs/design-system.md).
 
 **Kitchens (providers)**
 - Register the kitchen with FSSAI details. It starts as **awaiting approval** and nothing it creates is
@@ -129,7 +131,7 @@ foodloop/
 │       ├── pages/             # Landing, Browse, Meal, Menu, Kitchens, About/FAQ/Contact, Account,
 │       │                      #   Auth, Reservations, kitchen/, admin/
 │       ├── lib/               # ₹ and IST formatting (with unit tests), photos, illustrations
-│       └── index.css          # brand design tokens
+│       └── index.css          # design tokens (charcoal + orange, named by role)
 ├── e2e/journey.py             # browser test of the whole journey
 ├── docs/                      # database, food safety & compliance, pilot kit
 └── docker-compose.yml         # local PostgreSQL
@@ -311,6 +313,7 @@ pilot shows the idea works ([docs/pilot](docs/pilot/README.md)).
 | Banner: “Can't connect to the FoodLoop server” | The backend isn't running on port 8000. Start it (step 2, or `python run.py`). The page reconnects by itself. |
 | Banner: “FoodLoop's database isn't reachable” | PostgreSQL isn't running. Open Docker Desktop and run `docker compose up -d`. The page reconnects by itself. |
 | “Too many attempts. Please wait 15 minutes” | The login protection counts logins per email. Wait, or restart the backend to reset it. |
+| The page shows plain text, no colours or layout | The styles didn't load. Open the site only at `http://localhost:5173` while FoodLoop runs, never by double-clicking `index.html` or with VS Code's Live Server. The launcher checks the styles at start and prints a `WARNING` with the fix: usually leftover merge markers (`<<<<<<<`) in `frontend/src/index.css`, or packages that need reinstalling. Then press **Ctrl+F5**. |
 | `403 Cross-site request blocked` | Open the site at `http://localhost:5173`. To test on your phone, run `npm run dev -- --host`, open `http://<your-PC-IP>:5173`, and add that address to `ALLOWED_ORIGINS`. |
 | PowerShell won't activate the venv | Run once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
 | “Reservations for this meal have closed” on sample meals | Sample windows are short; new ones are listed within 5 minutes in development, or run `python -m app.cli seed-sample`. |

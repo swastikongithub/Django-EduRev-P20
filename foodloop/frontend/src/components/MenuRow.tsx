@@ -13,9 +13,9 @@ export function MenuRow({ listing, showKitchen = true }: { listing: Listing; sho
   return (
     <Link
       to={`/meals/${listing.id}`}
-      className="group flex min-w-0 items-center gap-4 rounded-2xl p-2.5 transition hover:bg-white hover:shadow-soft"
+      className="group flex min-w-0 items-center gap-4 rounded-2xl p-2.5 transition hover:bg-raised hover:shadow-soft"
     >
-      <span className="relative size-16 shrink-0 overflow-hidden rounded-2xl bg-cream-200 sm:size-[4.5rem]">
+      <span className="relative size-16 shrink-0 overflow-hidden rounded-2xl bg-raised sm:size-[4.5rem]">
         <MealImage
           imageUrl={listing.image_url}
           mealType={listing.meal_type}
@@ -29,9 +29,9 @@ export function MenuRow({ listing, showKitchen = true }: { listing: Listing; sho
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
           <DietMark diet={listing.diet} />
-          <span className="truncate text-[15px] font-semibold text-ink-900 group-hover:text-leaf-700">{listing.title}</span>
+          <span className="truncate text-[15px] font-semibold text-fg group-hover:text-brand-400">{listing.title}</span>
         </span>
-        <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12.5px] text-ink-500">
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12.5px] text-fg-muted">
           {showKitchen && <span className="truncate">{listing.provider.name.replace(/^\[SAMPLE\]\s*/, "")}</span>}
           <Countdown to={listing.reservations_close_at} className="text-[12px]" />
           {listing.provider.is_sample && <SampleBadge className="!text-[9.5px]" />}
@@ -39,10 +39,10 @@ export function MenuRow({ listing, showKitchen = true }: { listing: Listing; sho
         <span className="sr-only">{meta?.labels.meal_type[listing.meal_type]}</span>
       </span>
       <span className="shrink-0 text-right">
-        <span className="font-display block text-xl leading-none font-bold text-ink-900">{formatRupees(listing.price_paise)}</span>
-        <span className="mt-1 block text-[12px] text-ink-500">
+        <span className="font-display block text-xl leading-none font-bold text-fg">{formatRupees(listing.price_paise)}</span>
+        <span className="mt-1 block text-[12px] text-fg-muted">
           <span className="line-through">{formatRupees(listing.original_price_paise)}</span>
-          {listing.discount_percent > 0 && <span className="ml-1.5 font-semibold text-saffron-600">−{listing.discount_percent}%</span>}
+          {listing.discount_percent > 0 && <span className="ml-1.5 font-semibold text-brand-400">−{listing.discount_percent}%</span>}
         </span>
       </span>
     </Link>

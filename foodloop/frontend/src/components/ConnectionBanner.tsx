@@ -63,17 +63,17 @@ export function ConnectionBanner() {
   if (!problem) return null;
   const text = PROBLEM_TEXT[problem];
   return (
-    <div role="status" className="sticky top-[4.25rem] z-30 border-b border-saffron-100 bg-saffron-50/95 backdrop-blur">
-      <div className="container-page flex flex-wrap items-start gap-3 py-3 text-[14px] text-ink-900">
-        <PlugZap className="mt-0.5 size-5 shrink-0 text-saffron-600" aria-hidden="true" />
+    <div role="status" className="sticky top-[4.25rem] z-30 border-b border-brand-800 bg-brand-950/95 backdrop-blur">
+      <div className="container-page flex flex-wrap items-start gap-3 py-3 text-[14px] text-fg">
+        <PlugZap className="mt-0.5 size-5 shrink-0 text-brand-400" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <p className="font-semibold">{text.title}</p>
-          <p className="text-ink-700">
+          <p className="text-fg-soft">
             {text.body}
-            {import.meta.env.DEV && text.devHint && <span className="mt-0.5 block text-[13px] text-ink-600">{text.devHint}</span>}
+            {import.meta.env.DEV && text.devHint && <span className="mt-0.5 block text-[13px] text-fg-soft">{text.devHint}</span>}
           </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 self-center rounded-full bg-white px-3 py-1 text-[12.5px] font-semibold text-saffron-600 ring-1 ring-saffron-100">
+        <span className="inline-flex items-center gap-1.5 self-center rounded-full bg-panel px-3 py-1 text-[12.5px] font-semibold text-brand-400 ring-1 ring-brand-800">
           <RefreshCw className="size-3.5 animate-spin [animation-duration:2.5s]" aria-hidden="true" /> Reconnecting…
         </span>
       </div>

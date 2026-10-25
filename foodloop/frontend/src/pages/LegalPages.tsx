@@ -11,7 +11,7 @@ function LegalPage({ title, children }: { title: string; children: ReactNode }) 
         This is a plain-language draft, not legal advice. Have it reviewed by a qualified professional before
         FoodLoop launches publicly.
       </Notice>
-      <div className="mt-8 space-y-6 text-[15.5px] leading-relaxed text-ink-700 [&_h2]:mt-10 [&_h2]:text-2xl [&_h2]:text-ink-900">
+      <div className="mt-8 space-y-6 text-[15.5px] leading-relaxed text-fg-soft [&_h2]:mt-10 [&_h2]:text-2xl [&_h2]:text-fg">
         {children}
       </div>
     </article>
