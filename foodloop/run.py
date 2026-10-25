@@ -218,6 +218,12 @@ def wait_until_up(url: str, seconds: int, processes: list[subprocess.Popen]) -> 
 
 def check_styles() -> None:
     """Catch "the page shows plain, unstyled text": the stylesheet must come back compiled by Tailwind."""
+    source = (FRONTEND / "src" / "index.css").read_text(encoding="utf-8", errors="replace")
+    if "<<<<<<<" in source or ">>>>>>>" in source:
+        say("\nWARNING: the website's styles are broken, so pages would look plain or show a red error box.")
+        say("FIX:     frontend/src/index.css still has merge conflict markers (<<<<<<< / >>>>>>>). Open it in VS Code,")
+        say("         accept one side at each marked place and save. The page updates by itself.")
+        return
     try:
         with urllib.request.urlopen(SITE + "/src/index.css?direct", timeout=30) as response:
             css = response.read().decode("utf-8", "replace")
@@ -227,13 +233,8 @@ def check_styles() -> None:
         say("    Styles compiled (Tailwind CSS)")
         return
     say("\nWARNING: the website's styles didn't compile, so pages would look plain and broken.")
-    source = (FRONTEND / "src" / "index.css").read_text(encoding="utf-8", errors="replace")
-    if "<<<<<<<" in source or ">>>>>>>" in source:
-        say("FIX:     frontend/src/index.css still has merge conflict markers (<<<<<<< / >>>>>>>). Open it in VS Code,")
-        say("         accept one side at each marked place and save. The page updates by itself.")
-    else:
-        say("FIX:     read the [web] lines above for the CSS error. If it names a missing package, stop FoodLoop")
-        say("         (Ctrl+C), delete frontend/node_modules and start FoodLoop again so it reinstalls them.")
+    say("FIX:     read the [web] lines above for the CSS error. If it names a missing package, stop FoodLoop")
+    say("         (Ctrl+C), delete frontend/node_modules and start FoodLoop again so it reinstalls them.")
 
 
 def serve(npm: str, open_browser: bool) -> None:
