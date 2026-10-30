@@ -37,7 +37,7 @@
       {% if has_departments %}{% include "manage/setup/_field.html" with f=form.department %}{% else %}
       <div class="field"><span class="label">Department</span><span class="hint">No departments yet. <a href="{% url 'manage:catalogue' %}?tab=departments">Add departments</a> to assign one.</span></div>{% endif %}
     </div>
-    <div class="notice cfg-gap-b">{% icon "shield-check" %}<div><strong>Two-step sign-in</strong>{{ mfa_roles|join:" and " }} accounts must set up an authenticator app (such as Google Authenticator) the first time they sign in. Superuser access cannot be granted here.</div></div>
+    <div class="notice cfg-gap-b">{% icon "shield-check" %}<div><strong>Two-step sign-in</strong>{{ mfa_roles }} accounts must set up an authenticator app (such as Google Authenticator) the first time they sign in. Superuser access cannot be granted here.</div></div>
     <details class="small"><summary>What each role can do</summary>
       <dl class="cfg-rolelist">{% for v, label, help in role_help %}<div><dt>{{ label }}</dt><dd class="muted">{{ help }}</dd></div>{% endfor %}</dl>
     </details>

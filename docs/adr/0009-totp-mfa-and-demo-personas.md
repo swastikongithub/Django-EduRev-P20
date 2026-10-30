@@ -12,7 +12,8 @@ be reachable in a real deployment.
 
 ## Decision
 
-- Roles in `MFA_REQUIRED_ROLES` (default `admin`, `facility_manager`) and superusers must pass
+- Roles in `MFA_REQUIRED_ROLES` (default `admin`, `facility_manager`; widened on 2026-10-31 to
+  every role except `student`, and to anyone with `is_staff`) and superusers must pass
   a TOTP step after a correct password (`accounts.views.mfa_view`). A user who has enrolled
   voluntarily (`mfa_enabled`) is also asked. On first sign-in the user enrols by scanning a
   QR (otpauth URI, issuer "LPU Reserve") and confirming a code.

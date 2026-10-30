@@ -543,11 +543,12 @@ def test_sec12_elevated_api_session_gets_a_401_envelope(client, student, admin_u
     assert resp.json()["error"]["code"] == "mfa_required"
 
 
-def test_sec12_voluntary_enrolment_is_enforced_too(client, custodian):
-    client.force_login(custodian)  # signed in before enrolling
-    assert client.get(reverse("manage:home")).status_code == 200
-    _enrol_mfa(custodian)
-    assert client.get(reverse("manage:home")).status_code == 302
+def test_sec12_voluntary_enrolment_is_enforced_too(client, student):
+    # Students are the one role MFA is not required for, so only they can enrol voluntarily.
+    client.force_login(student)  # signed in before enrolling
+    assert client.get(reverse("core:home")).status_code == 200
+    _enrol_mfa(student)
+    assert client.get(reverse("core:home")).status_code == 302
 
 
 def test_sec12_demo_stamp_is_void_once_demo_mode_is_off(client, settings, admin_user):

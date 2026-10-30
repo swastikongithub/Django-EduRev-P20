@@ -34,6 +34,11 @@ class Refused(Exception):
     pass
 
 
+def _and_list(items: list[str]) -> str:
+    """'A', 'A and B', 'A, B and C'."""
+    return " and ".join(filter(None, [", ".join(items[:-1]), items[-1]])) if items else ""
+
+
 def change_role(target: User, new_role: str, *, actor, request=None) -> User:
     """Change a role (the Group follows via the post_save signal), refusing to leave nobody in charge."""
     if new_role not in Role.values:
@@ -216,7 +221,7 @@ def user_new(request):
         {
             "form": form,
             "role_help": [(v, label, ROLE_HELP[v]) for v, label in Role.choices],
-            "mfa_roles": [label for v, label in Role.choices if v in settings.MFA_REQUIRED_ROLES],
+            "mfa_roles": _and_list([label for v, label in Role.choices if v in settings.MFA_REQUIRED_ROLES]),
             "has_departments": Department.objects.filter(institution_id=actor.institution_id).exists(),
         },
     )

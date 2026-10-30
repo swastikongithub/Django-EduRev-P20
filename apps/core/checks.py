@@ -2,6 +2,9 @@
 Deployment checks (run with `manage.py check --deploy`, which CI and the Railway pre-deploy
 command both run). They catch configurations that work on a laptop but lose data or silently
 fail in production. Development (DEBUG=1) and one-click demo stacks (DEMO_MODE=1) are exempt.
+
+`mfa_roles` is the exception: it runs on every check, everywhere, because a wrong value weakens
+sign-in on any stack.
 """
 
 from django.conf import settings
@@ -23,6 +26,27 @@ ANYMAIL_KEYS = {
 
 def _production() -> bool:
     return not settings.DEBUG and not settings.DEMO_MODE
+
+
+@register(Tags.security)
+def mfa_roles(app_configs=None, **kwargs):
+    """
+    Every MFA_REQUIRED_ROLES entry must be a real role. A misspelt one ("dept-head") would silently
+    leave that role without a second factor. Not deploy-only: `migrate`, which starts every web
+    container, runs it too, so a bad value stops the release before it serves anyone.
+    """
+    from apps.accounts.models import Role
+
+    unknown = sorted(set(settings.MFA_REQUIRED_ROLES) - set(Role.values))
+    if not unknown:
+        return []
+    return [
+        Error(
+            f"MFA_REQUIRED_ROLES contains unknown role identifiers: {', '.join(unknown)}.",
+            hint=f"Use only: {', '.join(Role.values)}.",
+            id="lpu.E005",
+        )
+    ]
 
 
 @register(Tags.security, deploy=True)

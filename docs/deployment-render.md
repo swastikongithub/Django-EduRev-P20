@@ -33,6 +33,7 @@ Secrets live only in Render's environment settings. Everything else:
 | `REDIS_URL` | Upstash `rediss://` URL | TLS is taken from the scheme |
 | `CELERY_TASK_ALWAYS_EAGER`, `CELERY_BROKER_URL` | `1`, `memory://` | No worker exists, so notification email (the only task requests enqueue) runs in the request after commit; with the console email backend it cannot fail |
 | `DEBUG`, `DEMO_MODE`, `MFA_ENFORCED` | `0`, `0`, `1` | |
+| `MFA_REQUIRED_ROLES` | `faculty,staff,custodian,dept_head,facility_manager,admin` | Set explicitly, so the deployed policy does not depend on the code default: every role except `student` |
 | `ALLOWED_HOSTS` | `django-edurev-p20.onrender.com` | |
 | `CSRF_TRUSTED_ORIGINS`, `SITE_URL` | `https://django-edurev-p20.onrender.com` | |
 | `SECURE_SSL_REDIRECT`, `TRUSTED_PROXY_HOPS` | `1`, `1` | |

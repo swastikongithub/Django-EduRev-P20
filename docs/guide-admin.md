@@ -31,8 +31,8 @@ exactly one administrator; the other is turned away. The creation is in the audi
 
 ## Signing in and MFA
 
-Facility managers and administrators sign in with a password **and** a six-digit code from an
-authenticator app (Google Authenticator, Microsoft Authenticator, Authy, 1Password and similar).
+Everyone except students (faculty, staff, custodians, heads of department, facility managers and
+administrators) signs in with a password **and** a six-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy, 1Password and similar).
 
 1. Sign in with your VID or username and password.
 2. **First time:** the next page shows a QR code and a setup key. Scan it in your authenticator

@@ -8,8 +8,11 @@ watch an un-checked-in booking get released. Run: `pytest -m e2e` (needs
 """
 
 import os
+import re
+import time
 from datetime import timedelta
 
+import pyotp
 import pytest
 from django.utils import timezone
 
@@ -31,6 +34,9 @@ def day():
     return timezone.localdate() + timedelta(days=1)
 
 
+_AUTHENTICATORS = {}  # username -> [pyotp.TOTP, last time step used], set when the page enrols them
+
+
 def sign_in(page, live_server, user):
     page.goto(f"{live_server.url}/login/")
     page.fill("#id_username", user.username)
@@ -38,8 +44,25 @@ def sign_in(page, live_server, user):
     page.click("button[type=submit]")
     # The DOM is enough: waiting for "load" also waits for fonts and images, which says nothing
     # about whether sign-in worked and was the source of slow-runner timeouts.
-    page.wait_for_url(f"{live_server.url}/home/", wait_until="domcontentloaded")
+    page.wait_for_url(re.compile(r".*/(home|login/verify)/$"), wait_until="domcontentloaded")
+    if page.url.endswith("/login/verify/"):  # every role but student: the second factor, as a person does it
+        _second_factor(page, user)
+        page.wait_for_url(f"{live_server.url}/home/", wait_until="domcontentloaded")
     page.wait_for_selector("main", state="attached")
+
+
+def _second_factor(page, user):
+    key = page.locator("code.mfa-key")
+    if key.count():  # first sign-in: enrol with the key the page shows (what scanning the QR gives)
+        _AUTHENTICATORS[user.username] = [pyotp.TOTP(key.text_content().strip()), None]
+    totp, last = _AUTHENTICATORS[user.username]
+    step = int(time.time() // 30)
+    if last is not None and step <= last:  # each code is single-use: take the next step instead
+        step = last + 1
+        time.sleep(max(0, (step - 1) * 30 - time.time()))  # stay within the one-step drift window
+    _AUTHENTICATORS[user.username][1] = step
+    page.fill("#code", totp.at(step * 30))
+    page.click("button[type=submit]")
 
 
 def live_booking(user, room, minutes_ago=5, length=60):

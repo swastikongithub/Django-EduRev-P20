@@ -315,8 +315,17 @@ if not DEBUG:  # pragma: no cover - production hardening
 RATELIMIT_USE_CACHE = "default"
 RATELIMIT_IP_META_KEY = "apps.core.http.client_ip"
 LOGIN_LOCKOUT_THRESHOLD = 5
-# CES §1.1: TOTP MFA for admin roles. Demo persona sign-in (DEMO_MODE only) skips it.
-MFA_REQUIRED_ROLES = env.list("MFA_REQUIRED_ROLES", default=["admin", "facility_manager"])
+# CES §1.1: TOTP MFA for every role except students, who alone may sign in with a password only.
+# Superusers and anyone with Django admin access (is_staff) always need it, whatever their role
+# (accounts.mfa.required_for). Identifiers are accounts.models.Role values; an unknown one fails
+# the lpu.E005 system check. Demo persona sign-in (DEMO_MODE only) skips it.
+MFA_REQUIRED_ROLES = [
+    r.strip()
+    for r in env.list(
+        "MFA_REQUIRED_ROLES", default=["faculty", "staff", "custodian", "dept_head", "facility_manager", "admin"]
+    )
+    if r.strip()
+]
 MFA_ENFORCED = env.bool("MFA_ENFORCED", default=True)
 # First-run setup (/setup/bootstrap/) is open only while the database has no accounts at all. If
 # set, the form also asks for this value, so whoever reaches a fresh deployment first cannot claim

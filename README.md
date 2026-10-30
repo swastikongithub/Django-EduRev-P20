@@ -67,7 +67,7 @@ Sign in with the **Student ID** (VID) in the *VID or username* box and the passw
 | **M9 Analytics & reporting** | Nightly utilisation snapshots; utilisation by resource/type/department/block, idle-capacity ranking weighted by asset cost, heat map, no-show rates, demand vs supply, approval turnaround, downtime, quota consumption | `apps/analytics` |
 
 Plus notifications (in-app + email), iCal export and a private calendar feed, an append-only audit
-log enforced by a database trigger, TOTP MFA for privileged roles, DPDP data export, and a REST API
+log enforced by a database trigger, TOTP MFA for every role except students, DPDP data export, and a REST API
 (`/api/v1`, OpenAPI 3) for every P20 endpoint.
 
 ## The guarantee
@@ -122,7 +122,7 @@ python manage.py run_sweeps --loop                  # second terminal: Beat sche
 | **Facility Manager** | Campus insights (idle-capacity "money report", heat map, demand vs supply), policies, timetable publishing, Operations → *Run no-show sweep* to release a booking live |
 | **Administrator** | Workflow builder ("who approves this?" tester), users and roles, audit log |
 
-Privileged roles use TOTP MFA when signing in with a password; demo one-click sign-in exists only
+Every role except Student uses TOTP MFA when signing in with a password; demo one-click sign-in exists only
 when `DEMO_MODE=1` and is off by default.
 
 ## Testing

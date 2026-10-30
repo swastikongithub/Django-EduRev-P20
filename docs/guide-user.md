@@ -6,7 +6,7 @@ should also read the [administrator and staff guide](guide-admin.md).
 ## 1. Sign in
 
 Open LPU Reserve and sign in with your **VID** (registration or employee number) or username
-and your password. Facility managers and administrators are also asked for a code from an
+and your password. Everyone except students is also asked for a code from an
 authenticator app ([guide-admin.md](guide-admin.md#signing-in-and-mfa)).
 
 After five wrong attempts, sign-in pauses for 15 minutes.

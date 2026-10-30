@@ -25,7 +25,8 @@ Hiding a link in the UI is a convenience, never the control.
 | `facility_manager` | Estate and facility office | Campus-wide |
 | `admin` | System administrators | Campus-wide, plus users and roles |
 
-Superusers are treated as campus-wide and always need MFA. They are for break-glass use of
+Superusers are treated as campus-wide and always need MFA, as does anyone given Django admin
+access (`is_staff`), whatever their role. They are for break-glass use of
 `/django-admin/`, not for day-to-day work.
 
 ## Capability matrix
@@ -46,7 +47,7 @@ Superusers are treated as campus-wide and always need MFA. They are for break-gl
 | `manage_timetable`: import and publish the timetable |  |  |  |  |  | ✓ | ✓ |
 | `view_audit_log`: read and export the audit log |  |  |  |  |  | ✓ | ✓ |
 | `manage_users`: add people, change roles, deactivate accounts |  |  |  |  |  |  | ✓ |
-| **MFA required at sign-in** (`MFA_REQUIRED_ROLES`) |  |  |  |  |  | ✓ | ✓ |
+| **MFA required at sign-in** (`MFA_REQUIRED_ROLES`) |  | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 Notes on the matrix:
 
@@ -55,8 +56,9 @@ Notes on the matrix:
 - **Heads of department** configure policy only within their department: they edit
   departmental quotas and read the workflow builder; campus-wide rules need a facility
   manager or administrator.
-- **MFA** is required for `admin`, `facility_manager` and superusers by default. Anyone else
-  who enrols voluntarily is held to it too. MFA is checked for the whole session, not only
+- **MFA** is required for every role except `student` by default, and always for superusers
+  and anyone with Django admin access (`is_staff`). A student who enrols voluntarily is held
+  to it too, and a role change never drops an existing enrolment. MFA is checked for the whole session, not only
   at sign-in: if someone is promoted to an MFA role while signed in, their session ends and
   they sign in again with a code ([security review](security-review.md), SEC-12).
 
@@ -98,7 +100,7 @@ view re-checks the capability (`apps/core/manage_views.staff_required`).
 | Catalogue (resource types, blocks, departments) | `/manage/catalogue/` | `manage_resources`, campus-wide (facility managers, administrators) | Institution |
 | Audit log | `/manage/audit/` | `view_audit_log` | Institution |
 | Operations | `/manage/ops/` | campus-wide role (facility manager, administrator) | Institution |
-| Django admin | `/django-admin/` | `is_staff` (superusers); same sign-in and MFA as the product | Break-glass only |
+| Django admin | `/django-admin/` | `is_staff` (superusers); same sign-in as the product, and `is_staff` always requires MFA | Break-glass only |
 
 ## API access
 

@@ -120,7 +120,9 @@ def consume_step(user, step: int) -> bool:
 
 
 def required_for(user) -> bool:
-    return settings.MFA_ENFORCED and (user.role in settings.MFA_REQUIRED_ROLES or user.is_superuser)
+    # is_staff is Django's admin-site flag, not the `staff` role: whoever can open /django-admin/
+    # needs the second factor whatever their role, so a role edit there cannot exempt them.
+    return settings.MFA_ENFORCED and (user.role in settings.MFA_REQUIRED_ROLES or user.is_superuser or user.is_staff)
 
 
 def needs_mfa(user) -> bool:

@@ -47,7 +47,7 @@ see [deployment-railway.md](deployment-railway.md).
 
 | Variable | Default | Purpose | Production guidance |
 |---|---|---|---|
-| `MFA_REQUIRED_ROLES` | `admin,facility_manager` | Roles that must pass TOTP after a password sign-in (superusers always) | Keep the default or add `dept_head`, `custodian` |
+| `MFA_REQUIRED_ROLES` | `faculty,staff,custodian,dept_head,facility_manager,admin` | Roles that must pass TOTP after a password sign-in. Superusers and anyone with Django admin access (`is_staff`) always must, whatever their role. Values are `accounts.models.Role` identifiers; an unknown one fails the `lpu.E005` system check, which `migrate` runs at every container start | Keep the default: every role except `student` |
 | `MFA_ENFORCED` | `True` | Master switch for the above | Must be `1` |
 | `BOOTSTRAP_SETUP_CODE` | empty | When set, first-run setup (`/setup/bootstrap/`, open only while the database has no accounts) also asks for this value | Optional. Set a random value before the first deploy of a public site, so nobody who finds a fresh deployment first can claim it; it has no effect once any account exists |
 | `TRUSTED_PROXY_HOPS` | `0` | Number of reverse proxies in front of the app that append to `X-Forwarded-For`. The client address used by the audit log, the sign-in rate limiter and the API throttles is the entry that many places from the right; with `0` the header is ignored and `REMOTE_ADDR` is used | `1` behind a single proxy that appends to `X-Forwarded-For` (nginx, Render). On Railway leave `0` and use `TRUSTED_CLIENT_IP_HEADER`. Never higher than the real number of proxies: every extra hop lets clients choose their own address |
