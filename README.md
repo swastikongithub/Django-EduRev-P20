@@ -16,10 +16,14 @@ sits idle.
 
 ## Live demo
 
-**[django-edurev-p20-production.up.railway.app](https://django-edurev-p20-production.up.railway.app)**: the deployed
+**[django-edurev-p20.onrender.com](https://django-edurev-p20.onrender.com)**: the deployed
 LPU Reserve, populated with the full demonstration campus (61 resources across labs, classrooms,
 halls, courts, equipment and vehicles, with timetabled classes, maintenance windows, bookings and
 approvals).
+
+It runs on free hosting that sleeps when idle: the first visit after a quiet spell can take about
+a minute to wake up; after that it answers normally. What the free hosting leaves out is listed in
+[docs/deployment-render.md](docs/deployment-render.md).
 
 ### Public Demo Student Accounts
 
@@ -176,6 +180,7 @@ maintenance transitions, nightly analytics). Booking correctness never depends o
 | [docs/openapi.yaml](docs/openapi.yaml) | API specification (live, for signed-in users: `/api/v1/docs/`) |
 | [docs/environment.md](docs/environment.md) | Every environment variable, with production guidance |
 | [docs/runbook.md](docs/runbook.md) | Deployment, rollback, backup and tested restore, secret rotation, incident playbooks |
+| [docs/deployment-render.md](docs/deployment-render.md) | The current demo deployment on free hosting (Render, Neon, Upstash): configuration, how its data was restored, what does not run |
 | [docs/deployment-railway.md](docs/deployment-railway.md) | Production on Railway: services, every variable, migrations, the single Beat, health checks, what is still needed |
 | [docs/state-transfer.md](docs/state-transfer.md) | Copying a built installation (catalogue, bookings, timetable, people) into another database, with fresh production passwords |
 | [docs/backup-restore.md](docs/backup-restore.md) | Nightly encrypted backups, volume backups, restoring, and the CI restore drill |
